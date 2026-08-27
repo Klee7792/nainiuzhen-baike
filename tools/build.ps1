@@ -49,36 +49,23 @@ $stamp = Get-Date -Format "yyyy-MM-dd HH:mm"
 Add-Content $NoteFile ("- #$buildNo  $stamp  $Message")
 
 # ---- git commit + tag (commit code state at repo root for easy rollback) ----
-# Robust git invocation: run git via System.Diagnostics.Process with stderr/stdout
-# redirected to the process object. This keeps git's stderr (e.g. CRLF warnings)
-# OUT of PowerShell's error stream, so ErrorActionPreference=Stop never turns a
-# harmless warning into a fatal NativeCommandError. Real failures are detected
-# via the process ExitCode. (APK binaries stay on disk, excluded by .gitignore;
-# the tag marks the code state for rollback.)
-function Invoke-GitRobust([string]$GitArgs) {
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "git"
-    $psi.Arguments = $GitArgs
-    $psi.WorkingDirectory = $RepoRoot
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardError = $true
-    $psi.RedirectStandardOutput = $true
-    $p = New-Object System.Diagnostics.Process
-    $p.StartInfo = $psi
-    $null = $p.Start()
-    $p.WaitForExit()
-    if ($p.ExitCode -ne 0) {
-        $err = $p.StandardError.ReadToEnd()
-        Write-Host "git error (args: $GitArgs): $err"
-    }
-    return $p.ExitCode
+# Use direct git calls (no System.Diagnostics.Process redirect, which can deadlock
+# when git's stderr buffer fills). Scope ErrorActionPreference to Continue so git's
+# harmless stderr (e.g. CRLF warnings) is not treated as a fatal error, discard
+# stderr with 2>$null, and detect real failures via $LASTEXITCODE.
+# (APK binaries stay on disk, excluded by .gitignore; the tag marks the code state
+# for rollback.)
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    git -C $RepoRoot add -A 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Error "git add failed"; exit 1 }
+    git -C $RepoRoot commit -q -m "build #$buildNo $Message" 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Error "git commit failed"; exit 1 }
+    git -C $RepoRoot tag ("build-" + $buildNo) 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Error "git tag failed"; exit 1 }
+} finally {
+    $ErrorActionPreference = $prevEap
 }
-
-$rc = Invoke-GitRobust "add -A"
-if ($rc -ne 0) { Write-Error "git add failed"; exit 1 }
-$rc = Invoke-GitRobust ("commit -q -m ""build #$buildNo $Message""")
-if ($rc -ne 0) { Write-Error "git commit failed"; exit 1 }
-$rc = Invoke-GitRobust ("tag build-" + $buildNo)
-if ($rc -ne 0) { Write-Error "git tag failed"; exit 1 }
 
 Write-Host "==> build #$buildNo done, committed and tagged build-$buildNo"
