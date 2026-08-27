@@ -35,14 +35,17 @@ class AssetManager(
         Json {
             ignoreUnknownKeys = true
             isLenient = true
+            // 数据里存在显式 null（如 compound_unlocks.json 的 target/targetNum），
+            // 关闭 explicitNulls 让 null 走字段默认值，避免 JsonDecodingException 崩溃。
+            explicitNulls = false
         }
 
     /** 加载全部资源；[isDebug] 为 true 时展示黑名单物品 / NPC，否则过滤。 */
     suspend fun loadAll(isDebug: Boolean): LoadedData {
         val atlas = buildAtlas()
         val iconMapping = loadIconMapping()
-        val itemBlack = loadBlacklist("item_blacklist.txt")
-        val npcBlack = loadBlacklist("npc_blacklist.txt")
+        val itemBlack = loadBlacklist("config/item_blacklist.txt")
+        val npcBlack = loadBlacklist("config/npc_blacklist.txt")
 
         val items = loadItems(atlas, iconMapping, itemBlack, isDebug)
         val recipes = loadRecipes(iconMapping)
@@ -67,7 +70,7 @@ class AssetManager(
         val map = mutableMapOf<String, SpriteAtlasFrame>()
         for (sheet in sheetNames) {
             try {
-                val plist = AssetLoader.loadText("$sheet.plist")
+                val plist = AssetLoader.loadText("res/$sheet.plist")
                 PlistParser.parse(plist, sheet).forEach { (k, v) -> map[k] = v }
             } catch (_: Exception) {
                 // 该图集不存在则跳过
@@ -78,7 +81,7 @@ class AssetManager(
 
     private fun loadIconMapping(): Map<Int, Int> =
         try {
-            val text = AssetLoader.loadText("icon_mapping.json")
+            val text = AssetLoader.loadText("config/icon_mapping.json")
             json.decodeFromString<Map<String, Int>>(text)
                 .mapNotNull { (k, v) -> k.toIntOrNull()?.let { it to v } }
                 .toMap()
@@ -108,10 +111,10 @@ class AssetManager(
         isDebug: Boolean,
     ): List<ItemInfo> {
         val raw =
-            json.decodeFromString<Map<String, ItemRaw>>(AssetLoader.loadText("item_database.json"))
+            json.decodeFromString<Map<String, ItemRaw>>(AssetLoader.loadText("config/item_database.json"))
         return raw.values.mapNotNull { r ->
-            if (!isDebug && r.id in black) return@mapNotNull null
-            val mapped = iconMapping[r.id]
+            if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
+            val mapped = iconMapping[r.id ?: 0]
             val frameKey = (mapped ?: r.icon ?: r.id).toString()
             val category = extractCategory(r.desc)
             val group =
@@ -121,12 +124,12 @@ class AssetManager(
                     else -> ItemGroup.Items
                 }
             ItemInfo(
-                id = r.id,
+                id = r.id ?: 0,
                 name = r.name,
                 descRaw = r.desc,
                 source = r.source,
                 iconHint = r.icon,
-                type = r.type,
+                type = r.type ?: 0,
                 price = r.price,
                 sellboxPrice = r.sellboxPrice,
                 iconFrameKey = frameKey,
@@ -138,20 +141,20 @@ class AssetManager(
 
     private fun loadRecipes(iconMapping: Map<Int, Int>): List<RecipeInfo> {
         val raw =
-            json.decodeFromString<CompoundRaw>(AssetLoader.loadText("compound_unlocks.json"))
+            json.decodeFromString<CompoundRaw>(AssetLoader.loadText("config/compound_unlocks.json"))
         return raw.items.mapNotNull { r ->
-            val mapped = iconMapping[r.id]
+            val mapped = iconMapping[r.id ?: 0]
             val frameKey = (mapped ?: r.icon ?: r.id).toString()
             RecipeInfo(
-                id = r.id,
+                id = r.id ?: 0,
                 name = r.name,
-                type = r.type,
+                type = r.type ?: 0,
                 typeLabel = r.typeLabel,
                 category = r.category,
-                target = r.target,
-                targetNum = r.targetNum,
-                materials = r.materials.map { RecipeMaterial(it.id, it.num) },
-                iconHint = r.icon ?: r.id,
+                target = r.target ?: 0,
+                targetNum = r.targetNum ?: 0,
+                materials = r.materials.map { RecipeMaterial(it.id ?: 0, it.num ?: 0) },
+                iconHint = r.icon ?: (r.id ?: 0),
                 deblockingDesc = r.deblockingDesc,
                 descRaw = r.desc,
                 price = r.price,
@@ -162,18 +165,18 @@ class AssetManager(
 
     private fun loadNpcs(black: Set<Int>, isDebug: Boolean): List<NpcInfo> {
         val raw =
-            json.decodeFromString<Map<String, NpcRaw>>(AssetLoader.loadText("npc_database.json"))
+            json.decodeFromString<Map<String, NpcRaw>>(AssetLoader.loadText("config/npc_database.json"))
         return raw.values.mapNotNull { r ->
-            if (!isDebug && r.id in black) return@mapNotNull null
+            if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
             NpcInfo(
-                id = r.id,
+                id = r.id ?: 0,
                 name = r.name,
                 descRaw = r.desc,
                 address = r.address,
                 birthday = r.birthday,
-                sex = r.sex,
-                loveItemId = r.loveItemId,
-                maxStar = r.maxStar,
+                sex = r.sex ?: 0,
+                loveItemId = r.loveItemId ?: 0,
+                maxStar = r.maxStar ?: 0,
                 likeItems = r.likeItems,
                 hateItems = r.hateItems,
                 bestFavorItems = r.bestFavorItems,
@@ -183,16 +186,16 @@ class AssetManager(
 
     private fun loadSchedules(): Map<Int, List<NpcSchedule>> {
         val raw =
-            json.decodeFromString<Map<String, NpcAiRaw>>(AssetLoader.loadText("npc_ai_database.json"))
+            json.decodeFromString<Map<String, NpcAiRaw>>(AssetLoader.loadText("config/npc_ai_database.json"))
         val result = mutableMapOf<Int, MutableList<NpcSchedule>>()
         raw.values.forEach { ai ->
             ai.schedules.forEach { s ->
                 val schedule =
                     NpcSchedule(
-                        id = s.id,
-                        npcId = s.npcId,
+                        id = s.id ?: 0,
+                        npcId = s.npcId ?: 0,
                         name = s.name,
-                        startTime = s.startTime,
+                        startTime = s.startTime ?: 0,
                         startTimeText = s.startTimeText,
                         startPoint =
                             ScenePoint(
@@ -211,10 +214,10 @@ class AssetManager(
                         week = s.week,
                         season = s.season,
                         weather = s.weather,
-                        isAstar = s.isAstar,
+                        isAstar = s.isAstar ?: 0,
                         relation = s.relation,
                     )
-                result.getOrPut(s.npcId) { mutableListOf() }.add(schedule)
+                result.getOrPut(s.npcId ?: 0) { mutableListOf() }.add(schedule)
             }
         }
         return result
@@ -231,12 +234,12 @@ class AssetManager(
 
 @Serializable
 private data class ItemRaw(
-    val id: Int,
+    val id: Int? = null,
     val name: String,
     val desc: String = "",
     val source: String? = null,
     val icon: Int? = null,
-    val type: Int = 0,
+    val type: Int? = null,
     val price: Int? = null,
     @SerialName("sellbox_price") val sellboxPrice: Int? = null,
 )
@@ -249,14 +252,14 @@ private data class CompoundRaw(
 
 @Serializable
 private data class RecipeRaw(
-    val id: Int,
+    val id: Int? = null,
     val name: String,
-    val type: Int = 0,
+    val type: Int? = null,
     val typeName: String? = null,
     val typeLabel: String = "",
     val category: String = "",
-    val target: Int = 0,
-    val targetNum: Int = 0,
+    val target: Int? = null,
+    val targetNum: Int? = null,
     val materials: List<MaterialRaw> = emptyList(),
     val icon: Int? = null,
     val price: Int? = null,
@@ -266,20 +269,20 @@ private data class RecipeRaw(
 
 @Serializable
 private data class MaterialRaw(
-    val id: Int,
-    val num: Int,
+    val id: Int? = null,
+    val num: Int? = null,
 )
 
 @Serializable
 private data class NpcRaw(
-    val id: Int,
+    val id: Int? = null,
     val name: String,
     val desc: String = "",
     val address: String = "",
     val birthday: String = "",
-    val sex: Int = 0,
-    val loveItemId: Int = 0,
-    val maxStar: Int = 0,
+    val sex: Int? = null,
+    val loveItemId: Int? = null,
+    val maxStar: Int? = null,
     val likeItems: List<Int> = emptyList(),
     val hateItems: List<Int> = emptyList(),
     val bestFavorItems: List<Int> = emptyList(),
@@ -287,24 +290,24 @@ private data class NpcRaw(
 
 @Serializable
 private data class NpcAiRaw(
-    val npcId: Int,
+    val npcId: Int? = null,
     val npcName: String = "",
     val schedules: List<ScheduleRaw> = emptyList(),
 )
 
 @Serializable
 private data class ScheduleRaw(
-    val id: Long,
-    val npcId: Int,
+    val id: Long? = null,
+    val npcId: Int? = null,
     val name: String = "",
-    val startTime: Int = 0,
+    val startTime: Int? = null,
     val startTimeText: String = "",
     val startPoint: ScenePointRaw = ScenePointRaw(),
     val endPoint: ScenePointRaw = ScenePointRaw(),
     val week: List<Int> = emptyList(),
     val season: List<Int> = emptyList(),
     val weather: List<Int> = emptyList(),
-    val isAstar: Int = 0,
+    val isAstar: Int? = null,
     val relation: List<Int> = emptyList(),
 )
 

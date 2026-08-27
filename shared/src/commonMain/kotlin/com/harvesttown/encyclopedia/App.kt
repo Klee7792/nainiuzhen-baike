@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +68,11 @@ private fun AppRoot(
     val loadedState = remember { mutableStateOf<AssetManager.LoadedData?>(null) }
     LaunchedEffect(Unit) {
         if (cache.needsRebuild()) cache.clear()
-        val data = AssetManager(slicer, cache).loadAll(isDebug)
+        // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
+        // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
+        val data = withContext(Dispatchers.IO) {
+            AssetManager(slicer, cache).loadAll(isDebug)
+        }
         cache.markBuilt()
         loadedState.value = data
     }

@@ -23,7 +23,7 @@ class SpriteRepository(
         val sheetName = atlas.sheetFor(frameKey) ?: return slicer.placeholder()
         val frame = atlas.getFrame(frameKey) ?: return slicer.placeholder()
         return try {
-            val sheetBytes = AssetLoader.loadBytes("$sheetName.png")
+            val sheetBytes = AssetLoader.loadBytes("res/$sheetName.png")
             val bmp = slicer.slice(sheetBytes, frame)
             cache.write(frameKey, slicer.encode(bmp))
             bmp
@@ -34,7 +34,7 @@ class SpriteRepository(
 
     /** 取 NPC 立绘（id）。 */
     fun getNpcImage(npcId: Int): ImageBitmap = try {
-        slicer.decode(AssetLoader.loadBytes("npcs/$npcId.png"))
+        slicer.decode(AssetLoader.loadBytes("res/npcs/$npcId.png"))
     } catch (_: Exception) {
         slicer.placeholder()
     }
@@ -47,7 +47,7 @@ class SpriteRepository(
             else -> "lv_4"
         }
         return try {
-            slicer.decode(AssetLoader.loadBytes("star/$name.png"))
+            slicer.decode(AssetLoader.loadBytes("res/star/$name.png"))
         } catch (_: Exception) {
             slicer.placeholder()
         }
