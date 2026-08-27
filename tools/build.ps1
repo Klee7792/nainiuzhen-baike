@@ -19,7 +19,7 @@ $NoteFile    = Join-Path $BuildsDir "build_notes.md"
 $env:JAVA_HOME        = "D:\Android\jdk-17.0.20.1"
 $env:ANDROID_HOME     = "D:\Android\Sdk"
 $env:ANDROID_SDK_ROOT = "D:\Android\Sdk"
-$gradle = "D:\Android\gradle-8.9\bin\gradle.bat"
+$gradle = "D:\Android\gradle-9.6.1\bin\gradle.bat"
 
 # ---- 读取并递增构建号 ----
 if (-not (Test-Path $NumberFile)) { "0" | Out-File $NumberFile -Encoding ascii }
