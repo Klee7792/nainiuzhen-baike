@@ -3,6 +3,7 @@ package com.harvesttown.encyclopedia
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.harvesttown.encyclopedia.data.source.AppContextHolder
 import com.harvesttown.encyclopedia.platform.AndroidSpriteCacheManager
 import com.harvesttown.encyclopedia.platform.AndroidSpriteSlicer
 
@@ -19,6 +20,8 @@ import com.harvesttown.encyclopedia.platform.AndroidSpriteSlicer
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 注入 Android Context，供 :shared 经原生 AssetManager 读取 assets/ 资源。
+        AppContextHolder.init(this)
         setContent {
             App(
                 slicer = AndroidSpriteSlicer(),
