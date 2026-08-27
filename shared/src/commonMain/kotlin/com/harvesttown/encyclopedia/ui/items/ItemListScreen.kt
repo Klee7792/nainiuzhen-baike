@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,14 +24,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
 import com.harvesttown.encyclopedia.data.model.ItemInfo
-import com.harvesttown.encyclopedia.ui.components.MenuCard
 import com.harvesttown.encyclopedia.ui.components.SpriteImage
 import com.harvesttown.encyclopedia.ui.nav.LocalDataRepository
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
 import com.harvesttown.encyclopedia.ui.nav.Route
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -40,10 +43,11 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 
 /**
- * 物品大全列表：吸顶统计「共 N 个物品」+ 多选 categoryLabel 筛选 chip + 列表。
- * 点击某物品弹出 [ItemDetailScreen] 详情。
+ * 物品大全列表：6 列方块网格（方块=切片素材，下方一行 11sp 居中的名称）。
+ * 顶部吸顶统计「共 N 个物品」+ 多选 categoryLabel 筛选 chip。点击某物品弹出 [ItemDetailScreen]。
  */
 @Composable
 fun ItemListScreen() {
@@ -72,13 +76,15 @@ fun ItemListScreen() {
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(6),
+            state = rememberLazyGridState(),
             modifier = Modifier
                 .fillMaxHeight()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(top = innerPadding.calculateTopPadding(), bottom = 12.dp),
         ) {
-            stickyHeader {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
                 Column(
                     modifier = Modifier
                         .background(MiuixTheme.colorScheme.surface)
@@ -99,35 +105,51 @@ fun ItemListScreen() {
                                 selectedCats = emptySet()
                             }
                         }
-                        items(categories) { cat ->
-                            CategoryChip(
-                                text = cat,
-                                selected = cat in selectedCats,
-                            ) {
-                                selectedCats = if (cat in selectedCats) selectedCats - cat else selectedCats + cat
+                        categories.forEach { cat ->
+                            item {
+                                CategoryChip(
+                                    text = cat,
+                                    selected = cat in selectedCats,
+                                ) {
+                                    selectedCats = if (cat in selectedCats) selectedCats - cat else selectedCats + cat
+                                }
                             }
                         }
                     }
                 }
             }
             items(filtered, key = { it.id }) { item ->
-                Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    MenuCard(
-                        title = item.name,
-                        summary = item.categoryLabel,
-                        startContent = {
-                            SpriteImage(frameKey = item.iconFrameKey, modifier = Modifier.size(48.dp))
-                        },
-                        onClick = { selected = item },
-                    )
-                }
+                ItemGridCell(item = item, onClick = { selected = item })
             }
         }
         ItemDetailScreen(item = selected, onDismissRequest = { selected = null })
+    }
+}
+
+/** 单个物品方块：正方形切片 + 名称（11sp，居中，单行省略）。 */
+@Composable
+private fun ItemGridCell(item: ItemInfo, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        SpriteImage(
+            frameKey = item.iconFrameKey,
+            modifier = Modifier.fillMaxWidth(),
+            contentScale = ContentScale.Fit,
+        )
+        Text(
+            text = item.name,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MiuixTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 

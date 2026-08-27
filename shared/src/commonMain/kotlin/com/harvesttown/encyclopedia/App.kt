@@ -24,6 +24,7 @@ import com.harvesttown.encyclopedia.ui.nav.Navigator
 import com.harvesttown.encyclopedia.ui.nav.Route
 import com.harvesttown.encyclopedia.ui.theme.AppTheme
 import com.harvesttown.encyclopedia.utils.AppState
+import com.harvesttown.encyclopedia.utils.AppSettingsStore
 import com.harvesttown.encyclopedia.utils.LocalAppSettings
 import com.harvesttown.encyclopedia.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.Text
@@ -45,9 +46,10 @@ fun App(
     slicer: SpriteSlicer,
     cache: SpriteCacheManager,
     isDebug: Boolean,
+    settings: AppSettingsStore,
 ) {
-    var appState by remember { mutableStateOf(AppState()) }
-    val updateAppState: (AppState) -> Unit = remember { { appState = it } }
+    var appState by remember { mutableStateOf(settings.load()) }
+    val updateAppState: (AppState) -> Unit = remember { { new -> appState = new; settings.save(new) } }
     AppTheme(isDark = appState.isDark) {
         CompositionLocalProvider(
             LocalAppSettings provides appState,
@@ -80,7 +82,7 @@ private fun AppRoot(
     if (loaded == null) {
         LoadingScreen()
     } else {
-        val backStack = rememberNavBackStack<Route>(Route.Home)
+        val backStack = rememberNavBackStack<Route>(Route.Main)
         val navigator = remember { Navigator(backStack) }
         CompositionLocalProvider(
             LocalDataRepository provides loaded.data,

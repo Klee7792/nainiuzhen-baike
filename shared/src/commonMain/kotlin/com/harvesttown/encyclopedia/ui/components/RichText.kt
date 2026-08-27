@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.harvesttown.encyclopedia.data.model.NewlineSpan
 import com.harvesttown.encyclopedia.data.model.TextSpan
 import com.harvesttown.encyclopedia.richtext.RichTextParser
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -72,37 +71,32 @@ fun RichText(
 }
 
 /**
- * 可展开富文本：在 [collapsedMaxLines] 行高度内显示，超出则可滚动；提供「展开 / 收起」按钮
- * 切换是否显示全部内容。最小高度约为一行，避免空描述时塌陷。
+ * 富文本描述区：在固定高度（约 [maxLines] 行）内显示，超出则内部滚动。
+ * 不再提供「展开 / 收起」按钮——避免 `verticalScroll` 在 `OverlayDialog` 的 `Infinity`
+ * 最大高度约束下崩溃（`IllegalStateException: scrollable measured with infinity max height`）。
+ *
+ * 关键：根容器用 `heightIn(max = 有限值)` 把约束收敛为有限，嵌套的 `verticalScroll` 才能正常测量。
  *
  * @param raw 富文本原始串（可为 null）。
  * @param modifier 外层修饰。
- * @param collapsedMaxLines 收起状态下最多显示的行数（默认 8）。
+ * @param maxLines 最多显示的行数（高度上限），超出滚动（默认 8）。
  */
 @Composable
 fun ExpandableRichText(
     raw: String?,
     modifier: Modifier = Modifier,
-    collapsedMaxLines: Int = 8,
+    maxLines: Int = 8,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val fontSize = MiuixTheme.textStyles.body2.fontSize
-    val lineHeightPx = with(density) { (fontSize.value * 1.4f).toDp() }
-    val maxCollapsedDp = with(density) { (fontSize.value * 1.4f * collapsedMaxLines).toDp() }
-    val maxHeight: Dp = if (expanded) Dp.Infinity else maxCollapsedDp
-    Column(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = lineHeightPx, max = maxHeight)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            RichText(raw = raw)
-        }
-        TextButton(
-            text = if (expanded) "收起" else "展开",
-            onClick = { expanded = !expanded },
-        )
+    val minHeight: Dp = with(density) { fontSize.value.toDp() }
+    val maxHeight: Dp = with(density) { (fontSize.value * 1.4f * maxLines).dp }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight, max = maxHeight)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        RichText(raw = raw)
     }
 }

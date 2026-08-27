@@ -15,7 +15,7 @@ import com.harvesttown.encyclopedia.data.source.SpriteSlicer
 /**
  * 基于 Android `Bitmap` 的切片器实现。
  *
- * - [slice]：从图集字节裁剪单帧；处理 Cocos2d 的 rotated（顺时针 90° 打包 → 顺时针还原）。
+ * - [slice]：从图集字节裁剪单帧；处理 Cocos2d 的 rotated（顺时针 90° 打包 → 逆时针还原）。
  *   裁剪/旋转后，将结果贴回一张 `sourceSize` 透明画布（偏移为 `sourceColorRect`），
  *   以还原 plist 中被裁剪掉的透明边距，保证图标对齐（参考 `smart_picture_tool.py` 的 `_slice_plist_new`）。
  * - [decode]/[encode]：PNG 字节与 [ImageBitmap] 互转（用于缓存与 NPC / 星级原图）。
@@ -32,7 +32,7 @@ class AndroidSpriteSlicer : SpriteSlicer {
             val cropped =
                 if (frame.rotated) {
                     val raw = Bitmap.createBitmap(sheet, left, top, h, w)
-                    rotateClockwise(raw) // 还原 Python PIL Image.ROTATE_90（顺时针 90°）
+                    rotateCcw(raw) // 还原图集中顺时针打包的帧：逆时针 90°
                 } else {
                     Bitmap.createBitmap(sheet, left, top, w, h)
                 }
@@ -46,9 +46,9 @@ class AndroidSpriteSlicer : SpriteSlicer {
         }
     }
 
-    /** 顺时针旋转 90°（对应 Python PIL `Image.ROTATE_90`），还原 Cocos2d 顺时针打包帧。 */
-    private fun rotateClockwise(src: Bitmap): Bitmap {
-        val matrix = Matrix().apply { postRotate(90f) }
+    /** 逆时针旋转 90°（对应 Python PIL `Image.ROTATE_90` 的逆），把图集中顺时针打包的帧还原为正向。 */
+    private fun rotateCcw(src: Bitmap): Bitmap {
+        val matrix = Matrix().apply { postRotate(-90f) }
         val out = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
         src.recycle()
         return out

@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import com.harvesttown.encyclopedia.data.model.NpcSchedule
 import com.harvesttown.encyclopedia.ui.nav.LocalDataRepository
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
 import top.yukonga.miuix.kmp.basic.Card
@@ -41,7 +42,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * NPC 日程子页（完整路由 [com.harvesttown.encyclopedia.ui.nav.Route.NpcSchedule]）。
- * 按 星期 / 季节 / 天气 单维筛选，展示该 NPC 的日程（名称、开始时间、起止场景、适用维度）。
+ *
+ * 筛选区（单选、必选一项，默认 周一 / 晴天 / 春 / 未婚，无「全部」）：
+ * 星期(周一到周天) / 天气(晴雨雪台风节日) / 季节(春夏秋冬) / 婚姻(未婚=0 / 已婚=1，按 [NpcSchedule.isAstar])。
+ *
+ * 日程区：左侧开始时间列 + 右侧名称（大字）+ 起止场景箭头（小字 `start → end`），条目高度统一。
  */
 @Composable
 fun NpcScheduleScreen(npcId: Int) {
@@ -49,20 +54,25 @@ fun NpcScheduleScreen(npcId: Int) {
     val data = LocalDataRepository.current
     val scrollBehavior = MiuixScrollBehavior()
     val all = remember(npcId) { data.npcSchedules(npcId) }
-    var week by remember { mutableStateOf<Int?>(null) }
-    var season by remember { mutableStateOf<Int?>(null) }
-    var weather by remember { mutableStateOf<Int?>(null) }
+    val npcName = remember(npcId) { data.npcs.firstOrNull { it.id == npcId }?.name ?: "NPC" }
+
+    // 单选、必选：默认值 周一(1) / 晴天(1) / 春(1) / 未婚(0)
+    var week by remember { mutableStateOf(1) }
+    var season by remember { mutableStateOf(1) }
+    var weather by remember { mutableStateOf(1) }
+    var marriage by remember { mutableStateOf(0) }
 
     val filtered = all.filter { s ->
-        (week == null || week in s.week) &&
-            (season == null || season in s.season) &&
-            (weather == null || weather in s.weather)
+        week in s.week &&
+            season in s.season &&
+            weather in s.weather &&
+            s.isAstar == marriage
     }
 
     Scaffold(
         topBar = {
             SmallTopAppBar(
-                title = "日程",
+                title = "$npcName 日程",
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = { navigator.pop() }) {
@@ -88,59 +98,100 @@ fun NpcScheduleScreen(npcId: Int) {
                         .background(MiuixTheme.colorScheme.surface)
                         .padding(horizontal = 12.dp),
                 ) {
-                    ScheduleFilterRow(label = "星期", options = (1..7).toList(), selected = week) {
-                        week = if (week == it) null else it
-                    }
-                    ScheduleFilterRow(label = "季节", options = (1..4).toList(), selected = season) {
-                        season = if (season == it) null else it
-                    }
-                    ScheduleFilterRow(label = "天气", options = (1..5).toList(), selected = weather) {
-                        weather = if (weather == it) null else it
+                    RequiredFilterRow(
+                        label = "星期",
+                        options = (1..7).map { it to WEEK_LABELS[it - 1] },
+                        selected = week,
+                        onSelect = { week = it },
+                    )
+                    RequiredFilterRow(
+                        label = "天气",
+                        options = (1..5).map { it to WEATHER_LABELS[it - 1] },
+                        selected = weather,
+                        onSelect = { weather = it },
+                    )
+                    RequiredFilterRow(
+                        label = "季节",
+                        options = (1..4).map { it to SEASON_LABELS[it - 1] },
+                        selected = season,
+                        onSelect = { season = it },
+                    )
+                    RequiredFilterRow(
+                        label = "婚姻",
+                        options = listOf(0 to "未婚", 1 to "已婚"),
+                        selected = marriage,
+                        onSelect = { marriage = it },
+                    )
+                }
+            }
+            if (filtered.isEmpty()) {
+                item(key = "empty") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "当前筛选无匹配日程",
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
                     }
                 }
             }
             items(filtered, key = { it.id }) { s ->
-                Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = s.name,
-                            style = MiuixTheme.textStyles.title4,
-                            color = MiuixTheme.colorScheme.onBackground,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "时间：${s.startTimeText}",
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                        Text(
-                            text = "路线：${s.startPoint.sceneName} → ${s.endPoint.sceneName}",
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                        Text(
-                            text = "适用：周${s.week.joinToString("/")} · 季${s.season.joinToString("/")} · 天${s.weather.joinToString("/")}",
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
-                }
+                ScheduleEntry(schedule = s)
             }
         }
     }
 }
 
-/** 单维筛选行：标签 + 可单选的 chip（再次点击取消）。 */
+/** 单条日程：左侧开始时间列 + 右侧名称与起止场景箭头，高度统一。 */
 @Composable
-private fun ScheduleFilterRow(
+private fun ScheduleEntry(schedule: NpcSchedule) {
+    Card(
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = schedule.startTimeText,
+                style = MiuixTheme.textStyles.title4,
+                color = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.width(64.dp),
+            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = schedule.name,
+                    style = MiuixTheme.textStyles.title4,
+                    color = MiuixTheme.colorScheme.onBackground,
+                )
+                SpacerH(4.dp)
+                Text(
+                    text = "${schedule.startPoint.sceneName} → ${schedule.endPoint.sceneName}",
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
+    }
+}
+
+/** 必选单选筛选行：标签 + 可单选的 chip（点击已选项保持不变，无「全部」）。 */
+@Composable
+private fun RequiredFilterRow(
     label: String,
-    options: List<Int>,
-    selected: Int?,
-    onSelect: (Int?) -> Unit,
+    options: List<Pair<Int, String>>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(
@@ -149,20 +200,24 @@ private fun ScheduleFilterRow(
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier.padding(vertical = 4.dp),
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                FilterChip(text = "全部", selected = selected == null) { onSelect(null) }
-            }
-            items(options) { opt ->
-                FilterChip(text = opt.toString(), selected = selected == opt) { onSelect(opt) }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(bottom = 4.dp),
+        ) {
+            options.forEach { (value, text) ->
+                RequiredChip(
+                    text = text,
+                    selected = selected == value,
+                    onClick = { onSelect(value) },
+                )
             }
         }
     }
 }
 
-/** 筛选 chip（选中高亮）。 */
+/** 必选筛选 chip（选中高亮，不可取消）。 */
 @Composable
-private fun FilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun RequiredChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val backgroundColor =
         if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surfaceContainer
     val contentColor =
@@ -178,3 +233,14 @@ private fun FilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
         Text(text = text, color = contentColor, fontSize = MiuixTheme.textStyles.body2.fontSize)
     }
 }
+
+/** 竖直间距。 */
+@Composable
+private fun SpacerH(height: androidx.compose.ui.unit.Dp) {
+    androidx.compose.foundation.layout.Spacer(Modifier.size(height))
+}
+
+/** 标签映射。 */
+private val WEEK_LABELS = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周天")
+private val WEATHER_LABELS = listOf("晴天", "雨天", "雪天", "台风", "节日")
+private val SEASON_LABELS = listOf("春", "夏", "秋", "冬")

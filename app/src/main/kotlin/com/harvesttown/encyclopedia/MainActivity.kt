@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.harvesttown.encyclopedia.data.source.AppContextHolder
+import com.harvesttown.encyclopedia.platform.AndroidAppSettingsStore
 import com.harvesttown.encyclopedia.platform.AndroidSpriteCacheManager
 import com.harvesttown.encyclopedia.platform.AndroidSpriteSlicer
 
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
                     version = BuildConfig.VERSION_CODE,
                 ),
                 isDebug = BuildConfig.DEBUG,
+                settings = AndroidAppSettingsStore(this),
             )
         }
     }

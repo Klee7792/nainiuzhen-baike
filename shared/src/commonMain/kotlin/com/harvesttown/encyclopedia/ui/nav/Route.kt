@@ -6,12 +6,16 @@ import top.yukonga.miuix.kmp.nav.core.NavKey
 /**
  * 类型安全的导航路由（基于 miuix-nav）。每个目的地都是一个 [NavKey]，可保存/恢复于返回栈，
  * 因此可在页面旋转等场景下正确重建。
+ *
+ * 结构（底栏 2 页）：
+ * - [Main] 主页（含 3 个图鉴板块入口：物品大全 / 配方查询 / NPC 资料）+ 设置页并存的宿主。
+ * - 子页（从主页入口 push 而来，全屏覆盖）：[ItemList] / [RecipeList] / [NpcList] / [NpcSchedule]。
  */
 @Serializable
 sealed interface Route : NavKey {
-    /** 主页。 */
+    /** 主页（底栏第 1 页）。 */
     @Serializable
-    data object Home : Route
+    data object Main : Route
 
     /** 物品大全。 */
     @Serializable
@@ -24,10 +28,6 @@ sealed interface Route : NavKey {
     /** NPC 资料。 */
     @Serializable
     data object NpcList : Route
-
-    /** 设置。 */
-    @Serializable
-    data object Settings : Route
 
     /** NPC 日程子页（携带 npcId）。 */
     @Serializable
