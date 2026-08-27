@@ -9,17 +9,20 @@
 ## 0. 结论摘要（给主理人 / 转交工程师）
 
 1. **「Basic Component」那两个 title 到底是什么（Q-F 已消除）**
+
    - demo 中「Basic Component」是一个 `SmallTitle(text = "Basic Component")` **区块标题**，其下方 `Card` 内有 **两个 `BasicComponent` 行**。
    - 用户口中的「两个 title」实际是：① 区块标题 `SmallTitle`（次级标题组件）；② 每个 `BasicComponent` 行的 **`title`（第一行标题）+ `summary`（第二行总结）** 两个文本参数。
    - **要复用的菜单卡片整件 = `BasicComponent`**（来自 `top.yukonga.miuix.kmp.basic.BasicComponent`）。背景色/圆角来自外层 `Card`，内边距来自 `Card`(`horizontal=12dp,bottom=12dp`)+`BasicComponent.insideMargin(=16dp)`，高度下限 `56dp`，左右字号由 `MiuixTheme.textStyles.headline1`(Medium) / `body2` 区分。
    - **改造**：主页 4 卡片 = 4 个 `BasicComponent`，`startAction` 换成显示二级菜单随机素材的正方形 `Image`，`title`=卡片名，`summary`=总结，`onClick`=路由跳转；整体用 `Card` 包裹，卡片间用分区式外边距（非紧贴）。
 
 2. **工程改造方式**
+
    - 复制 `miuix/example` 为 `:shared`(commonMain 全量 UI/逻辑) + `:app`(android 仅 MainActivity/Manifest) 双模块结构，**保留 CMP 多端骨架**以便后续 iOS/桌面。
    - miuix 作为**外部依赖**通过 **Gradle 复合构建（composite build）** 引入（`settings.gradle.kts` 中 `includeBuild("<miuix 根目录>")`），依赖 `miuix-ui / miuix-nav / miuix-preference / miuix-icons / miuix-blur / miuix-squircle`，无需发布到 Maven。
    - 包名建议：`com.harvesttown.encyclopedia`（applicationId / namespace）。
 
 3. **任务列表顺序（按实现先后，详见第 10 节）**
+
    - T01 工程脚手架 + miuix 接入（包名/主题/入口） →
    - T02 数据层 + 资源接入（JSON→模型，icon_mapping/黑名单） →
    - T03 素材切片管线（plist 解析 + 切片 + 版本化缓存） →
@@ -32,17 +35,17 @@
 
 ## 1. 实现方案与框架选型
 
-| 维度 | 决策 | 理由 |
-| --- | --- | --- |
-| 语言/UI | **Kotlin + Compose Multiplatform** | 与 miuix 一致；保留 iOS/桌面扩展能力 |
-| UI 组件库 | **miuix**（`miuix-ui` 等） | PRD 硬性要求严格沿用 miuix 设计语言 |
-| 改造基底 | 复制 `miuix/example/android` + `miuix/example/shared` | 复用 demo 的导航/设置/主题/组件示例 |
-| 外部依赖接入 | **Gradle composite build**（`includeBuild(miuixRoot)`） | miuix 在 git 中被 gitignore，作为外部依赖；复合构建可按坐标自动替换，免发布 |
-| 模块划分 | `:shared`(commonMain，全部 UI/数据/切片/富文本) + `:app`(android，仅入口) | 完全对齐 demo 结构，便于多端 |
-| 资源读取 | **Compose Resources**（`composeResources/files/`） | 跨平台一致；JSON/图集/图均经 `Res.readBytes` 读取，无需 Android `assets` 特殊路径 |
-| 图片加载 | 直接 `Image(ImageBitmap)` 渲染切片结果 | 素材为本地切片位图，无网络图；不引入 Coil（可选） |
-| 序列化 | **kotlinx-serialization-json** | 解析各 config JSON；demo 已依赖 |
-| 异步 | **kotlinx-coroutines** | 资源加载/切片协程化，不阻塞 UI |
+| 维度         | 决策                                                                      | 理由                                                                              |
+| ------------ | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 语言/UI      | **Kotlin + Compose Multiplatform**                                        | 与 miuix 一致；保留 iOS/桌面扩展能力                                              |
+| UI 组件库    | **miuix**（`miuix-ui` 等）                                                | PRD 硬性要求严格沿用 miuix 设计语言                                               |
+| 改造基底     | 复制 `miuix/example/android` + `miuix/example/shared`                     | 复用 demo 的导航/设置/主题/组件示例                                               |
+| 外部依赖接入 | **Gradle composite build**（`includeBuild(miuixRoot)`）                   | miuix 在 git 中被 gitignore，作为外部依赖；复合构建可按坐标自动替换，免发布       |
+| 模块划分     | `:shared`(commonMain，全部 UI/数据/切片/富文本) + `:app`(android，仅入口) | 完全对齐 demo 结构，便于多端                                                      |
+| 资源读取     | **Compose Resources**（`composeResources/files/`）                        | 跨平台一致；JSON/图集/图均经 `Res.readBytes` 读取，无需 Android `assets` 特殊路径 |
+| 图片加载     | 直接 `Image(ImageBitmap)` 渲染切片结果                                    | 素材为本地切片位图，无网络图；不引入 Coil（可选）                                 |
+| 序列化       | **kotlinx-serialization-json**                                            | 解析各 config JSON；demo 已依赖                                                   |
+| 异步         | **kotlinx-coroutines**                                                    | 资源加载/切片协程化，不阻塞 UI                                                    |
 
 ### 1.1 模块结构（对齐 miuix demo）
 
@@ -85,6 +88,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 }
 ```
+
 > 版本号与 miuix 根 `build.gradle.kts`/`gradle.properties` 中声明的一致即可，复合构建会在解析期把 `top.yukonga.miuix:miuix-*` 替换为本地工程模块。
 > 若后续 composite 坐标对齐有障碍，回退方案：把本工程作为 `miuix/example/nainiuzhen` 模块置于 miuix 仓库内，直接用 `projects.miuixUi`（与 demo 完全一致）。
 
@@ -119,14 +123,14 @@ fun LazyListScope.basicComponentSection() {
 
 ### 2.2 组件名与样式来源（一一对应）
 
-| 用户口中的概念 | 真实组件 / 参数 | 来源与默认值 |
-| --- | --- | --- |
-| 「Basic Component」标题 | `SmallTitle(text="Basic Component")` | `miuix-ui` `SmallTitle.kt`，样式 `MiuixTheme.textStyles.subtitle`，内边距 `PaddingValues(28.dp,8.dp)` |
-| 两个「title」① | `BasicComponent` 的 `title` 参数 | 渲染为 `MiuixTheme.textStyles.headline1` + `FontWeight.Medium`（第一行，主色） |
-| 两个「title」② | `BasicComponent` 的 `summary` 参数 | 渲染为 `MiuixTheme.textStyles.body2`（第二行，次要色） |
-| 菜单卡片整件（含背景/圆角/内边距） | `Card { BasicComponent(...) }` | `Card` 提供 surface 背景 + 主题圆角；`Card` 外边距 `horizontal=12dp,bottom=12dp`；`BasicComponent.insideMargin = PaddingValues(16.dp)`（`BasicComponentDefaults.InsideMargin`） |
-| 左侧 Start 位（需求改为正方形素材） | `BasicComponent.startAction` | `@Composable (() -> Unit)?`，放入 `Image` 即可 |
-| 点击跳转 | `BasicComponent.onClick` | 存在即 `clickable` |
+| 用户口中的概念                      | 真实组件 / 参数                      | 来源与默认值                                                                                                                                                                    |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 「Basic Component」标题             | `SmallTitle(text="Basic Component")` | `miuix-ui` `SmallTitle.kt`，样式 `MiuixTheme.textStyles.subtitle`，内边距 `PaddingValues(28.dp,8.dp)`                                                                           |
+| 两个「title」①                      | `BasicComponent` 的 `title` 参数     | 渲染为 `MiuixTheme.textStyles.headline1` + `FontWeight.Medium`（第一行，主色）                                                                                                  |
+| 两个「title」②                      | `BasicComponent` 的 `summary` 参数   | 渲染为 `MiuixTheme.textStyles.body2`（第二行，次要色）                                                                                                                          |
+| 菜单卡片整件（含背景/圆角/内边距）  | `Card { BasicComponent(...) }`       | `Card` 提供 surface 背景 + 主题圆角；`Card` 外边距 `horizontal=12dp,bottom=12dp`；`BasicComponent.insideMargin = PaddingValues(16.dp)`（`BasicComponentDefaults.InsideMargin`） |
+| 左侧 Start 位（需求改为正方形素材） | `BasicComponent.startAction`         | `@Composable (() -> Unit)?`，放入 `Image` 即可                                                                                                                                  |
+| 点击跳转                            | `BasicComponent.onClick`             | 存在即 `clickable`                                                                                                                                                              |
 
 ### 2.3 主页 4 卡片改造方案
 
@@ -151,6 +155,7 @@ BasicComponent(
     onClick = onClick,
 )
 ```
+
 > 需求原文「高度为 2 倍中的方形」→ 让 `startAction` 的 `Image` 高度 ≈ `BasicComponent` 行高（默认下限 56dp，可由 `insideMargin`/外层约束放大为方形象素），左图右两行，与 demo Start/Title/Summary 布局一致。
 
 ---
@@ -412,44 +417,49 @@ classDiagram
 ### 4.2 关键模型字段（来自 assets 实测）
 
 **ItemInfo** ← `item_database.json`（键=id 字符串）
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| id | Int | 物品 id |
-| name | String | 名称 |
-| desc | String | 富文本原始串（`/#颜色#内容/#`、`\n`） |
-| source | String? | 来源 `get_way` |
-| icon | Int? | 切片 key 提示（与 icon_mapping 二选一） |
-| type | Int | 分类类型（鱼类/矿石/加工品…） |
-| price / sellbox_price | Int? | 售价（无则隐藏价格区） |
+
+| 字段                  | 类型    | 说明                                    |
+| --------------------- | ------- | --------------------------------------- |
+| id                    | Int     | 物品 id                                 |
+| name                  | String  | 名称                                    |
+| desc                  | String  | 富文本原始串（`/#颜色#内容/#`、`\n`）   |
+| source                | String? | 来源 `get_way`                          |
+| icon                  | Int?    | 切片 key 提示（与 icon_mapping 二选一） |
+| type                  | Int     | 分类类型（鱼类/矿石/加工品…）           |
+| price / sellbox_price | Int?    | 售价（无则隐藏价格区）                  |
+
 > `iconFrameKey = icon_mapping[id] ?: item.icon ?: id` → 帧名 `"$iconFrameKey.png"`，在 items/equip/headwear 图集中查找。
 
 **RecipeInfo** ← `compound_unlocks.json`（`items[]`）
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| id, name, type, typeLabel, category | — | 配方标识 |
-| target / targetNum | Int | 产物物品 id / 数量 |
-| materials | List{id,num} | **原料区** |
-| deblockingDesc | String? | **解锁条件 / get_way** |
-| icon | Int | 切片 key |
-| desc | String? | 富文本描述 |
+
+| 字段                                | 类型         | 说明                   |
+| ----------------------------------- | ------------ | ---------------------- |
+| id, name, type, typeLabel, category | —            | 配方标识               |
+| target / targetNum                  | Int          | 产物物品 id / 数量     |
+| materials                           | List{id,num} | **原料区**             |
+| deblockingDesc                      | String?      | **解锁条件 / get_way** |
+| icon                                | Int          | 切片 key               |
+| desc                                | String?      | 富文本描述             |
 
 **NpcInfo** ← `npc_database.json`
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| id, name, desc, address, birthday, sex | — | 基础信息 |
-| loveItemId | Int | 喜好物品 |
-| maxStar | Int | **好感 max：x 心**（=0 时日程按钮禁用） |
-| bestFavorItems / likeItems / hateItems | List<Int> | **最爱 / 喜欢 / 讨厌**（空仍占位） |
+
+| 字段                                   | 类型      | 说明                                                    |
+| -------------------------------------- | --------- | ------------------------------------------------------- |
+| id, name, desc, address, birthday, sex | —         | 基础信息                                                |
+| loveItemId                             | Int       | 这个是对应NPC好感度，这个东西的物品id，不是喜欢的物品id |
+| maxStar                                | Int       | **好感 max：x 心**（=0 时日程按钮禁用）                 |
+| bestFavorItems / likeItems / hateItems | List<Int> | **最爱 / 喜欢 / 讨厌**（空仍占位）                      |
 
 **NpcSchedule** ← `npc_ai_database.json`（`schedules[]`）
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| name | String | 日程名（大字） |
-| startTime / startTimeText | Int / String | 开始时间（分钟，360→06:00） |
-| startPoint / endPoint | ScenePoint | 路线起止场景（小字 `sceneName`，箭头连接） |
-| week[1..7] / season[1..4] / weather[1..5] | List<Int> | **筛选维度** |
-| isAstar | Int | 0=未婚 / 1=已婚（需求指定据此过滤婚姻） |
-| relation | List<Int> | 婚姻关联字段（见待明确 Q-婚姻） |
+
+| 字段                                      | 类型         | 说明                                       |
+| ----------------------------------------- | ------------ | ------------------------------------------ |
+| name                                      | String       | 日程名（大字）                             |
+| startTime / startTimeText                 | Int / String | 开始时间（分钟，360→06:00）                |
+| startPoint / endPoint                     | ScenePoint   | 路线起止场景（小字 `sceneName`，箭头连接） |
+| week[1..7] / season[1..4] / weather[1..5] | List<Int>    | **筛选维度**                               |
+| isAstar                                   | Int          | 0=未婚 / 1=已婚（需求指定据此过滤婚姻）    |
+| relation                                  | List<Int>    | 婚姻关联字段（见待明确 Q-婚姻）            |
 
 **SpriteAtlasFrame**（由 plist 解析）
 `frame={{x,y},{w,h}}`、`rotated`、`sourceSize`、`offset` → 裁剪矩形 + 旋转 + 居中偏移。
@@ -520,30 +530,30 @@ sequenceDiagram
 
 ## 6. 四个开放问题（PRD 第 6 节）落地说明
 
-| 问题 | 结论 | 架构落地方式 |
-| --- | --- | --- |
-| **Q1 分类多选 vs 单选 / 统计位置** | 多选 chip + 默认全选 + 统计「共 N 个」置于 search 下方 sticky 栏右侧，实时刷新 | `CategoryChipBar`（sticky，不随顶栏收缩消失）持有 `Set<Int> selectedTypes`；统计由 `DataRepository.itemsByType(selected)` 大小实时计算；与 `CollapsibleTopBar` 的搜索框同处一屏、互不遮挡 |
-| **Q2 翻页 vs 滚动** | 首版**滚动**；翻页列入 P2 | 列表用 `LazyVerticalGrid`（6 列）/ `LazyRow`（NPC 3 列）；`CollapsibleTopBar` 收缩时搜索框收窄但 sticky 分类栏保留统计，解决「顶栏收缩无空间」痛点 |
-| **Q3 切片缓存 + 清缓存策略** | 缓存至 `cacheDir`；按**版本号**比对，更新自动清除重切；设置页加「清理缓存」手动按钮 | `SpriteCacheManager`：存 `version.txt`，启动比对 `BuildConfig.VERSION_CODE`；不符→删 `sprites/`+`atlas_index.json` 重切；`clear()` 供设置页调用（建议同时显示缓存大小，见 Q-D） |
-| **Q4 dialog 描述区平均高度** | `min-height`=全量平均行高，`max-height`=上限(≈8 行)，超出滚动；非描述区块结构固定→整体大小相对一致 | `ItemDialog/RecipeDialog/NpcDialog` 的描述区 `Modifier.heightIn(min=avgLines*lineHeight, max=8*lineHeight).verticalScroll`；其余区块固定高度，空列表也占位（NPC 最爱/喜欢/讨厌） |
+| 问题                               | 结论                                                                                               | 架构落地方式                                                                                                                                                                              |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Q1 分类多选 vs 单选 / 统计位置** | 多选 chip + 默认全选 + 统计「共 N 个」置于 search 下方 sticky 栏右侧，实时刷新                     | `CategoryChipBar`（sticky，不随顶栏收缩消失）持有 `Set<Int> selectedTypes`；统计由 `DataRepository.itemsByType(selected)` 大小实时计算；与 `CollapsibleTopBar` 的搜索框同处一屏、互不遮挡 |
+| **Q2 翻页 vs 滚动**                | 首版**滚动**；翻页列入 P2                                                                          | 列表用 `LazyVerticalGrid`（6 列）/ `LazyRow`（NPC 3 列）；`CollapsibleTopBar` 收缩时搜索框收窄但 sticky 分类栏保留统计，解决「顶栏收缩无空间」痛点                                        |
+| **Q3 切片缓存 + 清缓存策略**       | 缓存至 `cacheDir`；按**版本号**比对，更新自动清除重切；设置页加「清理缓存」手动按钮                | `SpriteCacheManager`：存 `version.txt`，启动比对 `BuildConfig.VERSION_CODE`；不符→删 `sprites/`+`atlas_index.json` 重切；`clear()` 供设置页调用（建议同时显示缓存大小，见 Q-D）           |
+| **Q4 dialog 描述区平均高度**       | `min-height`=全量平均行高，`max-height`=上限(≈8 行)，超出滚动；非描述区块结构固定→整体大小相对一致 | `ItemDialog/RecipeDialog/NpcDialog` 的描述区 `Modifier.heightIn(min=avgLines*lineHeight, max=8*lineHeight).verticalScroll`；其余区块固定高度，空列表也占位（NPC 最爱/喜欢/讨厌）          |
 
 ---
 
 ## 7. 依赖包列表
 
-| 类别 | 包 / 模块 | 版本策略 | 用途 |
-| --- | --- | --- | --- |
-| UI 框架 | `top.yukonga.miuix:miuix-ui` | composite build | 基础组件（含 `BasicComponent`/`SmallTitle`/`Card`/`OverlayDialog`/`AdaptiveTopAppBar`/`SearchBar`） |
-| 导航 | `top.yukonga.miuix:miuix-nav` | composite build | `NavDisplay`/`NavBackStack`/`Route` 路由 |
-| 设置 | `top.yukonga.miuix:miuix-preference` | composite build | `SwitchPreference`/`ArrowPreference`/`OverlayDropdownPreference` |
-| 图标 | `top.yukonga.miuix:miuix-icons` | composite build | 返回/搜索/设置等图标 |
-| 模糊/圆角 | `top.yukonga.miuix:miuix-blur` `miuix-squircle` | composite build | 顶栏模糊、squircle 圆角（沿用 demo） |
-| CMP 资源 | `org.jetbrains.compose.components:resources` | 随 Compose | `Res.readBytes` 读 JSON/图 |
-| 序列化 | `org.jetbrains.kotlinx:kotlinx-serialization-json` | 随 Kotlin | 解析 config JSON |
-| 协程 | `org.jetbrains.kotlinx:kotlinx-coroutines-*` | 随 Kotlin | 异步加载/切片 |
-| Android | `androidx.activity` `androidx.profileinstaller` | AGP 配套 | Activity / Baseline Profile（沿用 demo） |
-| 构建 | `com.android.application` `org.jetbrains.kotlin.plugin.compose` `org.jetbrains.kotlin.plugin.serialization` | libs.versions.toml | Gradle 插件 |
-| 图片加载 | （可选）`io.coil-kt:coil-compose` | 按需 | 网络/占位图；本地切片用 `Image(ImageBitmap)` 即可，**默认不引入** |
+| 类别      | 包 / 模块                                                                                                   | 版本策略           | 用途                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------- |
+| UI 框架   | `top.yukonga.miuix:miuix-ui`                                                                                | composite build    | 基础组件（含 `BasicComponent`/`SmallTitle`/`Card`/`OverlayDialog`/`AdaptiveTopAppBar`/`SearchBar`） |
+| 导航      | `top.yukonga.miuix:miuix-nav`                                                                               | composite build    | `NavDisplay`/`NavBackStack`/`Route` 路由                                                            |
+| 设置      | `top.yukonga.miuix:miuix-preference`                                                                        | composite build    | `SwitchPreference`/`ArrowPreference`/`OverlayDropdownPreference`                                    |
+| 图标      | `top.yukonga.miuix:miuix-icons`                                                                             | composite build    | 返回/搜索/设置等图标                                                                                |
+| 模糊/圆角 | `top.yukonga.miuix:miuix-blur` `miuix-squircle`                                                             | composite build    | 顶栏模糊、squircle 圆角（沿用 demo）                                                                |
+| CMP 资源  | `org.jetbrains.compose.components:resources`                                                                | 随 Compose         | `Res.readBytes` 读 JSON/图                                                                          |
+| 序列化    | `org.jetbrains.kotlinx:kotlinx-serialization-json`                                                          | 随 Kotlin          | 解析 config JSON                                                                                    |
+| 协程      | `org.jetbrains.kotlinx:kotlinx-coroutines-*`                                                                | 随 Kotlin          | 异步加载/切片                                                                                       |
+| Android   | `androidx.activity` `androidx.profileinstaller`                                                             | AGP 配套           | Activity / Baseline Profile（沿用 demo）                                                            |
+| 构建      | `com.android.application` `org.jetbrains.kotlin.plugin.compose` `org.jetbrains.kotlin.plugin.serialization` | libs.versions.toml | Gradle 插件                                                                                         |
+| 图片加载  | （可选）`io.coil-kt:coil-compose`                                                                           | 按需               | 网络/占位图；本地切片用 `Image(ImageBitmap)` 即可，**默认不引入**                                   |
 
 > 工具链已在 `D:/Android` 解压（SDK r35/36/37、JDK17、Gradle 8.9、NDK29），构建脚本经 `ANDROID_HOME`/`JAVA_HOME` 引用，无需改动。
 
@@ -591,15 +601,15 @@ graph TD
 
 ## 10. 有序任务列表（按实现顺序 · 含依赖 · 对应 P0/P1）
 
-| Task | 名称 | 源文件（关键） | 依赖 | 优先级 |
-| --- | --- | --- | --- | --- |
-| **T01** | 工程脚手架 + miuix 接入 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/libs.versions.toml`, `app/.../MainActivity.kt`, `app/.../AndroidManifest.xml`, `shared/.../App.kt`, `ui/theme/Theme.kt` | — | P0 |
-| **T02** | 数据层 + 资源接入 | `data/model/*`, `data/source/AssetLoader.kt`, `data/repository/DataRepository.kt`, `data/AssetManager.kt`, `composeResources/files/*`(复制 assets) | T01 | P0 |
-| **T03** | 素材切片管线 | `sprite/PlistParser.kt`, `data/source/SpriteSlicer.kt`(接口)+`platform/AndroidSpriteSlicer.kt`, `data/repository/SpriteCacheManager.kt`, `SpriteRepository.kt`, `ui/components/SpriteImage.kt`, `platform/AndroidCacheProvider.kt` | T02 | P0 |
-| **T04** | 富文本解析引擎 | `data/model/RichText.kt`, `richtext/RichTextParser.kt`, `ui/components/RichText.kt`(渲染) | T01 | P0 |
-| **T05** | 主页 + 4 图鉴列表 + 通用组件 | `ui/home/HomeScreen.kt`, `ui/components/MenuCard.kt`, `CollapsibleTopBar.kt`, `CategoryChipBar.kt`, `ItemCard.kt`, `StarRating.kt`, `items/ItemListScreen.kt`, `recipe/RecipeListScreen.kt`, `npc/NpcListScreen.kt`, `utils/AppState.kt` | T02,T03,T04 | P0 |
-| **T06** | 物品/配方/NPC dialog + 原料产物嵌套 + NPC 日程子页 | `ui/nav/Route.kt`, `AppNavHost.kt`, `items/ItemDialog.kt`, `recipe/RecipeDialog.kt` + `MaterialCard.kt`, `npc/NpcDialog.kt`, `npc/NpcScheduleScreen.kt` | T05 | P0 |
-| **T07** | 设置页中文化 + 清理缓存 + 装饰预览(P1) | `ui/settings/SettingsScreen.kt`, `ui/decoration/DecorationScreen.kt` | T03,T06 | P1 |
+| Task    | 名称                                               | 源文件（关键）                                                                                                                                                                                                                           | 依赖        | 优先级 |
+| ------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------ |
+| **T01** | 工程脚手架 + miuix 接入                            | `settings.gradle.kts`, `build.gradle.kts`, `gradle/libs.versions.toml`, `app/.../MainActivity.kt`, `app/.../AndroidManifest.xml`, `shared/.../App.kt`, `ui/theme/Theme.kt`                                                               | —           | P0     |
+| **T02** | 数据层 + 资源接入                                  | `data/model/*`, `data/source/AssetLoader.kt`, `data/repository/DataRepository.kt`, `data/AssetManager.kt`, `composeResources/files/*`(复制 assets)                                                                                       | T01         | P0     |
+| **T03** | 素材切片管线                                       | `sprite/PlistParser.kt`, `data/source/SpriteSlicer.kt`(接口)+`platform/AndroidSpriteSlicer.kt`, `data/repository/SpriteCacheManager.kt`, `SpriteRepository.kt`, `ui/components/SpriteImage.kt`, `platform/AndroidCacheProvider.kt`       | T02         | P0     |
+| **T04** | 富文本解析引擎                                     | `data/model/RichText.kt`, `richtext/RichTextParser.kt`, `ui/components/RichText.kt`(渲染)                                                                                                                                                | T01         | P0     |
+| **T05** | 主页 + 4 图鉴列表 + 通用组件                       | `ui/home/HomeScreen.kt`, `ui/components/MenuCard.kt`, `CollapsibleTopBar.kt`, `CategoryChipBar.kt`, `ItemCard.kt`, `StarRating.kt`, `items/ItemListScreen.kt`, `recipe/RecipeListScreen.kt`, `npc/NpcListScreen.kt`, `utils/AppState.kt` | T02,T03,T04 | P0     |
+| **T06** | 物品/配方/NPC dialog + 原料产物嵌套 + NPC 日程子页 | `ui/nav/Route.kt`, `AppNavHost.kt`, `items/ItemDialog.kt`, `recipe/RecipeDialog.kt` + `MaterialCard.kt`, `npc/NpcDialog.kt`, `npc/NpcScheduleScreen.kt`                                                                                  | T05         | P0     |
+| **T07** | 设置页中文化 + 清理缓存 + 装饰预览(P1)             | `ui/settings/SettingsScreen.kt`, `ui/decoration/DecorationScreen.kt`                                                                                                                                                                     | T03,T06     | P1     |
 
 > 说明：T01–T06 覆盖 PRD 全部 P0-1~P0-11；T07 覆盖 P1-1/P1-4 与装饰预览框架。P1-2(equip/headwear/element 分离)、P1-3(工坊合集)、P1-5(富文本完善)、P1-6(搜索实时过滤) 分别在 T02/T05 内以「数据 group 字段 + 独立入口/筛选」方式预留，不单列任务以免拆解过碎。
 
@@ -607,17 +617,17 @@ graph TD
 
 ## 11. 待明确事项（Q-A ~ Q-G 架构层面建议 / 默认值）
 
-| # | 问题 | 架构建议 / 默认值 |
-| --- | --- | --- |
-| **Q-A** | 装饰预览数据/素材是否齐备 | P1。当前 `assets` 未见庄园布局/季节/动态素材。架构已预留 `DecorationScreen` + `ItemGroup.Element` 入口；**首版用占位/空状态**，待素材补齐再接数据，不影响 P0。 |
-| **Q-B** | equip/headwear/element 分离口径 | `ItemInfo.group: ItemGroup` 枚举 = `Items/Equip/Headwear/Element/Recipe`；以 `item.type` 或 `icon` 归属判定（equip/headwear 本就有独立图集）。列表可按 group 过滤或设独立入口（P1-2）。 |
-| **Q-C** | 富文本颜色码/字号枚举 | 颜色=任意 6 位 hex（`/#RRGGBB#`），字号=sp 数值（`/#RRGGBB#12#`），解析器对未知值降级默认；换行=`\n`。无需枚举白名单，保证渲染不崩。 |
-| **Q-D** | 清理缓存是否显示大小 | 建议**显示**（P1-4）。`SpriteCacheManager.cacheSize()` 计算 `sprites/` 字节数，设置页文案「清理缓存（xx MB）」。 |
-| **Q-E** | 顶栏分类 icon 弹层 vs sticky 栏是否并存 | **并存**。`CategoryChipBar`(sticky) 为主筛选（多选+统计）；顶栏右 icon 用 miuix `OverlayIconDropdownMenu` 作快捷跳转/筛选；两者共享 `AppState.selectedTypes`。 |
-| **Q-F** | 「Basic Component」两 title 组件名 | **已定位并消除**（见第 2 节）：`SmallTitle` + `BasicComponent(title/summary)`；菜单卡片 = `Card{BasicComponent(startAction=Image)}`。 |
-| **Q-G** | debug/release 黑名单开关 | 首版默认：**release 过滤黑名单，debug 展示**（`BuildConfig.DEBUG` 控制 `DataRepository` 构建时的过滤）。构建配置无需改。 |
-| **Q-婚姻** | 日程婚姻过滤用 `isAstar` 还是 `relation` | 需求原文指定用 `isAstar`(0未婚/1已婚)。`relation` 字段亦存在（值如 1,2,3,6 / 4,5），建议**以 `isAstar` 为准**实现婚姻筛选；若实测发现 `relation` 才是权威字段，再切换（架构已同时建模两字段，切换成本极低）。 |
-| **Q-星图映射** | `star/lv_2|3|4.png` 对应白/金/紫 | 架构默认映射：lv_2=白星(1.2) / lv_3=金星(1.5) / lv_4=紫星(2.0)；如与实际素材命名不符，仅改 `StarRating` 的映射表。 |
+| #              | 问题                                     | 架构建议 / 默认值                                                                                                                                                                                             |
+| -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Q-A**        | 装饰预览数据/素材是否齐备                | P1。当前 `assets` 未见庄园布局/季节/动态素材。架构已预留 `DecorationScreen` + `ItemGroup.Element` 入口；**首版用占位/空状态**，待素材补齐再接数据，不影响 P0。                                                |
+| **Q-B**        | equip/headwear/element 分离口径          | `ItemInfo.group: ItemGroup` 枚举 = `Items/Equip/Headwear/Element/Recipe`；以 `item.type` 或 `icon` 归属判定（equip/headwear 本就有独立图集）。列表可按 group 过滤或设独立入口（P1-2）。                       |
+| **Q-C**        | 富文本颜色码/字号枚举                    | 颜色=任意 6 位 hex（`/#RRGGBB#`），字号=sp 数值（`/#RRGGBB#12#`），解析器对未知值降级默认；换行=`\n`。无需枚举白名单，保证渲染不崩。                                                                          |
+| **Q-D**        | 清理缓存是否显示大小                     | 建议**显示**（P1-4）。`SpriteCacheManager.cacheSize()` 计算 `sprites/` 字节数，设置页文案「清理缓存（xx MB）」。                                                                                              |
+| **Q-E**        | 顶栏分类 icon 弹层 vs sticky 栏是否并存  | **并存**。`CategoryChipBar`(sticky) 为主筛选（多选+统计）；顶栏右 icon 用 miuix `OverlayIconDropdownMenu` 作快捷跳转/筛选；两者共享 `AppState.selectedTypes`。                                                |
+| **Q-F**        | 「Basic Component」两 title 组件名       | **已定位并消除**（见第 2 节）：`SmallTitle` + `BasicComponent(title/summary)`；菜单卡片 = `Card{BasicComponent(startAction=Image)}`。                                                                         |
+| **Q-G**        | debug/release 黑名单开关                 | 首版默认：**release 过滤黑名单，debug 展示**（`BuildConfig.DEBUG` 控制 `DataRepository` 构建时的过滤）。构建配置无需改。                                                                                      |
+| **Q-婚姻**     | 日程婚姻过滤用 `isAstar` 还是 `relation` | 需求原文指定用 `isAstar`(0未婚/1已婚)。`relation` 字段亦存在（值如 1,2,3,6 / 4,5），建议**以 `isAstar` 为准**实现婚姻筛选；若实测发现 `relation` 才是权威字段，再切换（架构已同时建模两字段，切换成本极低）。 |
+| **Q-星图映射** | `star/lv_2                               | 3                                                                                                                                                                                                             |
 
 ---
 

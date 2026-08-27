@@ -1,0 +1,39 @@
+# Compiled class files, build outputs, and generated sources
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Android / Kotlin Multiplatform build directories
+build/
+.kotlin/
+.gradle/
+**/build/
+**/.gradle/
+
+# Local configuration (SDK path, signing)
+local.properties
+gradle.properties.local
+*.keystore
+*.jks
+
+# IDE
+*.iml
+.idea/
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# Native / CMake
+.externalNativeBuild/
+.cxx/
+
+# APKs / bundles (kept out of VCS; releases use the tracked builds/ dir)
+*.apk
+*.aab
+*.ap_
