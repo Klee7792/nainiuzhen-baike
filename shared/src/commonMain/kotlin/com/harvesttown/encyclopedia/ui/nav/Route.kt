@@ -10,6 +10,7 @@ import top.yukonga.miuix.kmp.nav.core.NavKey
  * 结构（底栏 2 页）：
  * - [Main] 主页（含 3 个图鉴板块入口：物品大全 / 配方查询 / NPC 资料）+ 设置页并存的宿主。
  * - 子页（从主页入口 push 而来，全屏覆盖）：[ItemList] / [RecipeList] / [NpcList] / [NpcSchedule]。
+ * - [About] 关于子页（从设置页「关于」进入，紫→蓝渐变）。
  */
 @Serializable
 sealed interface Route : NavKey {
@@ -32,4 +33,8 @@ sealed interface Route : NavKey {
     /** NPC 日程子页（携带 npcId）。 */
     @Serializable
     data class NpcSchedule(val npcId: Int) : Route
+
+    /** 关于子页。 */
+    @Serializable
+    data object About : Route
 }

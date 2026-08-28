@@ -2,20 +2,27 @@ package com.harvesttown.encyclopedia.ui.settings
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.padding
+import com.harvesttown.encyclopedia.ui.components.ArrowSegmentedPreference
+import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
 import com.harvesttown.encyclopedia.ui.nav.LocalSpriteRepository
+import com.harvesttown.encyclopedia.ui.nav.Route
 import com.harvesttown.encyclopedia.utils.LocalAppSettings
 import com.harvesttown.encyclopedia.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
@@ -25,35 +32,55 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 /**
  * 设置页（底栏第 2 页「设置」的主体，无自身顶栏/底栏，由 [com.harvesttown.encyclopedia.ui.home.MainScreen] 包裹）。
  *
- * 选项（中文，沿用 miuix 设计语言；偏好经 [LocalAppSettings]/[LocalUpdateAppSettings] 持久化，
- * 深色模式等重启后保留）：
- * - 通用：深色模式 / 启用圆角 / 启用模糊
- * - 导航：过渡动画（Miuix / AOSP）
- * - 数据：清理缓存 / 版本
+ * v5 变更（本文件）：T3 重构。
+ * - 色彩模式：使用 [ArrowSegmentedPreference] 三段（系统 / 深色 / 浅色，上/下箭头切换，绑定 `appState.colorMode` 0/1/2；
+ *   Monet 开启时文案切换为 Monet 系统 / Monet 深色 / Monet 浅色）。
+ * - Monet 取色：[SwitchPreference] 绑定 `appState.monet`。
+ * - 14 个开关：逐项 [SwitchPreference] / [OverlayDropdownPreference] 接线（中文命名），全部经
+ *   [LocalAppSettings]/[LocalUpdateAppSettings] 持久化（开关清单见设计文档 §3.1）。
+ * - 关于：[ArrowPreference] 跳转 [Route.About]。
+ * 通用（v4 沿用）：启用圆角 / 启用模糊 / 过渡动画；数据：清理缓存 / 版本。
  */
 @Composable
-fun SettingsContent(innerPadding: PaddingValues) {
+fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
+    val navigator = LocalNavigator.current
     val sprite = LocalSpriteRepository.current
     val appState = LocalAppSettings.current
     val updateAppState = LocalUpdateAppSettings.current
     var cacheSize by remember { mutableStateOf(sprite.cacheSizeBytes()) }
     val version = sprite.currentVersion()
 
+    // 色彩模式选项随 Monet 开关联动（前 3 态 Monet 关、后 3 态 Monet 开）。
+    val colorModeOptions = if (appState.monet) {
+        listOf("Monet 系统", "Monet 深色", "Monet 浅色")
+    } else {
+        listOf("系统", "深色", "浅色")
+    }
+
     LazyColumn(
-        modifier = Modifier.fillMaxHeight(),
+        modifier = Modifier
+            .fillMaxHeight()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = PaddingValues(top = innerPadding.calculateTopPadding(), bottom = 12.dp),
     ) {
-        item(key = "general") {
-            SmallTitle(text = "通用")
+        item(key = "appearance") {
+            SmallTitle(text = "外观")
             Card(
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
                     .padding(bottom = 12.dp),
             ) {
+                ArrowSegmentedPreference(
+                    title = "色彩模式",
+                    options = colorModeOptions,
+                    selectedIndex = appState.colorMode.coerceIn(0, 2),
+                    onSelectedIndexChange = { updateAppState(appState.copy(colorMode = it)) },
+                )
                 SwitchPreference(
-                    title = "深色模式",
-                    checked = appState.isDark,
-                    onCheckedChange = { updateAppState(appState.copy(isDark = it)) },
+                    title = "Monet 取色",
+                    summary = "跟随系统壁纸动态取色",
+                    checked = appState.monet,
+                    onCheckedChange = { updateAppState(appState.copy(monet = it)) },
                 )
                 SwitchPreference(
                     title = "启用圆角",
@@ -76,10 +103,100 @@ fun SettingsContent(innerPadding: PaddingValues) {
                     .padding(bottom = 12.dp),
             ) {
                 OverlayDropdownPreference(
-                    items = listOf("Miuix", "AOSP"),
+                    items = listOf("Miuix", "Modal"),
                     selectedIndex = appState.navTransitionStyle,
                     title = "过渡动画",
                     onSelectedIndexChange = { updateAppState(appState.copy(navTransitionStyle = it)) },
+                )
+                SwitchPreference(
+                    title = "启用滑动返回",
+                    checked = appState.enableSwipeBack,
+                    onCheckedChange = { updateAppState(appState.copy(enableSwipeBack = it)) },
+                )
+                SwitchPreference(
+                    title = "启用圆角裁剪",
+                    summary = "转场时顶部圆角裁剪",
+                    checked = appState.enableCornerClip,
+                    onCheckedChange = { updateAppState(appState.copy(enableCornerClip = it)) },
+                )
+                SwitchPreference(
+                    title = "启用遮罩变暗",
+                    summary = "转场时背景遮罩变暗",
+                    checked = appState.enableDim,
+                    onCheckedChange = { updateAppState(appState.copy(enableDim = it)) },
+                )
+                SwitchPreference(
+                    title = "转场时拦截输入",
+                    checked = appState.blockInputDuringTransition,
+                    onCheckedChange = { updateAppState(appState.copy(blockInputDuringTransition = it)) },
+                )
+            }
+
+            SmallTitle(text = "显示")
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp),
+            ) {
+                SwitchPreference(
+                    title = "显示顶栏",
+                    checked = appState.showTopAppBar,
+                    onCheckedChange = { updateAppState(appState.copy(showTopAppBar = it)) },
+                )
+                OverlayDropdownPreference(
+                    items = listOf("高斯模糊", "渐进模糊"),
+                    selectedIndex = appState.topAppBarBlurStyle,
+                    title = "顶栏模糊样式",
+                    onSelectedIndexChange = { updateAppState(appState.copy(topAppBarBlurStyle = it)) },
+                )
+                SwitchPreference(
+                    title = "显示底栏",
+                    checked = appState.showNavigationBar,
+                    onCheckedChange = { updateAppState(appState.copy(showNavigationBar = it)) },
+                )
+                SwitchPreference(
+                    title = "显示底栏角标",
+                    checked = appState.showNavigationBadge,
+                    onCheckedChange = { updateAppState(appState.copy(showNavigationBadge = it)) },
+                )
+                OverlayDropdownPreference(
+                    items = listOf("图标+文字", "仅图标", "选中显示文字"),
+                    selectedIndex = appState.navigationBarMode,
+                    title = "底栏模式",
+                    onSelectedIndexChange = { updateAppState(appState.copy(navigationBarMode = it)) },
+                )
+                SwitchPreference(
+                    title = "悬浮底栏",
+                    checked = appState.useFloatingNavigationBar,
+                    onCheckedChange = { updateAppState(appState.copy(useFloatingNavigationBar = it)) },
+                )
+                SwitchPreference(
+                    title = "悬浮工具栏",
+                    checked = appState.showFloatingToolbar,
+                    onCheckedChange = { updateAppState(appState.copy(showFloatingToolbar = it)) },
+                )
+                SwitchPreference(
+                    title = "悬浮操作按钮",
+                    checked = appState.showFloatingActionButton,
+                    onCheckedChange = { updateAppState(appState.copy(showFloatingActionButton = it)) },
+                )
+            }
+
+            SmallTitle(text = "交互")
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp),
+            ) {
+                SwitchPreference(
+                    title = "滚动到末尾震动",
+                    checked = appState.scrollEndHaptic,
+                    onCheckedChange = { updateAppState(appState.copy(scrollEndHaptic = it)) },
+                )
+                SwitchPreference(
+                    title = "允许页面手动滚动",
+                    checked = appState.pageUserScroll,
+                    onCheckedChange = { updateAppState(appState.copy(pageUserScroll = it)) },
                 )
             }
 
@@ -98,6 +215,11 @@ fun SettingsContent(innerPadding: PaddingValues) {
                 BasicComponent(
                     title = "版本",
                     summary = "v1.0.0 ($version)",
+                )
+                ArrowPreference(
+                    title = "关于",
+                    summary = "奶牛镇百科 · 图鉴查询",
+                    onClick = { navigator.push(Route.About) },
                 )
             }
         }

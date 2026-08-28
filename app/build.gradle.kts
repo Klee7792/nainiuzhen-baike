@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.harvesttown.encyclopedia"
+    namespace = "com.nainiuzhen.wiki"
     compileSdk = 37
 
     buildFeatures {
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.harvesttown.encyclopedia"
+        applicationId = "com.nainiuzhen.wiki"
         minSdk = 24
         targetSdk = 37
         versionCode = 2

@@ -10,12 +10,12 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
 }
 
-group = "com.harvesttown.encyclopedia"
+group = "com.nainiuzhen.wiki"
 
 kotlin {
     jvmToolchain(21)
     androidLibrary {
-        namespace = "com.harvesttown.encyclopedia.shared"
+        namespace = "com.nainiuzhen.wiki.shared"
         compileSdk = 37
         minSdk = 24
     }

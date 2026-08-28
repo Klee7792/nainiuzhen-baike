@@ -34,12 +34,18 @@ import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
+ * 进程级已加载数据缓存（变更点 #27）：切后台再回前台、或 Activity 因配置变化重建时，
+ * 只要进程存活即复用已加载数据，避免整体重新加载（资源加载较重，放 IO 线程亦不希望重复执行）。
+ */
+private var cachedLoadedData: com.harvesttown.encyclopedia.data.AssetManager.LoadedData? = null
+
+/**
  * 应用入口（:shared 公共入口）。由 :app 的 MainActivity 注入平台实现
  * [slicer] / [cache]，并传入 [isDebug]（决定是否展示黑名单物品 / NPC）。
  *
  * 内部流程：先以协程加载全部资源（构建 [com.harvesttown.encyclopedia.data.AssetManager.LoadedData]），
  * 版本不符时清空切片缓存并重切；加载完成后注入 [LocalDataRepository] / [LocalSpriteRepository] /
- * [LocalNavigator]，渲染 [AppNavHost]。
+ * [LocalNavigator]，渲染 [AppNavHost]。进程存活时复用已加载数据（[cachedLoadedData]）。
  */
 @Composable
 fun App(
@@ -50,7 +56,7 @@ fun App(
 ) {
     var appState by remember { mutableStateOf(settings.load()) }
     val updateAppState: (AppState) -> Unit = remember { { new -> appState = new; settings.save(new) } }
-    AppTheme(isDark = appState.isDark) {
+    AppTheme(colorMode = appState.colorMode, monet = appState.monet) {
         CompositionLocalProvider(
             LocalAppSettings provides appState,
             LocalUpdateAppSettings provides updateAppState,
@@ -67,16 +73,22 @@ private fun AppRoot(
     cache: SpriteCacheManager,
     isDebug: Boolean,
 ) {
-    val loadedState = remember { mutableStateOf<AssetManager.LoadedData?>(null) }
+    // 进程存活且已加载过时，初始值直接复用 [cachedLoadedData]，避免切后台回前台
+    // （Activity 重建导致 remember 重置）时闪一下 LoadingScreen，被误认为「重新加载」。
+    val loadedState = remember { mutableStateOf(cachedLoadedData) }
     LaunchedEffect(Unit) {
-        if (cache.needsRebuild()) cache.clear()
-        // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
-        // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
-        val data = withContext(Dispatchers.IO) {
-            AssetManager(slicer, cache).loadAll(isDebug)
+        // 进程存活且版本未变更时直接复用已加载数据（变更点 #27，避免后台回前台重新加载）。
+        if (cachedLoadedData == null || cache.needsRebuild()) {
+            if (cache.needsRebuild()) cache.clear()
+            // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
+            // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
+            val data = withContext(Dispatchers.IO) {
+                AssetManager(slicer, cache).loadAll(isDebug)
+            }
+            cache.markBuilt()
+            cachedLoadedData = data
         }
-        cache.markBuilt()
-        loadedState.value = data
+        loadedState.value = cachedLoadedData
     }
     val loaded = loadedState.value
     if (loaded == null) {

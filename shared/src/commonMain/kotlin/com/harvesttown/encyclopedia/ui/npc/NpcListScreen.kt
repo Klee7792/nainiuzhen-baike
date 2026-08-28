@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.harvesttown.encyclopedia.data.model.NpcInfo
+import com.harvesttown.encyclopedia.ui.components.FilterPopup
 import com.harvesttown.encyclopedia.ui.components.NpcPortraitImage
 import com.harvesttown.encyclopedia.ui.nav.LocalDataRepository
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
@@ -36,13 +37,15 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Filter
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * NPC 资料列表：一行 3 列卡片网格（立绘保持长宽比填满卡片 + 名称）。
- * 点击弹出 [NpcDetailScreen] 详情。
+ * 顶栏搜索框 + 右上角筛选 icon（性别分组多选）即时过滤。点击弹出 [NpcDetailScreen] 详情。
  */
 @Composable
 fun NpcListScreen() {
@@ -50,6 +53,21 @@ fun NpcListScreen() {
     val data = LocalDataRepository.current
     val scrollBehavior = MiuixScrollBehavior()
     var selected by remember { mutableStateOf<NpcInfo?>(null) }
+    var query by remember { mutableStateOf("") }
+    var showFilter by remember { mutableStateOf(false) }
+    val groups = remember(data) { data.npcs.map { npcGroupLabel(it.sex) }.distinct().sorted() }
+    var selectedGroups by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val base = remember(data, selectedGroups) {
+        if (selectedGroups.isEmpty()) {
+            data.npcs
+        } else {
+            data.npcs.filter { npcGroupLabel(it.sex) in selectedGroups }
+        }
+    }
+    val filtered = remember(base, query) {
+        if (query.isBlank()) base else base.filter { it.name.contains(query, ignoreCase = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -64,6 +82,25 @@ fun NpcListScreen() {
                             tint = MiuixTheme.colorScheme.onBackground,
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = { showFilter = true }) {
+                        Icon(
+                            imageVector = MiuixIcons.Filter,
+                            contentDescription = "筛选",
+                            tint = MiuixTheme.colorScheme.onBackground,
+                        )
+                    }
+                },
+                bottomContent = {
+                    TextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = "搜索 NPC",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
                 },
             )
         },
@@ -83,12 +120,27 @@ fun NpcListScreen() {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(data.npcs, key = { it.id }) { npc ->
+            items(filtered, key = { it.id }) { npc ->
                 NpcGridCell(npc = npc, onClick = { selected = npc })
             }
         }
         NpcDetailScreen(npc = selected, onDismissRequest = { selected = null })
     }
+    FilterPopup(
+        show = showFilter,
+        title = "筛选分组",
+        options = groups,
+        selected = selectedGroups,
+        onDismissRequest = { showFilter = false },
+        onSelectedChange = { selectedGroups = it },
+    )
+}
+
+/** NPC 性别分组标签（用于筛选）。 */
+private fun npcGroupLabel(sex: Int): String = when (sex) {
+    1 -> "男"
+    2 -> "女"
+    else -> "其他"
 }
 
 /** 单个 NPC 卡片：立绘（保持长宽比填满方块）+ 名称（单行省略）。 */
