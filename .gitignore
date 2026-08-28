@@ -12,8 +12,10 @@
 build/
 .kotlin/
 .gradle/
+.gradle_bak/
 **/build/
 **/.gradle/
+**/.gradle_bak/
 
 # Local configuration (SDK path, signing)
 local.properties
