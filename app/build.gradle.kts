@@ -18,8 +18,8 @@ android {
         applicationId = "com.nainiuzhen.wiki"
         minSdk = 24
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 7
+        versionName = "1.0.7"
     }
 
     compileOptions {
@@ -27,9 +27,22 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    // Internal test build: release APK uses the standard Android debug keystore so it
+    // can be installed on test devices (Redmi K40) without a production signing cert.
+    // This is NOT for app store distribution.
+    signingConfigs {
+        create("release") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

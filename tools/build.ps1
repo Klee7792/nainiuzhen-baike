@@ -19,10 +19,16 @@ $NoteFile    = Join-Path $BuildsDir "build_notes.md"
 $env:JAVA_HOME        = "D:\Android\jdk-17.0.20.1"
 $env:ANDROID_HOME     = "D:\Android\Sdk"
 $env:ANDROID_SDK_ROOT = "D:\Android\Sdk"
-# Canonical Gradle cache for this project. The default ~/.gradle carries pre-copied
-# .lock files with a broken ACL that block native-platform.dll.lock and make every
-# build fail; ghome4 was built as a clean copy (owner=Yun, no .lock) to avoid that.
-$env:GRADLE_USER_HOME = "D:\Android\ghome4"
+# Canonical Gradle cache for this project.
+# IMPORTANT (avoid the .lock / ACL poison loop):
+#   - Never reuse a GRADLE_USER_HOME that was touched by the Bash *sandbox* — sandbox
+#     runs create native-platform.dll.lock / daemon registry.bin.lock owned by a
+#     SYSTEM/sandbox token the normal user cannot delete, so every later build dies
+#     on AccessDenied. ghome7 is created by the REAL user (non-sandboxed) and only
+#     ever holds caches/jdks (never native/daemon poison).
+#   - When the agent runs this script it MUST use dangerouslyDisableSandbox so Gradle
+#     runs as the real user; otherwise it re-poinsons the cache.
+$env:GRADLE_USER_HOME = "D:\ghome7"
 $gradle = "D:\Android\gradle-9.6.1\bin\gradle.bat"
 
 # ---- read and bump build number ----
@@ -31,21 +37,24 @@ $buildNo = [int](Get-Content $NumberFile -Raw).Trim()
 $buildNo++
 Set-Content $NumberFile -Value $buildNo -Encoding ascii -NoNewline
 
-# ---- compile ----
-Write-Host "==> start build #$buildNo ..."
-& $gradle -p $ProjectRoot clean assembleDebug --no-daemon --stacktrace
+# ---- compile (release + debug dual package) ----
+Write-Host "==> start build #$buildNo (release + debug) ..."
+& $gradle -p $ProjectRoot clean assembleRelease assembleDebug --no-daemon --stacktrace
 if ($LASTEXITCODE -ne 0) { Write-Error "build failed, aborted (build number not rolled back)"; exit 1 }
 
-# ---- locate produced APK (scope to outputs dir to avoid Gradle .transforms cache noise) ----
+# ---- locate produced APKs (scope to outputs dir to avoid Gradle .transforms cache noise) ----
 $apkOutDir = Join-Path $ProjectRoot "app/build/outputs"
-$apk = Get-ChildItem -Path $apkOutDir -Recurse -Filter "*.apk" -ErrorAction SilentlyContinue |
-       Where-Object { $_.FullName -like "*debug*" } |
-       Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $apk) { Write-Error "debug APK not found under $apkOutDir"; exit 1 }
-
-$dest = Join-Path $BuildsDir ("nainiuzhen-baike_v{0}_debug.apk" -f $buildNo)
-Copy-Item $apk.FullName $dest -Force
-Write-Host "==> APK stored: $dest"
+$apks = Get-ChildItem -Path $apkOutDir -Recurse -Filter "*.apk" -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending
+function Copy-Apk($variant, $suffix) {
+    $apk = $apks | Where-Object { $_.FullName -like "*$variant*" } | Select-Object -First 1
+    if (-not $apk) { Write-Error "$variant APK not found under $apkOutDir"; exit 1 }
+    $dest = Join-Path $BuildsDir ("nainiuzhen-baike_v{0}_{1}.apk" -f $buildNo, $suffix)
+    Copy-Item $apk.FullName $dest -Force
+    Write-Host "==> APK stored: $dest"
+}
+Copy-Apk "release" "release"
+Copy-Apk "debug"   "debug"
 
 # ---- build notes ----
 if (-not (Test-Path $NoteFile)) { "# Build Notes`n" | Out-File $NoteFile -Encoding utf8 }

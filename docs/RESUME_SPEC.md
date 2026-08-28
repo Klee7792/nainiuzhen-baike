@@ -64,7 +64,7 @@
 
 ## 3. 需新建的 UI 文件（清单）
 
-> 全部放在 `shared/src/commonMain/kotlin/com/harvesttown/encyclopedia/ui/` 下对应包。
+> 全部放在 `shared/src/commonMain/kotlin/com/nainiuzhen/wiki/ui/` 下对应包。
 > 复用 `MenuCard` / `SpriteImage` / `RichText` / `CollapsibleTopBar` 组件与 `LocalNavigator` / `LocalDataRepository` / `LocalSpriteRepository`。
 
 1. **`home/HomeScreen.kt`** — 启动落地页：标题 + 3 个板块入口（`MenuCard` 跳 `ItemList`/`RecipeList`/`NpcList`）+ 设置入口（`Settings`）。

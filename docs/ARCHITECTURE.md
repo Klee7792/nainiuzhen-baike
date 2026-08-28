@@ -19,7 +19,7 @@
 
    - 复制 `miuix/example` 为 `:shared`(commonMain 全量 UI/逻辑) + `:app`(android 仅 MainActivity/Manifest) 双模块结构，**保留 CMP 多端骨架**以便后续 iOS/桌面。
    - miuix 作为**外部依赖**通过 **Gradle 复合构建（composite build）** 引入（`settings.gradle.kts` 中 `includeBuild("<miuix 根目录>")`），依赖 `miuix-ui / miuix-nav / miuix-preference / miuix-icons / miuix-blur / miuix-squircle`，无需发布到 Maven。
-   - 包名建议：`com.harvesttown.encyclopedia`（applicationId / namespace）。
+   - 包名建议：`com.nainiuzhen.wiki`（applicationId / namespace）。
 
 3. **任务列表顺序（按实现先后，详见第 10 节）**
 
@@ -179,7 +179,7 @@ nainiuzhen-baike/
 │   ├── build.gradle.kts
 │   └── src/
 │       ├── commonMain/
-│       │   ├── kotlin/com/harvesttown/encyclopedia/
+│       │   ├── kotlin/com/nainiuzhen/wiki/
 │       │   │   ├── App.kt                       # 应用入口（接收切片器/缓存器）
 │       │   │   ├── data/
 │       │   │   │   ├── model/
@@ -238,7 +238,7 @@ nainiuzhen-baike/
 │       │       ├── headwear.png (+headwear.plist)
 │       │       ├── npcs/1.png … 57 个                       # NPC 立绘，无需切片
 │       │       └── star/lv_2.png lv_3.png lv_4.png          # 白/金/紫星
-│       └── androidMain/kotlin/com/harvesttown/encyclopedia/
+│       └── androidMain/kotlin/com/nainiuzhen/wiki/
 │           └── platform/
 │               ├── AndroidSpriteSlicer.kt       # SpriteSlicer 实现（Bitmap 裁剪/旋转）
 │               └── AndroidCacheProvider.kt      # CacheProvider 实现（context.cacheDir）
@@ -246,7 +246,7 @@ nainiuzhen-baike/
     ├── build.gradle.kts
     └── src/main/
         ├── AndroidManifest.xml
-        └── kotlin/com/harvesttown/encyclopedia/MainActivity.kt  # 构造切片器/缓存器 → App()
+        └── kotlin/com/nainiuzhen/wiki/MainActivity.kt  # 构造切片器/缓存器 → App()
 ```
 
 ---
@@ -561,7 +561,7 @@ sequenceDiagram
 
 ## 8. 共享知识（跨文件约定）
 
-- **包结构**：根包 `com.harvesttown.encyclopedia`；子包 `data.model / data.source / data.repository / sprite / richtext / ui.* / utils`。
+- **包结构**：根包 `com.nainiuzhen.wiki`；子包 `data.model / data.source / data.repository / sprite / richtext / ui.* / utils`。
 - **命名**：数据类 `XxxInfo`；仓储 `XxxRepository`；列表页 `XxxListScreen`；弹窗 `XxxDialog`；组件 `XxxCard/XxxBar`。
 - **资源目录**：所有素材经 `shared/src/commonMain/composeResources/files/` 读取，路径前缀 `files/`；图集帧名统一 `<id>.png`。
 - **切片缓存 key 规则**：

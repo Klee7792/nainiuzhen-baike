@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  奶牛镇百科 · 自适应图标前景：白色奶牛头部剪影。
+  安全区为 108x108 视口中央的 66x66（即 21..87），所有图形均落在其中，
+  避免被各家启动器的圆形/圆角方形遮罩裁掉。
+  眼睛与鼻部用 fillType="evenOdd" 做成镂空，直接透出背景色。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 耳朵（左右各一，向外支出） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,42 A7.5,5.5 0 1,1 41,42 A7.5,5.5 0 1,1 26,42 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M67,42 A7.5,5.5 0 1,1 82,42 A7.5,5.5 0 1,1 67,42 Z" />
+
+    <!-- 头部（含双眼与鼻部镂空） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="
+            M35,57 A19,21 0 1,1 73,57 A19,21 0 1,1 35,57 Z
+            M43,52 A3,3.5 0 1,1 49,52 A3,3.5 0 1,1 43,52 Z
+            M59,52 A3,3.5 0 1,1 65,52 A3,3.5 0 1,1 59,52 Z
+            M45,68 A9,6.5 0 1,1 63,68 A9,6.5 0 1,1 45,68 Z" />
+</vector>
