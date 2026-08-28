@@ -19,6 +19,10 @@ $NoteFile    = Join-Path $BuildsDir "build_notes.md"
 $env:JAVA_HOME        = "D:\Android\jdk-17.0.20.1"
 $env:ANDROID_HOME     = "D:\Android\Sdk"
 $env:ANDROID_SDK_ROOT = "D:\Android\Sdk"
+# Canonical Gradle cache for this project. The default ~/.gradle carries pre-copied
+# .lock files with a broken ACL that block native-platform.dll.lock and make every
+# build fail; ghome4 was built as a clean copy (owner=Yun, no .lock) to avoid that.
+$env:GRADLE_USER_HOME = "D:\Android\ghome4"
 $gradle = "D:\Android\gradle-9.6.1\bin\gradle.bat"
 
 # ---- read and bump build number ----

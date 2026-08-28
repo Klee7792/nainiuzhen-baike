@@ -31,9 +31,13 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         navigationBarMode = prefs.getInt(KEY_NAV_BAR_MODE, 0),
         useFloatingNavigationBar = prefs.getBoolean(KEY_FLOATING_NAV_BAR, false),
         showFloatingToolbar = prefs.getBoolean(KEY_FLOATING_TOOLBAR, false),
+        floatingToolbarPosition = prefs.getInt(KEY_FLOATING_TOOLBAR_POS, 0),
         showFloatingActionButton = prefs.getBoolean(KEY_FLOATING_FAB, false),
+        floatingActionButtonPosition = prefs.getInt(KEY_FLOATING_FAB_POS, 0),
         enableDim = prefs.getBoolean(KEY_DIM, false),
         blockInputDuringTransition = prefs.getBoolean(KEY_BLOCK_INPUT, false),
+        floatingNavigationBarStyle = prefs.getInt(KEY_FLOATING_NAV_BAR_STYLE, 0),
+        floatingNavigationBarPosition = prefs.getInt(KEY_FLOATING_NAV_BAR_POS, 0),
     )
 
     override fun save(state: AppState) {
@@ -54,9 +58,13 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putInt(KEY_NAV_BAR_MODE, state.navigationBarMode)
             putBoolean(KEY_FLOATING_NAV_BAR, state.useFloatingNavigationBar)
             putBoolean(KEY_FLOATING_TOOLBAR, state.showFloatingToolbar)
+            putInt(KEY_FLOATING_TOOLBAR_POS, state.floatingToolbarPosition)
             putBoolean(KEY_FLOATING_FAB, state.showFloatingActionButton)
+            putInt(KEY_FLOATING_FAB_POS, state.floatingActionButtonPosition)
             putBoolean(KEY_DIM, state.enableDim)
             putBoolean(KEY_BLOCK_INPUT, state.blockInputDuringTransition)
+            putInt(KEY_FLOATING_NAV_BAR_STYLE, state.floatingNavigationBarStyle)
+            putInt(KEY_FLOATING_NAV_BAR_POS, state.floatingNavigationBarPosition)
             apply()
         }
     }
@@ -78,8 +86,12 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_NAV_BAR_MODE = "navigationBarMode"
         const val KEY_FLOATING_NAV_BAR = "useFloatingNavigationBar"
         const val KEY_FLOATING_TOOLBAR = "showFloatingToolbar"
+        const val KEY_FLOATING_TOOLBAR_POS = "floatingToolbarPosition"
         const val KEY_FLOATING_FAB = "showFloatingActionButton"
+        const val KEY_FLOATING_FAB_POS = "floatingActionButtonPosition"
         const val KEY_DIM = "enableDim"
         const val KEY_BLOCK_INPUT = "blockInputDuringTransition"
+        const val KEY_FLOATING_NAV_BAR_STYLE = "floatingNavigationBarStyle"
+        const val KEY_FLOATING_NAV_BAR_POS = "floatingNavigationBarPosition"
     }
 }

@@ -11,9 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import com.harvesttown.encyclopedia.ui.components.ArrowSegmentedPreference
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
 import com.harvesttown.encyclopedia.ui.nav.LocalSpriteRepository
 import com.harvesttown.encyclopedia.ui.nav.Route
@@ -61,7 +59,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
         modifier = Modifier
             .fillMaxHeight()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentPadding = PaddingValues(top = innerPadding.calculateTopPadding(), bottom = 12.dp),
+        // 底部预留顶栏/底栏高度，避免「关于」等末项被底栏遮挡（变更点 #37）
+        contentPadding = PaddingValues(
+            top = innerPadding.calculateTopPadding(),
+            bottom = innerPadding.calculateBottomPadding() + 12.dp,
+        ),
     ) {
         item(key = "appearance") {
             SmallTitle(text = "外观")
@@ -70,10 +72,10 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     .padding(horizontal = 12.dp)
                     .padding(bottom = 12.dp),
             ) {
-                ArrowSegmentedPreference(
-                    title = "色彩模式",
-                    options = colorModeOptions,
+                OverlayDropdownPreference(
+                    items = colorModeOptions,
                     selectedIndex = appState.colorMode.coerceIn(0, 2),
+                    title = "色彩模式",
                     onSelectedIndexChange = { updateAppState(appState.copy(colorMode = it)) },
                 )
                 SwitchPreference(
@@ -103,7 +105,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     .padding(bottom = 12.dp),
             ) {
                 OverlayDropdownPreference(
-                    items = listOf("Miuix", "Modal"),
+                    items = listOf("Miuix", "AOSP"),
                     selectedIndex = appState.navTransitionStyle,
                     title = "过渡动画",
                     onSelectedIndexChange = { updateAppState(appState.copy(navTransitionStyle = it)) },
@@ -170,16 +172,57 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     checked = appState.useFloatingNavigationBar,
                     onCheckedChange = { updateAppState(appState.copy(useFloatingNavigationBar = it)) },
                 )
+                if (appState.useFloatingNavigationBar) {
+                    OverlayDropdownPreference(
+                        items = listOf("Miuix", "iOS-like"),
+                        selectedIndex = appState.floatingNavigationBarStyle,
+                        title = "悬浮底栏样式",
+                        onSelectedIndexChange = {
+                            updateAppState(appState.copy(floatingNavigationBarStyle = it))
+                        },
+                    )
+                    // iOS-like 样式下不提供 Position 选项（与 miuix demo 一致）。
+                    if (appState.floatingNavigationBarStyle == 0) {
+                        OverlayDropdownPreference(
+                            items = listOf("中心", "开始", "结束"),
+                            selectedIndex = appState.floatingNavigationBarPosition,
+                            title = "悬浮底栏位置",
+                            onSelectedIndexChange = {
+                                updateAppState(appState.copy(floatingNavigationBarPosition = it))
+                            },
+                        )
+                    }
+                }
                 SwitchPreference(
                     title = "悬浮工具栏",
                     checked = appState.showFloatingToolbar,
                     onCheckedChange = { updateAppState(appState.copy(showFloatingToolbar = it)) },
                 )
+                if (appState.showFloatingToolbar) {
+                    OverlayDropdownPreference(
+                        items = listOf("结束", "开始", "中心"),
+                        selectedIndex = appState.floatingToolbarPosition,
+                        title = "悬浮工具栏位置",
+                        onSelectedIndexChange = {
+                            updateAppState(appState.copy(floatingToolbarPosition = it))
+                        },
+                    )
+                }
                 SwitchPreference(
                     title = "悬浮操作按钮",
                     checked = appState.showFloatingActionButton,
                     onCheckedChange = { updateAppState(appState.copy(showFloatingActionButton = it)) },
                 )
+                if (appState.showFloatingActionButton) {
+                    OverlayDropdownPreference(
+                        items = listOf("结束", "开始", "中心"),
+                        selectedIndex = appState.floatingActionButtonPosition,
+                        title = "悬浮操作按钮位置",
+                        onSelectedIndexChange = {
+                            updateAppState(appState.copy(floatingActionButtonPosition = it))
+                        },
+                    )
+                }
             }
 
             SmallTitle(text = "交互")

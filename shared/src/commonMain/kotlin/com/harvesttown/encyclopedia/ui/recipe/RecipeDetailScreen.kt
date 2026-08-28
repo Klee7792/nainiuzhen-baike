@@ -51,11 +51,11 @@ fun RecipeDetailScreen(recipe: RecipeInfo?, onDismissRequest: () -> Unit) {
         show = recipe != null,
         onDismissRequest = onDismissRequest,
         buttons = {
-            TextButton(
-                text = "关闭",
-                onClick = onDismissRequest,
-                modifier = Modifier.fillMaxWidth(0.49f),
-            )
+        TextButton(
+            text = "关闭",
+            onClick = onDismissRequest,
+            modifier = Modifier.fillMaxWidth(),
+        )
         },
     ) {
         recipe?.let { RecipeDetailBody(recipe = it, onItemClick = { nestedItem = it }) }
@@ -97,14 +97,14 @@ private fun RecipeDetailBody(
         ExpandableRichText(raw = recipe.descRaw, maxLines = 8)
     }
 
-    // 3. 来源 / 解锁条件
+    // 3. 解锁方式（与具体解锁条件同一行，可换行；主题强调色）
     if (!recipe.deblockingDesc.isNullOrBlank()) {
         Spacer(Modifier.size(10.dp))
-        SmallTitle(text = "来源 / 解锁")
+        SmallTitle(text = "解锁方式")
         Text(
             text = recipe.deblockingDesc,
             style = MiuixTheme.textStyles.body2,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            color = MiuixTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth(),
         )
     }

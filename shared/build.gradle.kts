@@ -33,6 +33,10 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.collections.immutable)
         }
+        androidMain.dependencies {
+            // OnResumeEffect.android 用到 ComponentActivity / Lifecycle（由 activity-compose 传递 lifecycle-runtime）
+            implementation(libs.androidx.activity)
+        }
     }
 }
 

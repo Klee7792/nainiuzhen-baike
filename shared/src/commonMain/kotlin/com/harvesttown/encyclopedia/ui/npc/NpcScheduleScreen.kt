@@ -2,6 +2,7 @@ package com.harvesttown.encyclopedia.ui.npc
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,18 +29,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.harvesttown.encyclopedia.data.model.NpcSchedule
+import com.harvesttown.encyclopedia.ui.components.AppSubPageScaffold
 import com.harvesttown.encyclopedia.ui.nav.LocalDataRepository
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
+import com.harvesttown.encyclopedia.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
  * NPC 日程子页（完整路由 [com.harvesttown.encyclopedia.ui.nav.Route.NpcSchedule]）。
@@ -46,12 +49,16 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  * 筛选区（单选、必选一项，默认 周一 / 晴天 / 春 / 未婚，无「全部」）：
  * 星期(周一到周天) / 天气(晴雨雪台风节日) / 季节(春夏秋冬) / 婚姻(未婚=0 / 已婚=1，按 [NpcSchedule.isAstar])。
  *
- * 日程区：左侧开始时间列 + 右侧名称（大字）+ 起止场景箭头（小字 `start → end`），条目高度统一。
+ * 日程区：左侧开始时间列 + 右侧名称（大字，仅显示 `|` 后的实际日程）+ 起止场景箭头（小字 `start → end`）。
+ *
+ * v6 变更（变更点 #30 / #36）：模糊顶栏；星期 7 个选项改为横向滚动（不再变竖向窄胶囊）；
+ * 日程名称只显示竖线 `|` 后的实际内容。
  */
 @Composable
 fun NpcScheduleScreen(npcId: Int) {
     val navigator = LocalNavigator.current
     val data = LocalDataRepository.current
+    val appState = LocalAppSettings.current
     val scrollBehavior = MiuixScrollBehavior()
     val all = remember(npcId) { data.npcSchedules(npcId) }
     val npcName = remember(npcId) { data.npcs.firstOrNull { it.id == npcId }?.name ?: "NPC" }
@@ -69,27 +76,24 @@ fun NpcScheduleScreen(npcId: Int) {
             s.isAstar == marriage
     }
 
-    Scaffold(
-        topBar = {
-            SmallTopAppBar(
-                title = "$npcName 日程",
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = { navigator.pop() }) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = "返回",
-                            tint = MiuixTheme.colorScheme.onBackground,
-                        )
-                    }
-                },
-            )
+    AppSubPageScaffold(
+        title = "$npcName 日程",
+        scrollBehavior = scrollBehavior,
+        navigationIcon = {
+            IconButton(onClick = { navigator.pop() }) {
+                Icon(
+                    imageVector = MiuixIcons.Back,
+                    contentDescription = "返回",
+                    tint = MiuixTheme.colorScheme.onBackground,
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxHeight()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
             contentPadding = PaddingValues(top = innerPadding.calculateTopPadding(), bottom = 12.dp),
         ) {
             item(key = "filters") {
@@ -103,6 +107,7 @@ fun NpcScheduleScreen(npcId: Int) {
                         options = (1..7).map { it to WEEK_LABELS[it - 1] },
                         selected = week,
                         onSelect = { week = it },
+                        horizontalScrollEnabled = true,
                     )
                     RequiredFilterRow(
                         label = "天气",
@@ -147,7 +152,7 @@ fun NpcScheduleScreen(npcId: Int) {
     }
 }
 
-/** 单条日程：左侧开始时间列 + 右侧名称与起止场景箭头，高度统一。 */
+/** 单条日程：左侧开始时间列 + 右侧名称（仅 `|` 后实际日程）与起止场景箭头，高度统一。 */
 @Composable
 private fun ScheduleEntry(schedule: NpcSchedule) {
     Card(
@@ -170,7 +175,7 @@ private fun ScheduleEntry(schedule: NpcSchedule) {
             )
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = schedule.name,
+                    text = schedule.name.parseScheduleName(),
                     style = MiuixTheme.textStyles.title4,
                     color = MiuixTheme.colorScheme.onBackground,
                 )
@@ -185,6 +190,13 @@ private fun ScheduleEntry(schedule: NpcSchedule) {
     }
 }
 
+/** 解析日程名：仅保留竖线 `|` 后的实际日程；无竖线则原样返回。 */
+private fun String.parseScheduleName(): String {
+    val idx = indexOf('|')
+    if (idx < 0) return this
+    return substring(idx + 1).trim().ifBlank { this }
+}
+
 /** 必选单选筛选行：标签 + 可单选的 chip（点击已选项保持不变，无「全部」）。 */
 @Composable
 private fun RequiredFilterRow(
@@ -192,6 +204,7 @@ private fun RequiredFilterRow(
     options: List<Pair<Int, String>>,
     selected: Int,
     onSelect: (Int) -> Unit,
+    horizontalScrollEnabled: Boolean = false,
 ) {
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(
@@ -200,9 +213,12 @@ private fun RequiredFilterRow(
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier.padding(vertical = 4.dp),
         )
+        val rowModifier = Modifier
+            .padding(bottom = 4.dp)
+            .then(if (horizontalScrollEnabled) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 4.dp),
+            modifier = rowModifier,
         ) {
             options.forEach { (value, text) ->
                 RequiredChip(

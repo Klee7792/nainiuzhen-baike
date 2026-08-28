@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -14,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.harvesttown.encyclopedia.data.AssetManager
+import com.harvesttown.encyclopedia.utils.SetStatusBarLightIcons
 import com.harvesttown.encyclopedia.data.repository.SpriteCacheManager
 import com.harvesttown.encyclopedia.data.source.SpriteSlicer
 import com.harvesttown.encyclopedia.ui.nav.AppNavHost
@@ -56,12 +58,19 @@ fun App(
 ) {
     var appState by remember { mutableStateOf(settings.load()) }
     val updateAppState: (AppState) -> Unit = remember { { new -> appState = new; settings.save(new) } }
+    // 解析当前是否为深色主题（系统模式跟随系统），用于状态栏图标深浅（#139：浅色模式白字看不见）。
+    val isDark = when (appState.colorMode) {
+        1 -> true
+        2 -> false
+        else -> isSystemInDarkTheme()
+    }
     AppTheme(colorMode = appState.colorMode, monet = appState.monet) {
         CompositionLocalProvider(
             LocalAppSettings provides appState,
             LocalUpdateAppSettings provides updateAppState,
             LocalSquircleEnabled provides appState.enableSquircle,
         ) {
+            SetStatusBarLightIcons(light = !isDark)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)
         }
     }

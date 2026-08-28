@@ -2,7 +2,9 @@ package com.harvesttown.encyclopedia.ui.recipe
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,34 +27,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.harvesttown.encyclopedia.data.model.RecipeInfo
+import com.harvesttown.encyclopedia.ui.components.AppSubPageScaffold
 import com.harvesttown.encyclopedia.ui.components.FilterPopup
 import com.harvesttown.encyclopedia.ui.components.SpriteImage
 import com.harvesttown.encyclopedia.ui.nav.LocalDataRepository
 import com.harvesttown.encyclopedia.ui.nav.LocalNavigator
+import com.harvesttown.encyclopedia.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
- * 配方查询列表：6 列正方形网格 + 名称底部区块（变更点 #14）。
+ * 配方查询列表：6 列正方形网格 + 名称底部区块（超出宽度横向滚动）。
  * 顶栏搜索框 + 右上角筛选 icon（typeLabel 多选）即时过滤。点击某配方弹出 [RecipeDetailScreen]。
+ *
+ * v6 变更（变更点 #30 / #31）：同 [ItemListScreen] —— 模糊顶栏、名称横向滚动、筛选弹窗入脚手架、
+ * 跟随「滚动到末尾震动」开关。
  */
 @Composable
 fun RecipeListScreen() {
     val navigator = LocalNavigator.current
     val data = LocalDataRepository.current
+    val appState = LocalAppSettings.current
     val scrollBehavior = MiuixScrollBehavior()
     var selected by remember { mutableStateOf<RecipeInfo?>(null) }
     var query by remember { mutableStateOf("") }
@@ -64,39 +71,35 @@ fun RecipeListScreen() {
         if (query.isBlank()) base else base.filter { it.name.contains(query, ignoreCase = true) }
     }
 
-    Scaffold(
-        topBar = {
-            SmallTopAppBar(
-                title = "配方查询",
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = { navigator.pop() }) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = "返回",
-                            tint = MiuixTheme.colorScheme.onBackground,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showFilter = true }) {
-                        Icon(
-                            imageVector = MiuixIcons.Filter,
-                            contentDescription = "筛选",
-                            tint = MiuixTheme.colorScheme.onBackground,
-                        )
-                    }
-                },
-                bottomContent = {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        label = "搜索配方",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                },
+    AppSubPageScaffold(
+        title = "配方查询",
+        scrollBehavior = scrollBehavior,
+        navigationIcon = {
+            IconButton(onClick = { navigator.pop() }) {
+                Icon(
+                    imageVector = MiuixIcons.Back,
+                    contentDescription = "返回",
+                    tint = MiuixTheme.colorScheme.onBackground,
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = { showFilter = true }) {
+                Icon(
+                    imageVector = MiuixIcons.Filter,
+                    contentDescription = "筛选",
+                    tint = MiuixTheme.colorScheme.onBackground,
+                )
+            }
+        },
+        bottomContent = {
+            TextField(
+                value = query,
+                onValueChange = { query = it },
+                label = "搜索配方",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
             )
         },
     ) { innerPadding ->
@@ -106,7 +109,8 @@ fun RecipeListScreen() {
             state = rememberLazyGridState(),
             modifier = Modifier
                 .fillMaxHeight()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
             contentPadding = PaddingValues(
                 start = 12.dp,
                 top = innerPadding.calculateTopPadding(),
@@ -132,18 +136,18 @@ fun RecipeListScreen() {
             }
         }
         RecipeDetailScreen(recipe = selected, onDismissRequest = { selected = null })
+        FilterPopup(
+            show = showFilter,
+            onDismissRequest = { showFilter = false },
+            title = "筛选类型",
+            options = types,
+            selected = selectedTypes,
+            onSelectedChange = { selectedTypes = it },
+        )
     }
-    FilterPopup(
-        show = showFilter,
-        onDismissRequest = { showFilter = false },
-        title = "筛选类型",
-        options = types,
-        selected = selectedTypes,
-        onSelectedChange = { selectedTypes = it },
-    )
 }
 
-/** 单个配方方块：正方形切片 + 名称（11sp，居中，单行省略）。 */
+/** 单个配方方块：正方形切片 + 名称（11sp，超出宽度横向滚动）。 */
 @Composable
 private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
     Column(
@@ -159,16 +163,21 @@ private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
                 .aspectRatio(1f),
             contentScale = ContentScale.Fit,
         )
-        Text(
-            text = recipe.name,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MiuixTheme.colorScheme.onSurface,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .padding(top = 2.dp),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = recipe.name,
+                fontSize = 11.sp,
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.Center,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+        }
     }
 }

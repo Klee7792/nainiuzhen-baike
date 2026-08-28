@@ -33,9 +33,14 @@ data class AppState(
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
     val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
+    val floatingToolbarPosition: Int = 0, // FloatingToolbar Position (0=End 1=Start 2=Center)
     val showFloatingActionButton: Boolean = false, // Show FloatingActionButton
+    val floatingActionButtonPosition: Int = 0, // FAB Position (0=End 1=Start 2=Center)
     val enableDim: Boolean = false, // Enable Dim
     val blockInputDuringTransition: Boolean = false, // Block Input During Transition
+    // —— v6 新增 ——
+    val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS-like)
+    val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
 )
 
 val LocalAppSettings = compositionLocalOf { AppState() }
