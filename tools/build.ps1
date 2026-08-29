@@ -39,9 +39,12 @@ Set-Content $NumberFile -Value $buildNo -Encoding ascii -NoNewline
 
 # ---- stamp version from build number (single source of truth = build_number.txt) ----
 # 应用内展示版本（APP_VERSION_NAME）与 Android 应用信息（versionName/versionCode）随 build 自动 +1，
-# 无需手动改多处。约定：vN <-> 1.0.N <-> versionCode N <-> build-N。
-$verName = "1.0.$buildNo"
-$verDisp = "v1.0.$buildNo"
+# 无需手动改多处。版本名约定「遇 10 进 1」：build N -> 1.(N/10).(N%10)
+#   例：build 9 -> 1.0.9，build 13 -> 1.1.3，build 20 -> 1.2.0
+$major = [math]::Floor($buildNo / 10)
+$minor = $buildNo % 10
+$verName = "1.$major.$minor"
+$verDisp = "v$verName"
 $appStateKt = Join-Path $ProjectRoot "shared/src/commonMain/kotlin/com/nainiuzhen/wiki/utils/AppState.kt"
 $gradleKts  = Join-Path $ProjectRoot "app/build.gradle.kts"
 (Get-Content $appStateKt) -replace 'APP_VERSION_NAME = "v[^"]*"', "APP_VERSION_NAME = `"$verDisp`"" | Set-Content $appStateKt

@@ -67,29 +67,25 @@ fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
         header = { npc?.let { NpcDetailHeader(npc = it) } },
         buttons = {
             if (npc != null) {
-                // 用 Box(0.49f) 包裹，规避 miuix TextButton 内部 fillMaxWidth 覆盖 0.49f
-                // 导致两按钮未左右对齐的问题；外层 Row(SpaceBetween) 使它们分居左右两端。
-                Box(modifier = Modifier.fillMaxWidth(0.49f)) {
-                    TextButton(
-                        text = "日程",
-                        enabled = npc.maxStar > 0,
-                        onClick = {
-                            if (npc.maxStar > 0) {
-                                navigator.push(Route.NpcSchedule(npc.id))
-                                onDismissRequest()
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                Box(modifier = Modifier.fillMaxWidth(0.49f)) {
-                    TextButton(
-                        text = "关闭",
-                        onClick = onDismissRequest,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                // 两个按钮各 weight(1f)，由 Row 均分剩余空间，保证日程/关闭严格等宽
+                // （weight 是 RowScope 成员扩展，在此 lambda 内无需 import androidx.compose.foundation.layout.weight）。
+                TextButton(
+                    text = "日程",
+                    enabled = npc.maxStar > 0,
+                    onClick = {
+                        if (npc.maxStar > 0) {
+                            navigator.push(Route.NpcSchedule(npc.id))
+                            onDismissRequest()
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    text = "关闭",
+                    onClick = onDismissRequest,
+                    modifier = Modifier.weight(1f),
+                )
             }
         },
     ) {
@@ -139,7 +135,7 @@ private fun NpcDetailDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 buttons()
