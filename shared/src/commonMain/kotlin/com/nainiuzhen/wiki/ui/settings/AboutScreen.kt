@@ -128,7 +128,12 @@ fun AboutScreen() {
                 isDark = isDark,
                 surface = surface,
                 modifier = Modifier.fillMaxSize(),
-                bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
+                // 修复 v15 闪退：BgEffectBackground 内部不要再套 layerBackdrop，因为外层 Box
+                // 已经通过 .layerBackdrop(backdrop) 捕获整屏内容；内层再套同一个 backdrop 会导致
+                // LayerBackdropNode 在录制中尝试 beginRecording 第二次，抛出
+                // "Recording currently in progress - missing #endRecording() call"。
+                // 本页前景没有需要采样背景的模糊 Text，去掉内层 layerBackdrop 不影响样式。
+                bgModifier = Modifier,
                 alpha = { 1f - scrollProgressProvider() },
             ) {
                 Column(

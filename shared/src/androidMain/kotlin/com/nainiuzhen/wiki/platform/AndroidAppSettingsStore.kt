@@ -27,7 +27,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         showTopAppBar = prefs.getBoolean(KEY_SHOW_TOP_BAR, true),
         topAppBarBlurStyle = prefs.getInt(KEY_TOP_BAR_BLUR_STYLE, 0),
         showNavigationBar = prefs.getBoolean(KEY_SHOW_NAV_BAR, true),
-        showNavigationBadge = prefs.getBoolean(KEY_SHOW_NAV_BADGE, true),
+        showNavigationBadge = prefs.getBoolean(KEY_SHOW_NAV_BADGE, false),
         navigationBarMode = prefs.getInt(KEY_NAV_BAR_MODE, 0),
         useFloatingNavigationBar = prefs.getBoolean(KEY_FLOATING_NAV_BAR, false),
         showFloatingToolbar = prefs.getBoolean(KEY_FLOATING_TOOLBAR, false),

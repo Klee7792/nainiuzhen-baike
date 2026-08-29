@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
 import androidx.compose.ui.graphics.Color
@@ -129,33 +130,50 @@ fun AppTopAppBar(
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
+    // 计数副标题（"共 XX 个物品 / 个配方"）自行渲染为顶栏 bottomContent 的固定行：
+    // - 12sp（比 miuix 原生 subtitle 的 14sp 小一号，恢复 v7 字号），居中显示，与标题中心线对齐；
+    // - 顶栏展开 / 收起均居中，标题位置完全不受影响；
+    // - 位于搜索框之上。不再转发给 miuix 原生 subtitle（其字号固定 14sp 且展开态左对齐，
+    //   无法满足"减小一号 + 居中"），改回 v7 的呈现方式。
+    val mergedBottomContent: @Composable () -> Unit = {
+        if (subtitle.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        bottomContent()
+    }
     BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
-        // 副标题（如列表计数「共 XX 个」）直接转发给 miuix 原生 subtitle 参数：
-        // - 顶栏展开时作为大标题的第二行、左对齐（紧贴标题，标题位置不受影响）；
-        // - 顶栏收起时居中显示在顶栏内；
-        // - 搜索框等仍走 bottomContent，位于副标题之下。
         if (largeTitle != null) {
             TopAppBar(
                 title = title,
                 largeTitle = largeTitle,
-                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = bottomContent,
+                bottomContent = mergedBottomContent,
                 modifier = modifier,
             )
         } else {
             SmallTopAppBar(
                 title = title,
-                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = bottomContent,
+                bottomContent = mergedBottomContent,
                 modifier = modifier,
             )
         }
