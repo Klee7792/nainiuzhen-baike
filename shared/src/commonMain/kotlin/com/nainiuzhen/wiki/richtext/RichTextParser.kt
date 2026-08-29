@@ -68,17 +68,24 @@ object RichTextParser {
         if (idx >= raw.length || raw[idx] != '#') return null
         idx += 1 // 跳过分隔 '#'
 
-        var fontSizeSp: Float? = null
-        // 可选字号：连续数字后跟 '#'
-        if (idx < raw.length && raw[idx].isDigit()) {
-            val numEnd = raw.indexOf('#', idx)
-            if (numEnd < 0) return null
-            fontSizeSp = raw.substring(idx, numEnd).toFloatOrNull()
-            idx = numEnd + 1
-        }
-
         val end = raw.indexOf("/#", idx)
         if (end < 0) return null
+
+        var fontSizeSp: Float? = null
+        // 可选字号：仅当「数字后面紧跟 '#'」且该 '#' 位于结束标记 "/#" 之前时才视为字号，
+        // 即 "/#颜色#字号#内容/#" 形式（数字前后都有井号）。
+        // 若数字后面直接是结束标记 "/#"（如繁荣度 "/#颜色#350/#"），则数字是内容的一部分（不带字号）。
+        if (idx < raw.length && raw[idx].isDigit()) {
+            val hashPos = raw.indexOf('#', idx)
+            if (hashPos in 0 until end) {
+                val size = raw.substring(idx, hashPos).toFloatOrNull()
+                if (size != null) {
+                    fontSizeSp = size
+                    idx = hashPos + 1
+                }
+            }
+        }
+
         val content = raw.substring(idx, end)
         val textColor = Color(0xFF000000L or (color and 0xFFFFFFL))
         return SpanResult(TextSpan(content, textColor, fontSizeSp), end + 2)

@@ -216,7 +216,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 BasicComponent(
                     title = "版本",
-                    summary = "v1.0.8 ($version)",
+                    summary = "v1.0.9 ($version)",
                 )
                 ArrowPreference(
                     title = "关于",
