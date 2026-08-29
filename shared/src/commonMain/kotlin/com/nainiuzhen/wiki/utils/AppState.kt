@@ -43,8 +43,11 @@ data class AppState(
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
 )
 
-/** 应用版本展示名（与 build.ps1 的 build number 同步：vN <-> 1.0.N <-> build-N）。 */
-const val APP_VERSION_NAME = "v1.1.3"
+/** 应用版本展示名（与 build.ps1 的 build number 同步：build N -> v1.(N/10).(N%10)）。 */
+const val APP_VERSION_NAME = "v1.1.4"
+
+/** 应用版本号（与 build.ps1 的 build number 同步）。 */
+const val APP_VERSION_CODE = 14
 
 val LocalAppSettings = compositionLocalOf { AppState() }
 

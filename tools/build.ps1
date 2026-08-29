@@ -47,9 +47,10 @@ $verName = "1.$major.$minor"
 $verDisp = "v$verName"
 $appStateKt = Join-Path $ProjectRoot "shared/src/commonMain/kotlin/com/nainiuzhen/wiki/utils/AppState.kt"
 $gradleKts  = Join-Path $ProjectRoot "app/build.gradle.kts"
-(Get-Content $appStateKt) -replace 'APP_VERSION_NAME = "v[^"]*"', "APP_VERSION_NAME = `"$verDisp`"" | Set-Content $appStateKt
-(Get-Content $gradleKts)  -replace 'versionCode = \d+',          "versionCode = $buildNo"   | Set-Content $gradleKts
-(Get-Content $gradleKts)  -replace 'versionName = "[^"]*"',      "versionName = `"$verName`"" | Set-Content $gradleKts
+(Get-Content $appStateKt) -replace 'APP_VERSION_NAME = "v[^"]*"',  "APP_VERSION_NAME = `"$verDisp`"" | Set-Content $appStateKt
+(Get-Content $appStateKt) -replace 'APP_VERSION_CODE = \d+',        "APP_VERSION_CODE = $buildNo"      | Set-Content $appStateKt
+(Get-Content $gradleKts)  -replace 'versionCode = \d+',              "versionCode = $buildNo"           | Set-Content $gradleKts
+(Get-Content $gradleKts)  -replace 'versionName = "[^"]*"',          "versionName = `"$verName`""       | Set-Content $gradleKts
 Write-Host "==> version stamped: $verDisp (versionCode $buildNo)"
 
 # ---- compile (release only; debug 不再产出) ----
