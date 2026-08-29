@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
@@ -36,6 +37,9 @@ import kotlin.math.floor
  * @param modifier 整体 Modifier（建议 `fillMaxSize`）。
  * @param bgModifier 背景层 Modifier——通常传 `Modifier.layerBackdrop(backdrop)`，
  *   让背景被前景模糊 Text 采样。
+ * @param alpha 背景不透明度（draw 阶段读取，不触发重组）。传入 `{ 1f - scrollProgress }`
+ *   即可实现「上拉变纯色、下拉恢复 OS3」：滚动时背景淡出、露出底层纯色 surface。
+ *   content（前景内容）不受 alpha 影响。
  * @param content 前景内容（居中显示的前景模糊标题等）。
  */
 @Composable
@@ -45,13 +49,14 @@ internal fun BgEffectBackground(
     surface: Color,
     modifier: Modifier = Modifier,
     bgModifier: Modifier = Modifier,
+    alpha: () -> Float = { 1f },
     content: @Composable (BoxScope.() -> Unit),
 ) {
     if (!isRuntimeShaderSupported()) {
         // 低端机（Android < 12，无 RuntimeShader）回退：用 Compose 动画渐变呈现 OS3
         // 「色彩流动」背景，使关于页背景在 Redmi K40(API30) 等设备上也能看到波浪变色，
         // 而非纯白（v12 修复：此前此处直接返回空 Box → 背景纯白，仅文字有色彩）。
-        AnimatedGradientBox(modifier = modifier, isDark = isDark, content = content)
+        AnimatedGradientBox(modifier = modifier, isDark = isDark, alpha = alpha, content = content)
         return
     }
     val painter = remember { BgEffectPainter() }
@@ -89,7 +94,8 @@ internal fun BgEffectBackground(
                     surface = surface,
                     playing = dynamicBackground,
                     colorStage = { colorStage.value },
-                ),
+                )
+                .graphicsLayer { this.alpha = alpha() },
         )
         content()
     }
@@ -106,6 +112,7 @@ internal fun BgEffectBackground(
 private fun AnimatedGradientBox(
     modifier: Modifier,
     isDark: Boolean,
+    alpha: () -> Float = { 1f },
     content: @Composable BoxScope.() -> Unit,
 ) {
     // 用 Animatable + 往返循环模拟 InfiniteTransition 的「色相往返」效果，
@@ -132,8 +139,15 @@ private fun AnimatedGradientBox(
         Color.hsl((hue + 120f) % 360f, 0.55f, light),
         Color.hsl((hue + 210f) % 360f, 0.55f, light),
     )
-    Box(
-        modifier = modifier.background(Brush.linearGradient(colors = colors)),
-        content = content,
-    )
+    // 背景层（渐变）与前景 content 拆分为两层：alpha 只作用于背景层，
+    // 滚动淡出背景时（alpha→0）露出底层纯色 surface，前景内容（图标/标题/卡片）保持可见。
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(colors = colors))
+                .graphicsLayer { this.alpha = alpha() },
+        )
+        content()
+    }
 }

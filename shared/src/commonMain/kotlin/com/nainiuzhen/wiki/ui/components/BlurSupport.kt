@@ -124,48 +124,38 @@ fun AppTopAppBar(
     largeTitle: String? = null,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    subtitle: String? = null,
+    subtitle: String = "",
     bottomContent: @Composable () -> Unit = {},
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
     BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
-        // 副标题（如列表计数）作为标题第 2 行，渲染在顶栏 bottomContent 顶部，随顶栏折叠一起
-        // 移动；居中、12sp、跟随主题次级文字色、仅换行无额外间距。
-        val barBottomContent: @Composable () -> Unit = {
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp, bottom = 2.dp),
-                )
-            }
-            bottomContent()
-        }
+        // 副标题（如列表计数「共 XX 个」）直接转发给 miuix 原生 subtitle 参数：
+        // - 顶栏展开时作为大标题的第二行、左对齐（紧贴标题，标题位置不受影响）；
+        // - 顶栏收起时居中显示在顶栏内；
+        // - 搜索框等仍走 bottomContent，位于副标题之下。
         if (largeTitle != null) {
             TopAppBar(
                 title = title,
                 largeTitle = largeTitle,
+                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = barBottomContent,
+                bottomContent = bottomContent,
                 modifier = modifier,
             )
         } else {
             SmallTopAppBar(
                 title = title,
+                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = barBottomContent,
+                bottomContent = bottomContent,
                 modifier = modifier,
             )
         }
@@ -188,7 +178,7 @@ fun AppSubPageScaffold(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    subtitle: String? = null,
+    subtitle: String = "",
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {

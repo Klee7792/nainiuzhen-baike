@@ -1,13 +1,12 @@
-// 奶牛镇百科 · 关于子页（v14 复刻 miuix demo AboutPage）
+// 奶牛镇百科 · 关于子页（v15 参考 miuix demo AboutPage 重写）
 //
-// 布局完全对齐 demo 截图：
-//   - 全屏 OS3 动态渐变背景；
-//   - 左上角返回箭头；
-//   - 居中应用图标 + 大标题「奶牛镇百科」+ 版本号 vX.Y.Z (code)；
-//   - 两个圆角卡片：
-//       查看源码 / 加入群组
-//       开源协议 / 第三方开源协议
-//   - 所有条目点击弹出 Toast「还没做」。
+// 变更点：
+// - 返回箭头移入顶栏（Scaffold topBar 内），不再被全屏背景遮挡 → 可点击返回设置页。
+// - 四个条目卡片加 textureBlur 毛玻璃（参考 demo 参数：blurRadius / noiseCoefficient / blend），
+//   低端机（无 RuntimeShader）回退为 surfaceContainer 实色，避免纯白。
+// - 滚动逻辑搬自 demo：scrollProgress 由 scrollState 推导，BgEffectBackground alpha = 1 - progress，
+//   上拉→背景淡出变纯色列表页，下拉→恢复 OS3 动态背景；顶栏收起时变实色。
+// - 「第三方开源协议」点击 push Route.License 子页；其余三项点击弹 toast「还没做」。
 
 package com.nainiuzhen.wiki.ui.settings
 
@@ -22,20 +21,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nainiuzhen.wiki.ui.components.BlurredBar
+import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
+import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.ui.settings.about.BgEffectBackground
 import com.nainiuzhen.wiki.utils.APP_VERSION_CODE
 import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
@@ -43,12 +48,19 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.showToast
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -67,119 +79,135 @@ fun AboutScreen() {
     }
 
     val surface = MiuixTheme.colorScheme.surface
-    val backdrop = rememberLayerBackdrop()
+    val backdrop = rememberAppBlurBackdrop()
     val scrollState = rememberScrollState()
+    val scrollBehavior = MiuixScrollBehavior()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-    ) {
-        // OS3 动态背景（与 BgEffectBackground 内部 layerBackdrop 配合）
-        BgEffectBackground(
-            dynamicBackground = true,
-            isDark = isDark,
-            surface = surface,
-            modifier = Modifier.fillMaxSize(),
-            bgModifier = Modifier.layerBackdrop(backdrop),
-        ) {}
+    // 滚动进度：从顶部滚动过 ~280dp 后视为完全收起（与 demo 的 logoSpacer 思路一致）。
+    val densityScale = LocalDensity.current.density
+    val collapseThresholdPx = 280f * densityScale
+    val scrollProgressProvider = { (scrollState.value / collapseThresholdPx).coerceIn(0f, 1f) }
+    val collapsed by remember { derivedStateOf { scrollProgressProvider() >= 0.999f } }
+    val blurActive by remember(backdrop) { derivedStateOf { backdrop != null && scrollProgressProvider() >= 0.999f } }
 
-        // 返回按钮
-        IconButton(
-            onClick = { navigator.pop() },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 4.dp, top = 4.dp),
-        ) {
-            Icon(
-                imageVector = MiuixIcons.Back,
-                contentDescription = "返回",
-                tint = Color.White,
-            )
-        }
-
-        // 居中内容：图标 / 标题 / 版本 / 卡片
-        Column(
+    Scaffold(
+        topBar = {
+            // 收起或 OS3 背景淡出时，顶栏变为实色（普通列表页观感）；顶部展开并 OS3 可见时透明。
+            val barColor = if (blurActive) {
+                Color.Transparent
+            } else {
+                if (collapsed) surface else Color.Transparent
+            }
+            BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior, active = blurActive) {
+                SmallTopAppBar(
+                    title = "关于",
+                    scrollBehavior = scrollBehavior,
+                    color = barColor,
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.pop() }) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "返回",
+                                tint = MiuixTheme.colorScheme.onSurface,
+                            )
+                        }
+                    },
+                )
+            }
+        },
+    ) { _ ->
+        // 底层实色 surface：OS3 背景(alpha→0)淡出后露出，即「上拉变纯色」的普通列表页。
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(top = 100.dp, bottom = 24.dp)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
+                .background(surface)
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         ) {
-            // 应用图标占位（圆角矩形 + 主题色文字）
-            Box(
-                modifier = Modifier
-                    .size(84.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(Color.White),
-                contentAlignment = Alignment.Center,
+            BgEffectBackground(
+                dynamicBackground = true,
+                isDark = isDark,
+                surface = surface,
+                modifier = Modifier.fillMaxSize(),
+                bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
+                alpha = { 1f - scrollProgressProvider() },
             ) {
-                Text(
-                    text = "奶",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4A90E2),
-                    textAlign = TextAlign.Center,
-                )
-            }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(top = 96.dp, bottom = 24.dp)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    // 应用图标占位（圆角矩形 + 主题色文字）
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "奶",
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A90E2),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
 
-            Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(18.dp))
 
-            Text(
-                text = "奶牛镇百科",
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
+                    Text(
+                        text = "奶牛镇百科",
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
 
-            Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-            Text(
-                text = "$APP_VERSION_NAME ($APP_VERSION_CODE)",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.85f),
-                textAlign = TextAlign.Center,
-            )
+                    Text(
+                        text = "$APP_VERSION_NAME ($APP_VERSION_CODE)",
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        textAlign = TextAlign.Center,
+                    )
 
-            Spacer(Modifier.height(48.dp))
+                    Spacer(Modifier.height(48.dp))
 
-            AboutCard {
-                AboutRow(
-                    title = "查看源码",
-                    summary = "GitHub",
-                    onClick = { showToast("还没做") },
-                )
-                HorizontalDivider(
-                    color = MiuixTheme.colorScheme.dividerLine,
-                    thickness = 0.5.dp,
-                )
-                AboutRow(
-                    title = "加入群组",
-                    summary = "Telegram",
-                    onClick = { showToast("还没做") },
-                )
-            }
+                    AboutCard(backdrop = backdrop) {
+                        AboutRow(
+                            title = "查看源码",
+                            summary = "GitHub",
+                            onClick = { showToast("还没做") },
+                        )
+                        HorizontalDividerToken()
+                        AboutRow(
+                            title = "加入群组",
+                            summary = "Telegram",
+                            onClick = { showToast("还没做") },
+                        )
+                    }
 
-            Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(14.dp))
 
-            AboutCard {
-                AboutRow(
-                    title = "开源协议",
-                    summary = "Apache-2.0",
-                    onClick = { showToast("还没做") },
-                )
-                HorizontalDivider(
-                    color = MiuixTheme.colorScheme.dividerLine,
-                    thickness = 0.5.dp,
-                )
-                AboutRow(
-                    title = "第三方开源协议",
-                    summary = null,
-                    onClick = { showToast("还没做") },
-                )
+                    AboutCard(backdrop = backdrop) {
+                        AboutRow(
+                            title = "开源协议",
+                            summary = "Apache-2.0",
+                            onClick = { showToast("还没做") },
+                        )
+                        HorizontalDividerToken()
+                        AboutRow(
+                            title = "第三方开源协议",
+                            summary = null,
+                            onClick = { navigator.push(Route.License) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -188,14 +216,39 @@ fun AboutScreen() {
 @Composable
 private fun AboutCard(
     modifier: Modifier = Modifier,
+    backdrop: LayerBackdrop?,
     content: @Composable () -> Unit,
 ) {
+    // 参考 demo AboutPage 的卡片参数：textureBlur 毛玻璃；无 RuntimeShader（低端机）时退回实色，
+    // 避免「纯白」——与 demo 的 cardBlend / surfaceContainer 兜底一致。
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (backdrop != null) {
+                    Modifier.textureBlur(
+                        backdrop = backdrop,
+                        shape = RoundedCornerShape(16.dp),
+                        blurRadius = 60f,
+                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                        colors = BlurDefaults.blurColors(
+                            blendColors = listOf(
+                                BlendColorEntry(
+                                    color = MiuixTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                ),
+                            ),
+                        ),
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        colors = CardDefaults.defaultColors(
+            if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+            Color.Transparent,
+        ),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            content()
-        }
+        content()
     }
 }
 
@@ -225,5 +278,13 @@ private fun AboutRow(
         },
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun HorizontalDividerToken() {
+    HorizontalDivider(
+        color = MiuixTheme.colorScheme.dividerLine,
+        thickness = 0.5.dp,
     )
 }

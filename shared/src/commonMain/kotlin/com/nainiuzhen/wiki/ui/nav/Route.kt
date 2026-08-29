@@ -37,4 +37,8 @@ sealed interface Route : NavKey {
     /** 关于子页。 */
     @Serializable
     data object About : Route
+
+    /** 第三方开源协议子页（从关于页「第三方开源协议」进入）。 */
+    @Serializable
+    data object License : Route
 }

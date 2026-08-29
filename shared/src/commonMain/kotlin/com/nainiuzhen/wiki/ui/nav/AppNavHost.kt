@@ -7,6 +7,7 @@ import com.nainiuzhen.wiki.ui.npc.NpcListScreen
 import com.nainiuzhen.wiki.ui.npc.NpcScheduleScreen
 import com.nainiuzhen.wiki.ui.recipe.RecipeListScreen
 import com.nainiuzhen.wiki.ui.settings.AboutScreen
+import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
@@ -57,6 +58,9 @@ fun AppNavHost(
         }
         entry<Route.About>(swipeDismiss = swipe) {
             AboutScreen()
+        }
+        entry<Route.License>(swipeDismiss = swipe) {
+            LicenseScreen()
         }
     }
 }
