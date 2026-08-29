@@ -1,7 +1,7 @@
 // 奶牛镇百科 · 关于子页（对照 miuix demo AboutPage 重写）
 //
 // 变更点：
-// - 用真实 app 图标（composeResources/drawable/ic_launcher.png）替换临时“奶”字。
+// - 用真实 app 图标（assets/ic_launcher.png，经 LocalSpriteRepository.getAssetImage 解码）替换临时"奶"字；不可走 composeResources(Res.*)，否则 APK 无该资源会崩溃。
 // - 标题加 textureBlur + DstIn 前景模糊，呈现 demo 同款发光/玻璃文字效果。
 // - 改用 LazyColumn + logoSpacer 实现滚动与吸附顶栏；原 Column.verticalScroll 导致整体一起滚动。
 // - 卡片使用 ColorBlendToken 玻璃混合参数，并对齐 demo 的 blurRadius/noise。
@@ -44,8 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nainiuzhen.wiki.shared.generated.resources.Res
-import com.nainiuzhen.wiki.shared.generated.resources.ic_launcher
 import com.nainiuzhen.wiki.ui.components.BlurredBar
 import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
@@ -56,7 +54,11 @@ import com.nainiuzhen.wiki.utils.APP_VERSION_CODE
 import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.showToast
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -220,6 +222,11 @@ private fun AboutContent(
     val topPadding = innerPadding.calculateTopPadding() + 120.dp
     val titleBottomGap = 40.dp
 
+    val spriteRepo = LocalSpriteRepository.current
+    val logoBitmap by produceState<ImageBitmap?>(initialValue = null, spriteRepo) {
+        value = withContext(Dispatchers.IO) { spriteRepo.getAssetImage("ic_launcher.png") }
+    }
+
     // 固定在上方的图标/标题/版本：不随列表滚动。
     Column(
         modifier = Modifier
@@ -251,7 +258,7 @@ private fun AboutContent(
                 ) {
                     Image(
                         modifier = Modifier.size(74.dp),
-                        painter = painterResource(Res.drawable.ic_launcher),
+                        bitmap = logoBitmap ?: spriteRepo.placeholder(),
                         contentDescription = null,
                     )
                 }

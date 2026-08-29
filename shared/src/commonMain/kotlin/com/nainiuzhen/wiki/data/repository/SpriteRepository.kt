@@ -56,6 +56,13 @@ class SpriteRepository(
         }
     }
 
+    /** 从 `assets/` 根读取任意 PNG 并解码为 [ImageBitmap]（如关于页 app 图标）。 */
+    fun getAssetImage(path: String): ImageBitmap = try {
+        slicer.decode(AssetLoader.loadBytes(path))
+    } catch (_: Exception) {
+        slicer.placeholder()
+    }
+
     /** 清空切片缓存（设置页「清理缓存」调用）。 */
     fun clearCache() = cache.clear()
 

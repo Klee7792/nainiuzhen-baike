@@ -44,10 +44,10 @@ data class AppState(
 )
 
 /** 应用版本展示名（与 build.ps1 的 build number 同步：build N -> v1.(N/10).(N%10)）。 */
-const val APP_VERSION_NAME = "v1.1.8"
+const val APP_VERSION_NAME = "v1.1.9"
 
 /** 应用版本号（与 build.ps1 的 build number 同步）。 */
-const val APP_VERSION_CODE = 18
+const val APP_VERSION_CODE = 19
 
 val LocalAppSettings = compositionLocalOf { AppState() }
 
