@@ -100,7 +100,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 modifier = Modifier
                                     .size(92.dp)
                                     .background(
-                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        color = MiuixTheme.colorScheme.surfaceContainerHighest,
                                         shape = RoundedCornerShape(16.dp),
                                     ),
                                 contentAlignment = Alignment.Center,
@@ -129,7 +129,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 modifier = Modifier
                                     .size(92.dp)
                                     .background(
-                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        color = MiuixTheme.colorScheme.surfaceContainerHighest,
                                         shape = RoundedCornerShape(16.dp),
                                     ),
                                 contentAlignment = Alignment.Center,
@@ -158,7 +158,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 modifier = Modifier
                                     .size(92.dp)
                                     .background(
-                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        color = MiuixTheme.colorScheme.surfaceContainerHighest,
                                         shape = RoundedCornerShape(16.dp),
                                     ),
                                 contentAlignment = Alignment.Center,

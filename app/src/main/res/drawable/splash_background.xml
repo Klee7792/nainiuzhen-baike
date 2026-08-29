@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动页背景：应用品牌绿 + 居中白色奶牛头前景。供 API < 31 的 windowBackground 使用。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item
+        android:width="96dp"
+        android:height="96dp"
+        android:gravity="center">
+        <bitmap android:src="@drawable/ic_launcher_foreground" />
+    </item>
+</layer-list>

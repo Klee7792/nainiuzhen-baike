@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Encyclopedia" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 启动主题：windowBackground 显示品牌启动图；Activity.onCreate 中切回主主题。 -->
+    <style name="Theme.Encyclopedia.Starting" parent="Theme.Encyclopedia">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
 </resources>

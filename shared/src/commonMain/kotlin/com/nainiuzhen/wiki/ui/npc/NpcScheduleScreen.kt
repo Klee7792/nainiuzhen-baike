@@ -83,6 +83,9 @@ fun NpcScheduleScreen(npcId: Int) {
     AppSubPageScaffold(
         title = "$npcName 日程",
         scrollBehavior = scrollBehavior,
+        // 日程页不接入 nestedScroll（保留展开大标题），因此渐进模糊的 alpha 无法随滚动
+        // 从 0 升到 1；强制使用高斯模糊并保持常显，使筛选区底部始终有模糊背景。
+        forceUniformBlur = true,
         navigationIcon = {
             IconButton(onClick = { navigator.pop() }) {
                 Icon(

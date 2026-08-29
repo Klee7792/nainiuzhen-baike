@@ -53,10 +53,11 @@ fun BlurredBar(
     backdrop: LayerBackdrop?,
     scrollBehavior: ScrollBehavior? = null,
     active: Boolean? = null,
+    forceUniformBlur: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val appState = LocalAppSettings.current
-    val progressive = appState.topAppBarBlurStyle == 1
+    val progressive = !forceUniformBlur && appState.topAppBarBlurStyle == 1
     val blurActive = active ?: (backdrop != null)
     val bd = backdrop
     Box(
@@ -127,11 +128,16 @@ fun AppTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     subtitle: String = "",
     largeTitleCentered: Boolean = false,
+    forceUniformBlur: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
-    BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
+    BlurredBar(
+        backdrop = backdrop,
+        scrollBehavior = scrollBehavior,
+        forceUniformBlur = forceUniformBlur,
+    ) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
         // 副标题（如列表计数「共 XX 个」）直接转发给 miuix 原生 subtitle 参数：
         // - 展开时作为大标题的第二行；largeTitleCentered=true 时整体水平居中（契合「Y 轴居中、左右对称」）；
@@ -185,6 +191,7 @@ fun AppSubPageScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     subtitle: String = "",
     largeTitleCentered: Boolean = false,
+    forceUniformBlur: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -200,6 +207,7 @@ fun AppSubPageScaffold(
                 actions = actions,
                 subtitle = subtitle,
                 largeTitleCentered = largeTitleCentered,
+                forceUniformBlur = forceUniformBlur,
                 bottomContent = bottomContent,
                 modifier = modifier,
             )

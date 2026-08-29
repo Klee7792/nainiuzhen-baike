@@ -22,6 +22,8 @@ import com.nainiuzhen.wiki.platform.AndroidSpriteSlicer
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 从启动主题切回主主题，Compose 自己接管深色/Monet 等动态主题。
+        setTheme(R.style.Theme_Encyclopedia)
         // 注入 Android Context，供 :shared 经原生 AssetManager 读取 assets/ 资源。
         AppContextHolder.init(this)
         setContent {
