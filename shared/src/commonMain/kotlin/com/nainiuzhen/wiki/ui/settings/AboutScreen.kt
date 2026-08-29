@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -257,9 +258,10 @@ private fun AboutContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
-                        modifier = Modifier.size(74.dp),
+                        modifier = Modifier.fillMaxSize(),
                         bitmap = logoBitmap ?: spriteRepo.placeholder(),
                         contentDescription = null,
+                        contentScale = ContentScale.Crop,
                     )
                 }
 
@@ -320,7 +322,7 @@ private fun AboutContent(
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = PaddingValues(
-            top = topPadding,
+            top = innerPadding.calculateTopPadding(),
             start = horizontalPadding,
             end = horizontalPadding,
             bottom = 24.dp,
@@ -330,97 +332,107 @@ private fun AboutContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(logoColumnHeightDp + titleBottomGap),
+                    .height(logoColumnHeightDp + 160.dp),
                 contentAlignment = Alignment.TopCenter,
             ) { }
         }
 
         item(key = "about") {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (backdrop != null) {
-                            Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = RoundedCornerShape(16.dp),
-                                blurRadius = 60f,
-                                noiseCoefficient = BlurDefaults.NoiseCoefficient,
-                                colors = BlurDefaults.blurColors(blendColors = cardBlend),
-                            )
-                        } else {
-                            Modifier
-                        },
-                    ),
-                colors = CardDefaults.defaultColors(
-                    color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) {
-                ArrowPreference(
-                    title = "查看源码",
-                    endActions = {
-                        Text(
-                            text = "GitHub",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        )
-                    },
-                    onClick = { showToast("还没做") },
-                )
-                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
-                ArrowPreference(
-                    title = "加入群组",
-                    endActions = {
-                        Text(
-                            text = "Telegram",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        )
-                    },
-                    onClick = { showToast("还没做") },
-                )
-            }
+            Box {
+                Spacer(Modifier.fillParentMaxHeight())
 
-            Spacer(Modifier.height(12.dp))
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (backdrop != null) {
-                            Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = RoundedCornerShape(16.dp),
-                                blurRadius = 60f,
-                                noiseCoefficient = BlurDefaults.NoiseCoefficient,
-                                colors = BlurDefaults.blurColors(blendColors = cardBlend),
-                            )
-                        } else {
-                            Modifier
-                        },
-                    ),
-                colors = CardDefaults.defaultColors(
-                    color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) {
-                ArrowPreference(
-                    title = "开源协议",
-                    endActions = {
-                        Text(
-                            text = "Apache-2.0",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                Column(
+                    modifier = Modifier.padding(bottom = 24.dp),
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (backdrop != null) {
+                                    Modifier.textureBlur(
+                                        backdrop = backdrop,
+                                        shape = RoundedCornerShape(16.dp),
+                                        blurRadius = 60f,
+                                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                        colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        colors = CardDefaults.defaultColors(
+                            color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+                            contentColor = MiuixTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        ArrowPreference(
+                            title = "查看源码",
+                            endActions = {
+                                Text(
+                                    text = "GitHub",
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                )
+                            },
+                            onClick = { showToast("还没做") },
                         )
-                    },
-                    onClick = { showToast("还没做") },
-                )
-                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
-                ArrowPreference(
-                    title = "第三方开源协议",
-                    onClick = { navigator.push(Route.License) },
-                )
+                        HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
+                        ArrowPreference(
+                            title = "加入群组",
+                            endActions = {
+                                Text(
+                                    text = "Telegram",
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                )
+                            },
+                            onClick = { showToast("还没做") },
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (backdrop != null) {
+                                    Modifier.textureBlur(
+                                        backdrop = backdrop,
+                                        shape = RoundedCornerShape(16.dp),
+                                        blurRadius = 60f,
+                                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                        colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        colors = CardDefaults.defaultColors(
+                            color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+                            contentColor = MiuixTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        ArrowPreference(
+                            title = "开源协议",
+                            endActions = {
+                                Text(
+                                    text = "Apache-2.0",
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                )
+                            },
+                            onClick = { showToast("还没做") },
+                        )
+                        HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
+                        ArrowPreference(
+                            title = "第三方开源协议",
+                            onClick = { navigator.push(Route.License) },
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                }
             }
         }
     }
