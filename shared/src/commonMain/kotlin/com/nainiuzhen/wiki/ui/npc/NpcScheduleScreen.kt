@@ -30,6 +30,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcSchedule
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.LocalAppSettings
@@ -38,6 +39,9 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -77,6 +81,8 @@ fun NpcScheduleScreen(npcId: Int) {
             s.isAstar == marriage
     }
 
+    val filterBackdrop = rememberAppBlurBackdrop()
+
     AppSubPageScaffold(
         title = "$npcName 日程",
         scrollBehavior = scrollBehavior,
@@ -95,11 +101,26 @@ fun NpcScheduleScreen(npcId: Int) {
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
         ) {
-            // 筛选区：固定，不跟随日程列表滚动。
+            // 筛选区：固定，不跟随日程列表滚动。模糊与顶栏同步（采样同一 backdrop，相同的 frosted 处理）。
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MiuixTheme.colorScheme.surface)
+                    .then(
+                        if (filterBackdrop != null) {
+                            Modifier.textureBlur(
+                                backdrop = filterBackdrop,
+                                shape = androidx.compose.ui.graphics.RectangleShape,
+                                blurRadius = 25f,
+                                colors = BlurDefaults.blurColors(
+                                    blendColors = listOf(
+                                        BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.8f)),
+                                    ),
+                                ),
+                            )
+                        } else {
+                            Modifier.background(MiuixTheme.colorScheme.surface)
+                        },
+                    )
                     .padding(horizontal = 12.dp),
             ) {
                 RequiredFilterRow(

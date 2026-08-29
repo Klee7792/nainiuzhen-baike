@@ -132,14 +132,21 @@ fun RecipeListScreen() {
             horizontalArrangement = Arrangement.spacedBy(gap),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
+                // 左对齐，与下方搜索框/网格左边缘(12.dp)对齐；收起（无搜索词）时纵向间距最小
                 Text(
                     text = "共 ${filtered.size} 个配方",
                     style = MiuixTheme.textStyles.body2,
+                    textAlign = TextAlign.Start,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MiuixTheme.colorScheme.surface)
-                        .padding(vertical = 4.dp),
+                        .padding(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 4.dp,
+                            bottom = if (query.isBlank()) 2.dp else 4.dp,
+                        ),
                 )
             }
             items(filtered, key = { it.id }) { recipe ->

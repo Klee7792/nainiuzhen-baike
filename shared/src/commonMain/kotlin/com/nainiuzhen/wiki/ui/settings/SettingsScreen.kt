@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.nav.Route
+import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -163,14 +164,14 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 if (appState.useFloatingNavigationBar) {
                     OverlayDropdownPreference(
-                        items = listOf("Miuix", "iOS-like"),
+                        items = listOf("Miuix", "iOS"),
                         selectedIndex = appState.floatingNavigationBarStyle,
                         title = "悬浮底栏样式",
                         onSelectedIndexChange = {
                             updateAppState(appState.copy(floatingNavigationBarStyle = it))
                         },
                     )
-                    // iOS-like 样式下不提供 Position 选项（与 miuix demo 一致）。
+                    // iOS 样式下不提供 Position 选项（与 miuix demo 一致）。
                     if (appState.floatingNavigationBarStyle == 0) {
                         OverlayDropdownPreference(
                             items = listOf("中心", "开始", "结束"),
@@ -216,7 +217,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 BasicComponent(
                     title = "版本",
-                    summary = "v1.0.9 ($version)",
+                    summary = "$APP_VERSION_NAME ($version)",
                 )
                 ArrowPreference(
                     title = "关于",

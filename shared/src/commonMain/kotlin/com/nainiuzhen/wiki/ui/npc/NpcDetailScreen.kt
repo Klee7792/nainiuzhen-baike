@@ -36,9 +36,12 @@ import com.nainiuzhen.wiki.ui.nav.Route
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -111,11 +114,11 @@ private fun NpcDetailDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 640.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             header()
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(4.dp))
             // 中部可滚动内容：有限高度收敛 OverlayDialog 的 Infinity 约束，避免 verticalScroll 崩溃。
             Column(
                 modifier = Modifier
@@ -145,7 +148,7 @@ private fun NpcDetailHeader(npc: NpcInfo) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         NpcPortraitImage(
             npcId = npc.id,
@@ -171,11 +174,29 @@ private fun NpcDetailHeader(npc: NpcInfo) {
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
-            Text(
-                text = "好感 max：${npc.maxStar} 心",
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
+            // 好感 max：[max 图标] N 心 [空格] [max 图标]
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.FavoritesFill,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB300),
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = "${npc.maxStar} 心",
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Icon(
+                    imageVector = MiuixIcons.FavoritesFill,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB300),
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }
@@ -227,7 +248,17 @@ private fun FavorSection(
     val items = ids.mapNotNull { id -> if (id != 0) data.itemById(id) else null }
     if (items.isEmpty()) return
     Spacer(Modifier.size(8.dp))
-    SmallTitle(text = title, textColor = color)
+    Column {
+        SmallTitle(text = title, textColor = color)
+        // 标题下加同色下划线
+        HorizontalDivider(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp),
+            thickness = 1.dp,
+            color = color.copy(alpha = 0.5f),
+        )
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         ItemCardRow(
             items = items,

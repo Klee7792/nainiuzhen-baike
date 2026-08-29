@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,9 +55,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.components.AppTopAppBar
+import com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar
 import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
 import com.nainiuzhen.wiki.utils.LocalAppSettings
@@ -69,6 +72,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -116,36 +120,55 @@ fun MainScreen() {
         },
         bottomBar = {
             if (appState.showNavigationBar) {
-                val homeSelected = currentPage == 0
-                val settingsSelected = currentPage == 1
-                val badge: (@Composable () -> Unit)? =
-                    if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null
+                val isIos = appState.floatingNavigationBarStyle == 1
+                val navItems = listOf(
+                    NavigationItem(label = "主页", icon = MiuixIcons.Home),
+                    NavigationItem(label = "设置", icon = MiuixIcons.Settings),
+                )
+                val onNavClick: (Int) -> Unit = { index ->
+                    scope.launch { pagerState.animateScrollToPage(index) }
+                }
+                val badgeProvider: (Int) -> (@Composable () -> Unit)? =
+                    { if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null }
+
                 if (appState.useFloatingNavigationBar) {
-                    AppFloatingNavigationBar(
-                        backdrop = backdrop,
-                        isIosLike = appState.floatingNavigationBarStyle == 1,
-                        horizontalAlignment = when (appState.floatingNavigationBarPosition) {
-                            1 -> Alignment.Start
-                            2 -> Alignment.End
-                            else -> Alignment.CenterHorizontally
-                        },
-                        items = listOf(
-                            AppNavItem(
-                                label = "主页",
-                                icon = MiuixIcons.Home,
-                                selected = homeSelected,
-                                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                                badge = badge,
+                    if (isIos) {
+                        // iOS 液态玻璃底栏：折射 / 高光 / 按住拖动切换 / 选中果冻弹跳（移植自 miuix demo）
+                        IosLiquidGlassNavigationBar(
+                            items = navItems,
+                            selectedIndex = currentPage,
+                            onItemClick = onNavClick,
+                            backdrop = backdrop,
+                            isBlurActive = backdrop != null,
+                            badge = badgeProvider,
+                        )
+                    } else {
+                        AppFloatingNavigationBar(
+                            backdrop = backdrop,
+                            isIos = false,
+                            horizontalAlignment = when (appState.floatingNavigationBarPosition) {
+                                1 -> Alignment.Start
+                                2 -> Alignment.End
+                                else -> Alignment.CenterHorizontally
+                            },
+                            items = listOf(
+                                AppNavItem(
+                                    label = "主页",
+                                    icon = MiuixIcons.Home,
+                                    selected = currentPage == 0,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                                    badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
+                                ),
+                                AppNavItem(
+                                    label = "设置",
+                                    icon = MiuixIcons.Settings,
+                                    selected = currentPage == 1,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+                                    badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
+                                ),
                             ),
-                            AppNavItem(
-                                label = "设置",
-                                icon = MiuixIcons.Settings,
-                                selected = settingsSelected,
-                                onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                                badge = badge,
-                            ),
-                        ),
-                    )
+                        )
+                    }
                 } else {
                     // 非悬浮底栏：把 mode 真正传给 NavigationBar，修复"仅图标/选中显示文字"无效问题
                     val mode = NavigationBarDisplayMode.entries.getOrElse(
@@ -153,18 +176,18 @@ fun MainScreen() {
                     ) { NavigationBarDisplayMode.IconAndText }
                     NavigationBar(mode = mode) {
                         NavigationBarItem(
-                            selected = homeSelected,
+                            selected = currentPage == 0,
                             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
                             icon = MiuixIcons.Home,
                             label = "主页",
-                            badge = badge,
+                            badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
                         )
                         NavigationBarItem(
-                            selected = settingsSelected,
+                            selected = currentPage == 1,
                             onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
                             icon = MiuixIcons.Settings,
                             label = "设置",
-                            badge = badge,
+                            badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
                         )
                     }
                 }
@@ -241,10 +264,12 @@ fun MainScreen() {
 
 @Composable
 private fun NavigationBadgeDot() {
+    // 红色角标，置于 icon 右上角外侧，不遮挡图标本体
     Box(
         modifier = Modifier
             .size(8.dp)
-            .background(MiuixTheme.colorScheme.primary, CircleShape),
+            .offset { IntOffset(6.dp.roundToPx(), (-6).dp.roundToPx()) }
+            .background(MiuixTheme.colorScheme.error, CircleShape),
     )
 }
 
@@ -264,30 +289,31 @@ private const val UNSELECTED_ALPHA: Float = 0.55f
 
 /**
  * 应用悬浮底栏：替代 miuix `FloatingNavigationBar` 以支持背景模糊与 iOS-like 样式。
- * - 默认（[isIosLike] = false）：胶囊形（cornerRadius=50dp），仅图标 + 角标；开启模糊时背景采样 [backdrop] 形成毛玻璃。
- * - iOS-like（[isIosLike] = true）：圆角矩形（cornerRadius=28dp），图标 + 文字，等宽 items；同样支持模糊。
+ * - 默认（[isIos] = false）：胶囊形（cornerRadius=50dp），仅图标 + 角标；开启模糊时背景采样 [backdrop] 形成毛玻璃。
+ * - iOS（[isIos] = true）：使用 [com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar] 液态玻璃底栏（折射 / 高光 / 按住拖动切换 / 选中果冻弹跳）。
  */
 @Composable
 private fun AppFloatingNavigationBar(
     backdrop: LayerBackdrop?,
-    isIosLike: Boolean,
+    isIos: Boolean,
     horizontalAlignment: Alignment.Horizontal,
     items: List<AppNavItem>,
 ) {
     val blurSupported = isRuntimeShaderSupported()
     val showBlur = backdrop != null && blurSupported
-    val shape = if (isIosLike) RoundedCornerShape(28.dp) else RoundedCornerShape(50.dp)
-    val barColor = MiuixTheme.colorScheme.surfaceContainer
-    val translucent = barColor.copy(alpha = if (showBlur) 0.55f else 1f)
+    val shape = if (isIos) RoundedCornerShape(28.dp) else RoundedCornerShape(50.dp)
+    // 浅色主题下 surfaceContainer 偏灰易显"污渍"，改用 surface 基色并提高模糊不透明度，使底栏更干净
+    val barColor = MiuixTheme.colorScheme.surface
+    val translucent = barColor.copy(alpha = if (showBlur) 0.9f else 1f)
     val blurPx = with(LocalDensity.current) { 25.dp.toPx() }
-    val hOutSide = if (isIosLike) 24.dp else 36.dp
+    val hOutSide = if (isIos) 24.dp else 36.dp
     val navBarBottomPadding = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom)
         .asPaddingValues()
         .calculateBottomPadding()
     val bottomInset = if (navBarBottomPadding > 0.dp) 26.dp + navBarBottomPadding else 36.dp
-    val minHeight = if (isIosLike) 56.dp else 52.dp
-    val innerHPadding = if (isIosLike) 8.dp else 12.dp
+    val minHeight = if (isIos) 56.dp else 52.dp
+    val innerHPadding = if (isIos) 8.dp else 12.dp
 
     Column(
         modifier = Modifier
@@ -325,13 +351,13 @@ private fun AppFloatingNavigationBar(
                 .pointerInput(Unit) {
                     detectTapGestures { /* 消费空白处点击，避免穿透到下层内容 */ }
                 },
-            horizontalArrangement = if (isIosLike) Arrangement.SpaceEvenly else Arrangement.spacedBy(12.dp),
+            horizontalArrangement = if (isIos) Arrangement.SpaceEvenly else Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEach { item ->
                 val baseColor = MiuixTheme.colorScheme.onSurfaceContainer
                 val tint = if (item.selected) baseColor else baseColor.copy(alpha = UNSELECTED_ALPHA)
-                if (isIosLike) {
+                if (isIos) {
                     // iOS-like：图标 + 文字，等宽
                     Column(
                         modifier = Modifier

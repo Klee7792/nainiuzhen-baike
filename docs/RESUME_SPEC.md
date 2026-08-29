@@ -107,3 +107,33 @@
 
 - 全部改动一次性提交（含 §1 修正、§2 删除、§3 新建），commit message 形如 `feat(ui): 补齐物品/配方/NPC 三板块页面与 MainActivity，修正切片 rotated 与 loveItemId 语义`。
 - 不单独提交，避免碎片化；提交后报告 commit hash。
+
+---
+
+## 6. 附录：版本演进与当前实现状态（v1.0.10 / build-10）
+
+> 本 RESUME_SPEC 为限流恢复初期（2026-08-28）的「补齐 UI」规格；以下记录相对本规格的实际落地偏差与 v8/v9 关键修复，便于后续接手工程师对齐最新状态。版本号约定：`vN ↔ 1.0.N ↔ build-N`，当前最新 **v1.0.10 / build-10**（常量 `APP_VERSION_NAME` 位于 `utils/AppState.kt`）。
+
+### 6.1 与原规格的关键偏差（已实现）
+1. **资源读取：从 `composeResources/files/` 改为 Android 原生 `assets/`**（build #2 修复）。
+   - 原规格 §0 假设 `Res.readBytes("files/...")`。实测 CMP composeResources 资源**不会合并进纯 Android 的 `:app`** → 真机 `MissingResourceException` 闪退。
+   - 现状：`AssetLoader` 经 `expect fun readAssetBytes(path)`，Android 侧 `PlatformAssetReader` 用 `AssetManager.open(path)`；121 个文件复制到 `app/src/main/assets/`。（`shared/.../composeResources/files/` 为冗余死数据。）
+2. **切片加载改为异步（启动变慢排查 #1）**：`SpriteImage`/`NpcPortraitImage`/`StarImage` 原在 `remember` 中**同步**取图（主线程切片）；现改为 `produceState` + `withContext(Dispatchers.IO)` 异步取图，先占位后替换。
+3. **底栏方案**：`floatingNavigationBarStyle` 0=Miuix / 1=iOS。iOS 风格移植自 miuix demo `LiquidGlassNavigationBar`（液态玻璃：折射 / 高光 / 按住拖动切换 / 选中果冻弹跳 / 多一圈层级），位于 `ui/components/liquid/`（package 改为 `com.nainiuzhen.wiki.ui.components.liquid`）。角标默认关闭、启用时红色且置于 icon 右上角外侧。
+4. **富文本解析修正（build #9）**：繁荣度「不带字号」格式 `/#颜色#内容/#` 修复正确区分。语法：`/#RRGGBB#内容/#`（无字号）与 `/#RRGGBB#SIZE#内容/#`（SIZE=sp）。
+5. **关于页闪退修复（build #10）**：去除 `AboutScreen` 内层 `BgEffectBackground` 对同一个 backdrop 的重复 `layerBackdrop` 录制（重入异常）；仅保留外层 `Box` 的 `layerBackdrop`。需真机验证。
+6. **NPC dialog**：顶栏立绘 120%（144.dp）；好感 max 改为 `[★] N 心 [★]`（`MiuixIcons.FavoritesFill`）；最爱/喜欢/讨厌标题加同色下划线；弹窗内距最小化；按钮对称（`fillMaxWidth(0.49f)`）。
+7. **日程筛选区模糊同步顶栏**：筛选区由纯 `surface` 改为采样同一 backdrop 的 `textureBlur`。
+8. **物品/配方计数左对齐**：`TextAlign.Start` + 与搜索框/网格同 12.dp 左对齐；收起（无搜索词）时无额外间距。
+
+### 6.2 工程 / 工具链现状
+- **Gradle**：AGP 9.3.2 要求 **Gradle ≥ 9.5**，工程用 **Gradle 9.6.1**（原规格 §4 提到的 8.9 已不可用）。miuix 复合构建根 `D:/1Project/nainiuzhen-wiki/miuix`。
+- **缓存版本标记**：`version.txt`（整数，由 `AndroidSpriteCacheManager.currentVersion()` 提供），非 `BuildConfig.VERSION_CODE`。
+- **出包**：`tools/build.ps1` 递增 `builds/build_number.txt` → 双包 → git commit + `build-N` tag。
+- **入口**：`MainActivity` 注入切片器/缓存器 → `App(...)`；`App.kt` 的 `AppRoot` 在 `LaunchedEffect` 中以 `Dispatchers.IO` 执行 `loadAll`，进程存活复用 `cachedLoadedData`。
+
+### 6.3 待确认
+- 关于页闪退修复靠代码审查定位，需真机验证（必要时抓 logcat）。
+- 日程筛选「从婚姻筛选下开始」的渐进模糊细节需结合真机截图最终确认。
+- 实际文件命名已演进（见 `ARCHITECTURE.md` §13.3），以工程实际文件为准。
+

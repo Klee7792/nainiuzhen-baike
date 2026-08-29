@@ -41,6 +41,7 @@ import com.nainiuzhen.wiki.ui.components.BlurredBar
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.settings.about.BgEffectBackground
+import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -144,6 +145,8 @@ fun AboutScreen() {
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         ) {
             // OS3 动态背景（滚动时淡出）
+            // 注意：不要在这里再套一层 layerBackdrop(backdrop) —— 外层 Box 已经在录制同一份
+            // backdrop，重复录制会触发 miuix 的 backdrop 重入异常，导致进入本页闪退（bug-v9 #4）。
             BgEffectBackground(
                 dynamicBackground = true,
                 isDark = isDark,
@@ -151,7 +154,6 @@ fun AboutScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(logoAlpha),
-                bgModifier = Modifier.layerBackdrop(backdrop),
             ) {}
 
             // 纯色背景（滚动时淡入，覆盖 OS3 → 顶栏显纯色）
@@ -200,7 +202,7 @@ fun AboutScreen() {
                     )
                     Spacer(Modifier.height(20.dp))
                     Text(
-                        text = "版本 v1.0.8 (${sprite.currentVersion()})",
+                        text = "版本 $APP_VERSION_NAME (${sprite.currentVersion()})",
                         fontSize = 14.sp,
                         color = Color.White.copy(alpha = 0.85f),
                     )
@@ -237,7 +239,7 @@ fun AboutScreen() {
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "版本 v1.0.8 (${sprite.currentVersion()})",
+                                text = "版本 $APP_VERSION_NAME (${sprite.currentVersion()})",
                                 style = MiuixTheme.textStyles.body2,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             )

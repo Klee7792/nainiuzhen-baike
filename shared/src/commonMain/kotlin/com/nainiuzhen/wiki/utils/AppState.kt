@@ -29,7 +29,7 @@ data class AppState(
     val showTopAppBar: Boolean = true, // Show TopAppBar
     val topAppBarBlurStyle: Int = 0, // TopAppBar Blur Style (0=Gaussian 1=Progressive)
     val showNavigationBar: Boolean = true, // Show NavigationBar
-    val showNavigationBadge: Boolean = true, // Show Navigation Badge
+    val showNavigationBadge: Boolean = false, // Show Navigation Badge（默认关闭，避免遮住底栏 icon）
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
     val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
@@ -39,9 +39,12 @@ data class AppState(
     val enableDim: Boolean = false, // Enable Dim
     val blockInputDuringTransition: Boolean = false, // Block Input During Transition
     // —— v6 新增 ——
-    val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS-like)
+    val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
 )
+
+/** 应用版本展示名（与 build.ps1 的 build number 同步；vN ↔ 1.0.N ↔ build-N）。 */
+const val APP_VERSION_NAME = "v1.0.10"
 
 val LocalAppSettings = compositionLocalOf { AppState() }
 

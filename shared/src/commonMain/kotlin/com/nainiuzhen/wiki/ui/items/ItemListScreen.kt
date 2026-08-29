@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -158,15 +157,15 @@ private fun ItemListBottomContent(
     onQueryChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // 左对齐，与下方搜索框左边缘对齐；收起（无搜索词）时不留额外间距
         Text(
             text = "共 $count 个物品",
             fontSize = 12.sp,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier
                 .fillMaxWidth()
-                .offset(y = (-6).dp)
-                .padding(bottom = 2.dp),
+                .padding(start = 12.dp, bottom = if (query.isBlank()) 0.dp else 2.dp),
         )
         TextField(
             value = query,

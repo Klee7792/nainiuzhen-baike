@@ -39,6 +39,9 @@ class SpriteRepository(
         slicer.placeholder()
     }
 
+    /** 占位图（透明 1x1）。供 [SpriteImage] 等组件在异步取图完成前显示。 */
+    fun placeholder(): ImageBitmap = slicer.placeholder()
+
     /** 取星级图（1=白 / 2=金 / 其它=紫）。 */
     fun getStarImage(level: Int): ImageBitmap {
         val name = when (level) {

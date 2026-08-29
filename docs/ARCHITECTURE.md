@@ -637,3 +637,38 @@ graph TD
 - **图集较大**：23 张 items 图集 + plist，首装解析/索引构建一次性完成并缓存 `atlas_index.json`；逐帧**懒切片 + 缓存**，启动不卡。
 - **dexopt**：`assets/dexopt/*.prof|*.profm` 为 Android ART Baseline Profile，与本项目无关，无需处理。
 - **严格 miuix 风格**：所有自定义组件（菜单卡/顶栏/分类栏/dialog）均基于 miuix 原生组件二次封装，不引入第三方 UI 库，确保设计语言一致。
+
+---
+
+## 13. 附录：版本演进与当前实现状态（v1.0.10 / build-10）
+
+> 本文档为立项初期（v1.0，2025-08）的规划；以下记录相对原方案的实际落地偏差与 v8/v9 关键修复，便于后续接手工程师对齐最新状态。版本号约定：`vN ↔ 1.0.N ↔ build-N`，当前最新 **v1.0.10 / build-10**（常量 `APP_VERSION_NAME` 位于 `utils/AppState.kt`）。
+
+### 13.1 与原方案的关键偏差（已实现，覆盖原描述）
+1. **资源读取：从 `composeResources/files/` 改为 Android 原生 `assets/`**（build #2 修复）。
+   - 原方案：CMP `Res.readBytes("files/...")`。实测 `:shared` 经 composeResources 的资源**不会合并进纯 Android 的 `:app` 消费者** → 真机 `MissingResourceException` 闪退（APK 内 `composeResources` 条目数为 0）。
+   - 现状：`AssetLoader` 经 `expect fun readAssetBytes(path)`，Android 侧 `PlatformAssetReader` 用 `AssetManager.open(path)` 读取；121 个文件复制到 `app/src/main/assets/`。（`composeResources/files/` 为冗余死数据。）
+2. **切片加载改为异步（启动变慢排查 #1）**。
+   - 旧实现：`SpriteImage` 在 `remember` 中**同步**调用 `sprite.getImage()`，切片/解码在主线程；版本号变更触发全量重切时首屏严重卡顿。
+   - 现状：`SpriteImage` / `NpcPortraitImage` / `StarImage` 均用 `produceState` + `withContext(Dispatchers.IO)` 异步取图，先占位后替换，主线程不再被切片阻塞。（同一 sheet 的逐帧重复解码仍为次要性能项，未做 sheet 级缓存以避免 OOM。）
+3. **底栏方案（悬浮模式）**：`floatingNavigationBarStyle` 0=Miuix / 1=iOS。
+   - iOS 风格移植自 miuix demo 的 `LiquidGlassNavigationBar`（液态玻璃：折射 / 高光 / 按住拖动切换 / 选中果冻弹跳 / 多一圈层级），位于 `ui/components/liquid/`（5 个文件：DampedDragAnimation / InteractiveHighlight / CombinedBackdrop / InnerShadow / IosLiquidGlassNavigationBar，package 改为 `com.nainiuzhen.wiki.ui.components.liquid`，仅把 demo 的 `ui.isInDarkTheme()` 替换为 Compose `isSystemInDarkTheme()`）。
+   - Miuix 风格悬浮底栏改为 `surface` 基色 + 0.9 模糊不透明度，修正浅色主题偏黑「污渍」观感。
+   - 角标默认关闭（`showNavigationBadge=false`）；启用时为红色（`MiuixTheme.colorScheme.error`）并置于 icon 右上角外侧不遮挡。
+4. **富文本解析修正（build #9）**：繁荣度等「不带字号」格式 `/#颜色#内容/#` 此前被误判为字号，已修复 `RichTextParser` 区分「有/无字号」两种形态。语法：`/#RRGGBB#内容/#`（无字号）与 `/#RRGGBB#SIZE#内容/#`（SIZE=sp）。
+5. **关于页闪退修复（build #10）**：`AboutScreen` 外层 `Box` 已 `layerBackdrop`，内层 `BgEffectBackground` 又传 `layerBackdrop` 导致同一 backdrop 重入录制异常；已去除内层嵌套的 `layerBackdrop`，仅保留外层。
+6. **NPC dialog**：顶栏立绘放大至 120%（144.dp）；好感 max 改为 `[★] N 心 [★]`（max 图标 = `MiuixIcons.FavoritesFill`）；最爱/喜欢/讨厌分区标题加同色下划线；弹窗内距最小化。按钮已对称（`fillMaxWidth(0.49f)`）。
+7. **日程筛选区模糊同步顶栏**（build #10）：筛选区由纯 `surface` 改为采样同一 backdrop 的 `textureBlur` 处理，与顶栏模糊一致。
+8. **物品/配方计数左对齐**：计数文本 `TextAlign.Start` 并与搜索框/网格同 12.dp 左对齐；收起（无搜索词）时不留额外间距。
+
+### 13.2 工程 / 工具链现状（与原 §7 / §12 偏差）
+- **Gradle**：AGP 9.3.2 要求 **Gradle ≥ 9.5**，工程使用 **Gradle 9.6.1**（原文档写的 8.9 已不可用，会报 `Minimum supported Gradle version is 9.5.0`）。miuix 复合构建根：`D:/1Project/nainiuzhen-wiki/miuix`（`settings.gradle.kts` 中 `includeBuild`）。
+- **缓存版本标记**：存 `version.txt`（整数版本号，由 `AndroidSpriteCacheManager.currentVersion()` 提供），**非** `BuildConfig.VERSION_CODE`。版本不符 → 删 `sprites/` 重切。
+- **出包**：`tools/build.ps1` 递增 `builds/build_number.txt` → 双包（release+debug）→ git commit + `build-N` tag。
+- **启动流程**：`App.kt` 的 `AppRoot` 在 `LaunchedEffect` 中以 `Dispatchers.IO` 执行 `AssetManager.loadAll`；进程存活时复用 `cachedLoadedData`，避免后台回前台重加载。
+
+### 13.3 待确认 / 已知坑
+- 关于页闪退修复已靠代码审查定位，需真机验证（必要时抓 logcat）。
+- 日程筛选「从婚姻筛选下开始」的渐进模糊细节需结合真机截图最终确认。
+- 文件命名已演进：`ItemListScreen`/`RecipeListScreen`/`NpcListScreen`/`NpcDetailScreen`/`NpcScheduleScreen`/`AppSubPageScaffold`/`AboutScreen` 等，与本文档第 3 节规划名（`ItemDialog`/`RecipeDialog`/`CollapsibleTopBar`/`CategoryChipBar` 等）不完全一致，以工程实际文件为准。
+

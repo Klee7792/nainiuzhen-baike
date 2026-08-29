@@ -130,7 +130,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         summary = "村民喜好与日程安排",
                         startContent = {
                             randomNpc?.let {
-                                NpcPortraitImage(npcId = it.id, modifier = Modifier.size(76.dp))
+                                NpcPortraitImage(npcId = it.id, modifier = Modifier.size(92.dp))
                             }
                         },
                         onClick = { navigator.push(Route.NpcList) },
