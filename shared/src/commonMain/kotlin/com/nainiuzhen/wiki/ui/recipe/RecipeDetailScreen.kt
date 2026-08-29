@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.RecipeInfo
@@ -86,7 +87,7 @@ private fun RecipeDetailBody(
     // 仅作为本次组合内的顺序标记（不用 remember：每次重组都必须从 false 重新开始）。
     var hasSectionAbove = false
 
-    // 1. 名称区（无售价）
+    // 1. 名称区（无售价）：相当于「顶栏区」，其下方不加分割线
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -106,61 +107,51 @@ private fun RecipeDetailBody(
         }
     }
 
-    // 2. 描述区：高度按内容行数自适应（不再限制 8 行、不再内部滚动）
-    if (!recipe.descRaw.isNullOrBlank()) {
-        Spacer(Modifier.size(8.dp))
-        RichText(
-            raw = recipe.descRaw,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        hasSectionAbove = true
-    }
-
-    // 3. 解锁方式（与具体解锁条件同一行，可换行；主题强调色）
-    if (!recipe.deblockingDesc.isNullOrBlank()) {
-        if (hasSectionAbove) {
-            SectionDivider()
-        } else {
-            Spacer(Modifier.size(10.dp))
-        }
-        SmallTitle(text = "解锁方式")
-        Text(
-            text = recipe.deblockingDesc,
-            style = MiuixTheme.textStyles.body2,
-            color = MiuixTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        hasSectionAbove = true
-    }
-
-    // 4. 原料区
+    // 2. 原料区
     if (recipe.materials.isNotEmpty()) {
-        if (hasSectionAbove) {
-            SectionDivider()
-        } else {
-            Spacer(Modifier.size(10.dp))
-        }
+        if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
         SmallTitle(text = "原料")
         val mats = recipe.materials.map { data.itemById(it.id) to it.num }
-        MaterialCardRow(
-            items = mats,
-            onItemClick = onItemClick,
-        )
+        MaterialCardRow(items = mats, onItemClick = onItemClick)
         hasSectionAbove = true
     }
 
-    // 5. 产物区（按钮区上方不加分割线）
-    if (hasSectionAbove) {
-        SectionDivider()
-    } else {
-        Spacer(Modifier.size(10.dp))
-    }
+    // 3. 产物区
+    if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
     SmallTitle(text = "产物")
     val product = data.itemById(recipe.target)
-    MaterialCardRow(
-        items = listOf(product to recipe.targetNum),
-        onItemClick = onItemClick,
-    )
+    MaterialCardRow(items = listOf(product to recipe.targetNum), onItemClick = onItemClick)
+    hasSectionAbove = true
+
+    // 4. 解锁方式：标签 + 内容「一行」左右分区（内容超长自动换行），主题强调色
+    if (!recipe.deblockingDesc.isNullOrBlank()) {
+        if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "解锁方式",
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = recipe.deblockingDesc,
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        hasSectionAbove = true
+    }
+
+    // 5. 描述区：移到解锁区下面，高度按内容行数自适应
+    if (!recipe.descRaw.isNullOrBlank()) {
+        if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
+        RichText(raw = recipe.descRaw, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 /**

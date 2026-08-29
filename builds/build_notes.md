@@ -7,3 +7,4 @@
 - #4  2026-08-28 02:52  fix: crash(root cause Infinity-scroll)+CCW sprite rotation+settings persistence+bottom-bar 2 tabs+PRD item/recipe dialogs+NPC 3-col grid+6-block detail+schedule married/unmarried filter+timeline
 - #5  2026-08-28 14:39  v5: 色彩模式6态+Monet开关+14开关+关于页; 主页3白卡; 物品6列方形; 星价卡片; 配方/NPC弹窗改版; 切后台重载修复(cachedLoadedData); 包名com.nainiuzhen.wiki
 - #6  2026-08-28 20:17  build #6: v6 bug fixes - resolve 6 compile errors + feature work from bug.txt
+- #8  2026-08-29 10:26  v8 bug-v7改进: 启动页深色+进度条; 悬浮底栏对齐demo; 版本1.0.8; 关于页滚动显隐顶栏; NPC放大恢复+详情重排+过滤空区; 配方dialog角标+解锁左右分区; 筛选统一小胶囊; 顶栏模糊Bottom+搜索栏不透明; 计数间距紧凑

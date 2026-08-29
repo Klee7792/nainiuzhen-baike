@@ -111,11 +111,11 @@ private fun NpcDetailDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 640.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             header()
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(8.dp))
             // 中部可滚动内容：有限高度收敛 OverlayDialog 的 Infinity 约束，避免 verticalScroll 崩溃。
             Column(
                 modifier = Modifier
@@ -180,7 +180,7 @@ private fun NpcDetailHeader(npc: NpcInfo) {
     }
 }
 
-/** 弹窗可滚动主体：身份故事（自适应高度）+ 分割线 + 最爱 / 喜欢 / 讨厌。 */
+/** 弹窗可滚动主体：最爱 / 喜欢 / 讨厌（无内容分区省略）→ 分割线 → 人物介绍（移到底部）。 */
 @Composable
 private fun NpcDetailBody(
     npc: NpcInfo,
@@ -188,28 +188,33 @@ private fun NpcDetailBody(
 ) {
     val data = LocalDataRepository.current
 
-    // 背景故事：按内容自适应，不再固定高度与虚化。
+    // 最爱 / 喜欢 / 讨厌（分区内部已过滤 id=0 与不存在物品；分区无内容则整体省略）
+    FavorSection(title = "最爱", color = FAVOR_COLORS["最爱"]!!, ids = npc.bestFavorItems, data = data, onItemClick = onItemClick)
+    FavorSection(title = "喜欢", color = FAVOR_COLORS["喜欢"]!!, ids = npc.likeItems, data = data, onItemClick = onItemClick)
+    FavorSection(title = "讨厌", color = FAVOR_COLORS["讨厌"]!!, ids = npc.hateItems, data = data, onItemClick = onItemClick)
+
+    // 人物介绍移到最爱/喜欢/讨厌下面：仅当至少一个分区有内容时，上方加 80% 分割线
+    if (hasAnyFavor(npc)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(vertical = 12.dp),
+        ) {
+            HorizontalDivider(modifier = Modifier.fillMaxWidth())
+        }
+    }
+    // 人物介绍（背景故事）：按内容自适应，不再固定高度与虚化。
     RichText(
         raw = npc.descRaw,
         modifier = Modifier.fillMaxWidth(),
     )
-
-    // 身份故事区 与 物品偏好区 之间的 80% 分割线。
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(0.8f)
-            .padding(vertical = 12.dp),
-    ) {
-        HorizontalDivider(modifier = Modifier.fillMaxWidth())
-    }
-
-    // 最爱 / 喜欢 / 讨厌
-    FavorSection(title = "最爱", color = FAVOR_COLORS["最爱"]!!, ids = npc.bestFavorItems, data = data, onItemClick = onItemClick)
-    FavorSection(title = "喜欢", color = FAVOR_COLORS["喜欢"]!!, ids = npc.likeItems, data = data, onItemClick = onItemClick)
-    FavorSection(title = "讨厌", color = FAVOR_COLORS["讨厌"]!!, ids = npc.hateItems, data = data, onItemClick = onItemClick)
 }
 
-/** 物品列表分区（最爱 / 喜欢 / 讨厌）：标题恒显并区分色；内容为空时保留最小高度。 */
+/** 任一偏好分区是否存在有效物品（id≠0 且物品存在）。 */
+private fun hasAnyFavor(npc: NpcInfo): Boolean =
+    npc.bestFavorItems.any { it != 0 } || npc.likeItems.any { it != 0 } || npc.hateItems.any { it != 0 }
+
+/** 物品列表分区（最爱 / 喜欢 / 讨厌）：标题区分色；分区无有效物品时整体省略不显示。 */
 @Composable
 private fun FavorSection(
     title: String,
@@ -218,29 +223,17 @@ private fun FavorSection(
     data: DataRepository,
     onItemClick: (ItemInfo) -> Unit,
 ) {
+    // 过滤：物品 ID=0（配置文件占位）或不存在的物品
+    val items = ids.mapNotNull { id -> if (id != 0) data.itemById(id) else null }
+    if (items.isEmpty()) return
     Spacer(Modifier.size(8.dp))
     SmallTitle(text = title, textColor = color)
     Card(modifier = Modifier.fillMaxWidth()) {
-        if (ids.isNotEmpty()) {
-            ItemCardRow(
-                items = ids.map { data.itemById(it) },
-                modifier = Modifier.padding(12.dp),
-                onItemClick = onItemClick,
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "（无）",
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
-        }
+        ItemCardRow(
+            items = items,
+            modifier = Modifier.padding(12.dp),
+            onItemClick = onItemClick,
+        )
     }
 }
 

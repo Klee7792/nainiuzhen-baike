@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.RecipeInfo
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
@@ -138,7 +139,7 @@ fun RecipeListScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MiuixTheme.colorScheme.surface)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                 )
             }
             items(filtered, key = { it.id }) { recipe ->
@@ -146,7 +147,7 @@ fun RecipeListScreen() {
             }
         }
         RecipeDetailScreen(recipe = selected, onDismissRequest = { selected = null })
-        FilterOptionsDialog(
+        FilterChipDialog(
             show = showFilter,
             onDismissRequest = { showFilter = false },
             title = "筛选类型",

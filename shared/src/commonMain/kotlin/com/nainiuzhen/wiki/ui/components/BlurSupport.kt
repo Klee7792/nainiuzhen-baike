@@ -49,15 +49,17 @@ fun rememberAppBlurBackdrop(): LayerBackdrop? {
 fun BlurredBar(
     backdrop: LayerBackdrop?,
     scrollBehavior: ScrollBehavior? = null,
+    active: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
     val appState = LocalAppSettings.current
     val progressive = appState.topAppBarBlurStyle == 1
-    val blurActive = backdrop != null
+    val blurActive = active ?: (backdrop != null)
+    val bd = backdrop
     Box(
-        modifier = if (blurActive && !progressive) {
+        modifier = if (blurActive && !progressive && bd != null) {
             Modifier.textureBlur(
-                backdrop = backdrop,
+                backdrop = bd,
                 shape = RectangleShape,
                 blurRadius = 25f,
                 colors = BlurDefaults.blurColors(
@@ -70,19 +72,23 @@ fun BlurredBar(
             Modifier
         },
     ) {
-        if (blurActive && progressive) {
+        if (blurActive && progressive && bd != null) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .graphicsLayer {
-                        alpha = scrollBehavior?.state
-                            ?.let { (-it.contentOffset / 48.dp.toPx()).coerceIn(0f, 1f) }
-                            ?: 1f
+                        alpha = if (active != null) {
+                            if (active) 1f else 0f
+                        } else {
+                            scrollBehavior?.state
+                                ?.let { (-it.contentOffset / 48.dp.toPx()).coerceIn(0f, 1f) }
+                                ?: 1f
+                        }
                     }
                     .progressiveTextureBlur(
-                        backdrop = backdrop,
+                        backdrop = bd,
                         shape = RectangleShape,
-                        gradient = ProgressiveBlur.Top.copy(curve = 2.2f),
+                        gradient = ProgressiveBlur.Bottom.copy(curve = 2.2f),
                         blurRadius = 10f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(

@@ -279,8 +279,8 @@ private fun AppFloatingNavigationBar(
     val shape = if (isIosLike) RoundedCornerShape(28.dp) else RoundedCornerShape(50.dp)
     val barColor = MiuixTheme.colorScheme.surfaceContainer
     val translucent = barColor.copy(alpha = if (showBlur) 0.55f else 1f)
-    val blurPx = with(LocalDensity.current) { 20.dp.toPx() }
-    val hOutSide = if (isIosLike) 28.dp else 36.dp
+    val blurPx = with(LocalDensity.current) { 25.dp.toPx() }
+    val hOutSide = if (isIosLike) 24.dp else 36.dp
     val navBarBottomPadding = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom)
         .asPaddingValues()

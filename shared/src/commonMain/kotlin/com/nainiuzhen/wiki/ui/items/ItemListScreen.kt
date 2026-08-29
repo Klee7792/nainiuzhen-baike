@@ -1,17 +1,14 @@
 package com.nainiuzhen.wiki.ui.items
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,8 +16,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
@@ -49,15 +44,8 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-
-/** 筛选胶囊间距（横向与纵向一致，视觉更整齐）。 */
-private val FILTER_CHIP_SPACING = 8.dp
-
-/** 筛选弹窗内容区最大高度（收敛 [OverlayDialog] 的 Infinity 约束，pit #1）。 */
-private val FILTER_DIALOG_MAX_HEIGHT = 600.dp
 
 /**
  * 物品大全列表：6 列正方形网格（方块=切片素材，下方一行 11sp 名称，超出可横向滚动）。
@@ -177,8 +165,8 @@ private fun ItemListBottomContent(
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier
                 .fillMaxWidth()
-                .offset(y = (-2).dp)
-                .padding(bottom = 4.dp),
+                .offset(y = (-6).dp)
+                .padding(bottom = 2.dp),
         )
         TextField(
             value = query,
@@ -192,107 +180,6 @@ private fun ItemListBottomContent(
     }
 }
 
-/**
- * 类别筛选弹窗（胶囊多选，v7）：每个类别一个小胶囊，横向依次排布，到行尾自动换行（[FlowRow]）；
- * 末尾追加「重置」红字胶囊，点击清空全部勾选。
- *
- * 物品类别数量较多（> 10），按 v6 规则使用胶囊形态（区别于配方 / NPC 两种「偏好行」形态）。
- *
- * 根容器 `heightIn(max = [FILTER_DIALOG_MAX_HEIGHT])` 收敛 [OverlayDialog] 的 `Infinity` 约束
- * （pit #1），嵌套的 `verticalScroll` 才能正常测量。
- *
- * @param show 是否显示。
- * @param onDismissRequest 关闭回调。
- * @param title 标题（如「筛选类别」）。
- * @param options 全部可选项（类别 / 类型标签）。
- * @param selected 当前已选集合（空 = 全部）。
- * @param onSelectedChange 选中集合变化回调（即时过滤）。
- */
-@Composable
-private fun FilterChipDialog(
-    show: Boolean,
-    onDismissRequest: () -> Unit,
-    title: String,
-    options: List<String>,
-    selected: Set<String>,
-    onSelectedChange: (Set<String>) -> Unit,
-) {
-    OverlayDialog(
-        show = show,
-        onDismissRequest = onDismissRequest,
-        title = title,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = FILTER_DIALOG_MAX_HEIGHT)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(FILTER_CHIP_SPACING),
-                verticalArrangement = Arrangement.spacedBy(FILTER_CHIP_SPACING),
-            ) {
-                options.forEach { option ->
-                    val isSelected = option in selected
-                    FilterChip(
-                        text = option,
-                        selected = isSelected,
-                        onClick = {
-                            onSelectedChange(if (isSelected) selected - option else selected + option)
-                        },
-                    )
-                }
-                FilterChip(
-                    text = "重置",
-                    selected = false,
-                    errorText = true,
-                    onClick = { onSelectedChange(emptySet()) },
-                )
-            }
-        }
-    }
-}
-
-/**
- * 单个筛选胶囊：未选中用次要容器底色 + 常规文字色，选中用主题色底 + 反色文字；
- * [errorText] 为 true 时文字用错误色（用于「重置」）。
- */
-@Composable
-private fun FilterChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    errorText: Boolean = false,
-) {
-    val backgroundColor = if (selected) {
-        MiuixTheme.colorScheme.primary
-    } else {
-        MiuixTheme.colorScheme.secondaryContainer
-    }
-    val contentColor = when {
-        errorText -> MiuixTheme.colorScheme.error
-        selected -> MiuixTheme.colorScheme.onPrimary
-        else -> MiuixTheme.colorScheme.onSurface
-    }
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            color = contentColor,
-            maxLines = 1,
-        )
-    }
-}
 
 /** 单个物品方块：正方形切片 + 名称（11sp，超出宽度横向滚动）。 */
 @Composable

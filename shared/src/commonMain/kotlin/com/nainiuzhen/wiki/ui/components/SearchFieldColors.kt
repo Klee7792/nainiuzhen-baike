@@ -25,9 +25,12 @@ fun searchFieldColors(): TextFieldColors {
     val appState = LocalAppSettings.current
     val blurActive = appState.enableBlur && isRuntimeShaderSupported()
     val backgroundColor = MiuixTheme.colorScheme.secondaryContainer
+    // 渐进模糊时，顶栏模糊在搜索栏（顶栏底部）处最弱，搜索框自身若太透明会"几乎全透明"；
+    // 因此渐进模糊下提高搜索框底色不透明度，保证可读且看起来是磨砂实条（bug-v7 #8）。
+    val progressive = appState.topAppBarBlurStyle == 1
     return TextFieldDefaults.textFieldColors(
         backgroundColor = if (blurActive) {
-            backgroundColor.copy(alpha = SEARCH_FIELD_BLUR_ALPHA)
+            backgroundColor.copy(alpha = if (progressive) 0.7f else SEARCH_FIELD_BLUR_ALPHA)
         } else {
             backgroundColor
         },

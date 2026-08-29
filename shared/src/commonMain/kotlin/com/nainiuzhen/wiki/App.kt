@@ -1,7 +1,18 @@
 package com.nainiuzhen.wiki
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -14,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.AssetManager
 import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
@@ -29,6 +42,7 @@ import com.nainiuzhen.wiki.utils.AppState
 import com.nainiuzhen.wiki.utils.AppSettingsStore
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
@@ -117,7 +131,42 @@ private fun AppRoot(
 
 @Composable
 private fun LoadingScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "加载中…", color = MiuixTheme.colorScheme.onBackground)
+    // 适配深色模式：以主题背景色铺底，跟随色彩模式（#139 / bug-v7 #1）
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MiuixTheme.colorScheme.background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            // 上方图标：512 方形源图，圆角显示（此处以主题色圆角方块 + 文字作为占位 Logo）
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(MiuixTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "牛",
+                    fontSize = 56.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MiuixTheme.colorScheme.onPrimary,
+                )
+            }
+            Spacer(Modifier.height(28.dp))
+            // 进度条：宽 100% 内间距，xy 居中
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            // 加载中文字在进度条下方
+            Text(text = "加载中…", color = MiuixTheme.colorScheme.onBackground)
+        }
     }
 }
