@@ -10,3 +10,4 @@
 - #8  2026-08-29 10:26  v8 bug-v7改进: 启动页深色+进度条; 悬浮底栏对齐demo; 版本1.0.8; 关于页滚动显隐顶栏; NPC放大恢复+详情重排+过滤空区; 配方dialog角标+解锁左右分区; 筛选统一小胶囊; 顶栏模糊Bottom+搜索栏不透明; 计数间距紧凑
 - #9  2026-08-29 10:34  v9 bugfix: 富文本繁荣度(数字无字号)误判为字号导致整段降级纯文本; 修复/#颜色#数字/#解析; 版本1.0.9
 - #10  2026-08-29 12:33  bug-v9: wire iOS liquid-glass bottom bar + red top-right badge; item/recipe count left-aligned; NPC dialog favor-max icon/underline/padding; schedule filter blur synced with topbar; SpriteImage async decode (startup speedup); About screen nested layerBackdrop crash fix; docs updated to v1.0.10
+- #11  2026-08-29 13:10  bug-v10: 修复关于页点击闪退——根因 AboutScreen 外层大Box的 layerBackdrop(backdrop) 把消费方 Text.textureBlur(backdrop) 包入录制子树，导致 RenderThread 上 RenderEffect 无限递归 SIGSEGV 栈溢出；改为把 layerBackdrop 经 bgModifier 只录制 BgEffectBackground 背景层，前景 Text 作为兄弟节点消费同一 backdrop

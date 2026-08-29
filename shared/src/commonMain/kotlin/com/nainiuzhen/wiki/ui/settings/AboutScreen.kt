@@ -141,12 +141,12 @@ fun AboutScreen() {
     ) { innerPadding ->
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
+                .fillMaxSize(),
         ) {
             // OS3 动态背景（滚动时淡出）
-            // 注意：不要在这里再套一层 layerBackdrop(backdrop) —— 外层 Box 已经在录制同一份
-            // backdrop，重复录制会触发 miuix 的 backdrop 重入异常，导致进入本页闪退（bug-v9 #4）。
+            // 正确用法：把 layerBackdrop 通过 bgModifier 交给 BgEffectBackground 内部的背景层
+            // 录制，前景 Text 的 textureBlur 作为兄弟节点消费同一份 backdrop —— 录制方与消费方
+            // 不嵌套，避免 RenderThread 上 RenderEffect 无限递归导致栈溢出闪退（v10 崩溃根因）。
             BgEffectBackground(
                 dynamicBackground = true,
                 isDark = isDark,
@@ -154,6 +154,7 @@ fun AboutScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(logoAlpha),
+                bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
             ) {}
 
             // 纯色背景（滚动时淡入，覆盖 OS3 → 顶栏显纯色）
