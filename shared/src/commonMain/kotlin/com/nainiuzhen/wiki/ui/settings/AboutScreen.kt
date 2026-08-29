@@ -14,12 +14,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -115,33 +118,39 @@ fun AboutScreen() {
                 )
             }
         },
-    ) { _ ->
-        // 底层实色 surface：OS3 背景(alpha→0)淡出后露出，即「上拉变纯色」的普通列表页。
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(surface)
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
+    ) { innerPadding ->
+        // 背景层全屏化：向状态栏方向偏移 topInset、并把高度补成整屏，
+        // 使 OS3 背景延伸到状态栏（修复「状态栏白色填充」）；前景内容仍受 innerPadding 约束。
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
         ) {
+            val fullHeight = maxHeight + innerPadding.calculateTopPadding() + innerPadding.calculateBottomPadding()
+            Box(
+                modifier = Modifier
+                    .offset(y = -innerPadding.calculateTopPadding())
+                    .fillMaxWidth()
+                    .requiredHeight(fullHeight)
+                    .background(surface),
+            ) {
             BgEffectBackground(
                 dynamicBackground = true,
                 isDark = isDark,
                 surface = surface,
                 modifier = Modifier.fillMaxSize(),
-                // 修复 v15 闪退：BgEffectBackground 内部不要再套 layerBackdrop，因为外层 Box
-                // 已经通过 .layerBackdrop(backdrop) 捕获整屏内容；内层再套同一个 backdrop 会导致
-                // LayerBackdropNode 在录制中尝试 beginRecording 第二次，抛出
-                // "Recording currently in progress - missing #endRecording() call"。
-                // 本页前景没有需要采样背景的模糊 Text，去掉内层 layerBackdrop 不影响样式。
-                bgModifier = Modifier,
+                // 修复「关于」页原生崩溃（RenderThread SIGSEGV / 栈溢出）：backdrop 只由本背景层
+                // Spacer 用 layerBackdrop 捕获一次；前景 content（含 textureBlur 卡片）是 Spacer 的
+                // 兄弟节点而非子节点 → 采样器不在捕获录制范围内，切断 MiBackgroundBlurBlend 的
+                // prepareTreeImpl 无限递归。外层 Box 不再 layerBackdrop（否则子孙卡片采样同一
+                // backdrop 会触发死循环）。单 capture，也不会像 v15 那样双重 beginRecording。
+                bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
                 alpha = { 1f - scrollProgressProvider() },
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(top = 96.dp, bottom = 24.dp)
-                        .padding(horizontal = 24.dp),
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(top = innerPadding.calculateTopPadding() + 96.dp, bottom = 24.dp)
+                    .padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top,
                 ) {
@@ -215,8 +224,9 @@ fun AboutScreen() {
                 }
             }
         }
+        }
+        }
     }
-}
 
 @Composable
 private fun AboutCard(

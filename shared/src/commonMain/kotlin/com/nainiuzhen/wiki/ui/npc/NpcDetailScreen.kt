@@ -116,11 +116,11 @@ private fun NpcDetailDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 640.dp)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             header()
-            Spacer(Modifier.size(4.dp))
+            Spacer(Modifier.size(2.dp))
             // 中部可滚动内容：有限高度收敛 OverlayDialog 的 Infinity 约束，避免 verticalScroll 崩溃。
             Column(
                 modifier = Modifier
@@ -176,26 +176,20 @@ private fun NpcDetailHeader(npc: NpcInfo) {
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
-            // 好感 max：[max 图标] N 心 [空格] [max 图标]
+            // 好感 max：以「好感：N」+ 红色矢量心图标呈现（替代橙色双心与 emoji）。
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    imageVector = MiuixIcons.FavoritesFill,
-                    contentDescription = null,
-                    tint = Color(0xFFFFB300),
-                    modifier = Modifier.size(14.dp),
-                )
                 Text(
-                    text = "${npc.maxStar} 心",
+                    text = "好感：${npc.maxStar}",
                     style = MiuixTheme.textStyles.body2,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
                 Icon(
                     imageVector = MiuixIcons.FavoritesFill,
                     contentDescription = null,
-                    tint = Color(0xFFFFB300),
+                    tint = Color(0xFFE53935),
                     modifier = Modifier.size(14.dp),
                 )
             }

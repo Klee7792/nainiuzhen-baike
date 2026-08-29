@@ -16,3 +16,4 @@
 - #14  2026-08-29 14:51  v14: 复刻 miuix demo 关于子页面布局(背景/图标/标题/版本/双卡片四条目); 条目点击 Toast 还没做; 增加 APP_VERSION_CODE 并随 build 同步
 - #15  2026-08-29 15:24  v15: 关于页四个条目卡片加textureBlur毛玻璃; 滚动上拉变纯色列表页/下拉恢复OS3(搬自demo); 新增第三方开源协议子页License; 关于页返回箭头移入顶栏可点击返回; 物品/配方计数改用miuix原生subtitle跟随标题(展开左对齐/收起居中/标题不偏移)
 - #16  2026-08-29 16:14  v16: 修复关于页进入时闪退（去嵌套 layerBackdrop）; 物品/配方计数 subtitle 字号减小为12sp并中心对齐; 底栏角标默认值改为 false
+- #17  2026-08-29 20:37  状态栏一致性: 渐进模糊改ProgressiveBlur.Top延伸状态栏 + 关于页OS3背景延伸状态栏 + 修复#16关于页layerBackdrop递归闪退; 悬浮底栏miuix风格对齐demo(textureBlur+玻璃描边)与iOS风格恢复lens折射; 主页3板块图标加surfaceContainer圆角底托; NPC详情好感改红心矢量+顶栏边距收紧; 配方详情数量角标去胶囊缩字号; 物品/配方计数对照v15居中

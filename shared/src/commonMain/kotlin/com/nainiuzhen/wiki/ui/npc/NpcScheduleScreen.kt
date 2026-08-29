@@ -26,22 +26,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcSchedule
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
-import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurDefaults
-import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -55,9 +51,12 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  *
  * 日程区：左侧开始时间列 + 右侧名称（大字，仅显示 `|` 后的实际日程）+ 起止场景箭头（小字 `start → end`）。
  *
- * v7 变更（变更点 #36 / #42）:
- * 1. 筛选区固定在顶栏下方，仅日程列表可滚动；筛选区自身滚动不再带动顶栏折叠。
- * 2. 保留顶栏模糊与滚动到末尾震动开关。
+ * 交互约定（对齐「3 板块搜索栏」）：
+ * 1. 筛选区放入顶栏 `bottomContent`，与顶栏同处一个磨砂容器：模糊效果止于筛选区底边
+ *    （等价于物品/配方/NPC 列表的搜索框底部边框），下方日程滚到顶栏下方即被模糊采样。
+ * 2. 日程列表**不接入** `nestedScroll`，因此滚动只会让内容在筛选区下方区域移动，
+ *    **不会**连带把展开态大标题收起为小标题；内容未超出屏幕则不滚动，超出才滚动。
+ * 3. 不再对筛选区自身叠加 `textureBlur`（避免自引用采样），统一由顶栏磨砂层负责。
  */
 @Composable
 fun NpcScheduleScreen(npcId: Int) {
@@ -81,8 +80,6 @@ fun NpcScheduleScreen(npcId: Int) {
             s.isAstar == marriage
     }
 
-    val filterBackdrop = rememberAppBlurBackdrop()
-
     AppSubPageScaffold(
         title = "$npcName 日程",
         scrollBehavior = scrollBehavior,
@@ -95,33 +92,15 @@ fun NpcScheduleScreen(npcId: Int) {
                 )
             }
         },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
-        ) {
-            // 筛选区：固定，不跟随日程列表滚动。模糊与顶栏同步（采样同一 backdrop，相同的 frosted 处理）。
+        // 筛选区：放入顶栏 bottomContent，与顶栏同处一个磨砂容器。
+        // 模糊效果止于筛选区底边（底部细分割线标记该边界），下方日程滚到此处即被模糊。
+        // 下方日程列表不接入 nestedScroll，滚动不会收起大标题。
+        bottomContent = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(
-                        if (filterBackdrop != null) {
-                            Modifier.textureBlur(
-                                backdrop = filterBackdrop,
-                                shape = androidx.compose.ui.graphics.RectangleShape,
-                                blurRadius = 25f,
-                                colors = BlurDefaults.blurColors(
-                                    blendColors = listOf(
-                                        BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.8f)),
-                                    ),
-                                ),
-                            )
-                        } else {
-                            Modifier.background(MiuixTheme.colorScheme.surface)
-                        },
-                    )
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 4.dp, bottom = 8.dp),
             ) {
                 RequiredFilterRow(
                     label = "星期",
@@ -148,35 +127,42 @@ fun NpcScheduleScreen(npcId: Int) {
                     selected = marriage,
                     onSelect = { marriage = it },
                 )
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MiuixTheme.colorScheme.dividerLine,
+                )
             }
-            // 日程区：超出高度时仅本区域滚动，并负责顶栏的 nested scroll 折叠。
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-                contentPadding = PaddingValues(bottom = 12.dp),
-            ) {
-                if (filtered.isEmpty()) {
-                    item(key = "empty") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "当前筛选无匹配日程",
-                                style = MiuixTheme.textStyles.body2,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
-                        }
+        },
+    ) { innerPadding ->
+        // 日程区：充满剩余空间。不接入 nestedScroll，因此滚动只在本区域内发生，
+        // 不会连带收起大标题。内容未超出屏幕高度则不滚动，超出才滚动。
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                bottom = 12.dp,
+            ),
+        ) {
+            if (filtered.isEmpty()) {
+                item(key = "empty") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "当前筛选无匹配日程",
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
                     }
                 }
-                items(filtered, key = { it.id }) { s ->
-                    ScheduleEntry(schedule = s)
-                }
+            }
+            items(filtered, key = { it.id }) { s ->
+                ScheduleEntry(schedule = s)
             }
         }
     }

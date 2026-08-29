@@ -62,8 +62,9 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  * - 搜索框跟随顶栏模糊（[searchFieldColors]）：搜索框属于顶栏的 `bottomContent`，与顶栏同处
  *   一个模糊容器内，顶栏模糊已覆盖该区域；这里只把输入框自身背景改为半透明，让顶栏的模糊
  *   透出来。复用顶栏同一份 backdrop，**不再额外 capture 一层内容**，避免每帧多一次整屏图层记录。
- * - 「共 xx 个物品」计数从网格首项（卡片滚动即消失）改为顶栏 `bottomContent` 的固定行：
- *   居中、12sp，并整体上移 2dp 贴紧标题。
+ * - 「共 xx 个物品」计数走 miuix 原生 `subtitle`：展开时作为大标题第二行，且 `largeTitleCentered=true`
+ *   使标题与计数整体水平居中（契合「Y 轴居中、左右对称」）；收起时由 miuix 原生 smallSubtitle 居中，
+ *   与展开态保持一致、滚动无横向跳变。不再进 `bottomContent`。
  */
 @Composable
 fun ItemListScreen() {
@@ -84,6 +85,7 @@ fun ItemListScreen() {
 
     AppSubPageScaffold(
         title = "物品大全",
+        largeTitleCentered = true,
         scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = { navigator.pop() }) {
@@ -145,10 +147,10 @@ fun ItemListScreen() {
 }
 
 /**
- * 顶栏 `bottomContent`：上方「共 xx 个物品」计数（居中、12sp、整体上移 2dp），下方搜索框。
+ * 顶栏 `bottomContent`：仅搜索框。
  *
- * 计数置于此处而非网格首项，保证卡片滚动时始终可见。
- * 搜索框配色统一走 [searchFieldColors]，与配方 / NPC 两个板块保持一致。
+ * 「共 xx 个物品」计数已改为标题正下方的独立 overlay（见 [AppTopAppBar]），
+ * 此处只保留搜索框，配色统一走 [searchFieldColors]，与配方 / NPC 两个板块保持一致。
  */
 @Composable
 private fun ItemListBottomContent(

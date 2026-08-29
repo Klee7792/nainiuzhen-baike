@@ -7,15 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextAlign
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
@@ -94,7 +91,9 @@ fun BlurredBar(
                     .progressiveTextureBlur(
                         backdrop = bd,
                         shape = RectangleShape,
-                        gradient = ProgressiveBlur.Bottom.copy(curve = 2.2f),
+                        // Top：模糊在顶部（状态栏）最强、向下渐隐——既保留「渐进」观感，
+                        // 又让状态栏区域有完整模糊（Bottom 会在状态栏处渐隐到 0 → 透明，是 bug 根因）。
+                        gradient = ProgressiveBlur.Top.copy(curve = 2.2f),
                         blurRadius = 10f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(
@@ -115,6 +114,7 @@ fun BlurredBar(
  * @param scrollBehavior 滚动行为。
  * @param largeTitle 非 null 时使用 [TopAppBar]（初始显示左侧大标题，滚动后切换居中标题）；
  *   为 null 时使用 [SmallTopAppBar]。
+ * @param largeTitleCentered 仅对大标题模式生效：展开态将大标题与副标题整体水平居中（默认 false，居左）。
  */
 @Composable
 fun AppTopAppBar(
@@ -126,54 +126,39 @@ fun AppTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     subtitle: String = "",
+    largeTitleCentered: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
-    // 计数副标题（"共 XX 个物品 / 个配方"）自行渲染为顶栏 bottomContent 的固定行：
-    // - 12sp（比 miuix 原生 subtitle 的 14sp 小一号，恢复 v7 字号），居中显示，与标题中心线对齐；
-    // - 顶栏展开 / 收起均居中，标题位置完全不受影响；
-    // - 位于搜索框之上。不再转发给 miuix 原生 subtitle（其字号固定 14sp 且展开态左对齐，
-    //   无法满足"减小一号 + 居中"），改回 v7 的呈现方式。
-    val mergedBottomContent: @Composable () -> Unit = {
-        if (subtitle.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-        bottomContent()
-    }
     BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
+        // 副标题（如列表计数「共 XX 个」）直接转发给 miuix 原生 subtitle 参数：
+        // - 展开时作为大标题的第二行；largeTitleCentered=true 时整体水平居中（契合「Y 轴居中、左右对称」）；
+        // - 收起时由 miuix 原生 smallSubtitle 居中显示（本就居中，无需额外处理）；
+        // - 搜索框等仍走 bottomContent，位于副标题之下。
         if (largeTitle != null) {
             TopAppBar(
                 title = title,
                 largeTitle = largeTitle,
+                largeTitleCentered = largeTitleCentered,
+                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = mergedBottomContent,
+                bottomContent = bottomContent,
                 modifier = modifier,
             )
         } else {
             SmallTopAppBar(
                 title = title,
+                subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = mergedBottomContent,
+                bottomContent = bottomContent,
                 modifier = modifier,
             )
         }
@@ -187,16 +172,19 @@ fun AppTopAppBar(
  * 调用方需自行创建并持有 [scrollBehavior]，并把它同时传给本脚手架与内部可滚动容器的
  * `nestedScroll(scrollBehavior.nestedScrollConnection)`，以使顶栏随内容滚动折叠。
  *
+ * @param largeTitleCentered 透传给 [AppTopAppBar]：展开态大标题+计数是否水平居中（默认 false）。
  * @param content 内容区 lambda，接收 [PaddingValues]（顶栏占位）。
  */
 @Composable
 fun AppSubPageScaffold(
     title: String,
+    largeTitle: String? = title,
     scrollBehavior: ScrollBehavior,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     subtitle: String = "",
+    largeTitleCentered: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -205,12 +193,13 @@ fun AppSubPageScaffold(
         topBar = {
             AppTopAppBar(
                 title = title,
-                largeTitle = title,
+                largeTitle = largeTitle,
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
                 navigationIcon = navigationIcon,
                 actions = actions,
                 subtitle = subtitle,
+                largeTitleCentered = largeTitleCentered,
                 bottomContent = bottomContent,
                 modifier = modifier,
             )

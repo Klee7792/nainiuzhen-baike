@@ -83,6 +83,7 @@ fun RecipeListScreen() {
 
     AppSubPageScaffold(
         title = "配方查询",
+        largeTitleCentered = true,
         scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = { navigator.pop() }) {

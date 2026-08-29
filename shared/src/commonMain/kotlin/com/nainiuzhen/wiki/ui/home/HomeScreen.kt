@@ -1,5 +1,6 @@
 package com.nainiuzhen.wiki.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.utils.OnResumeEffect
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * 主页内容区（底栏第 1 页「主页」的主体，无自身顶栏/底栏，由 [MainScreen] 包裹）。
@@ -94,7 +97,12 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         summary = "查询全部物品资料",
                         startContent = {
                             Box(
-                                modifier = Modifier.size(92.dp),
+                                modifier = Modifier
+                                    .size(92.dp)
+                                    .background(
+                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        shape = RoundedCornerShape(16.dp),
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 firstItem?.let {
@@ -118,7 +126,12 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         summary = "图纸与菜谱制作指引",
                         startContent = {
                             Box(
-                                modifier = Modifier.size(92.dp),
+                                modifier = Modifier
+                                    .size(92.dp)
+                                    .background(
+                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        shape = RoundedCornerShape(16.dp),
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 firstRecipe?.let {
@@ -142,7 +155,12 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         summary = "村民喜好与日程安排",
                         startContent = {
                             Box(
-                                modifier = Modifier.size(92.dp),
+                                modifier = Modifier
+                                    .size(92.dp)
+                                    .background(
+                                        color = MiuixTheme.colorScheme.surfaceContainer,
+                                        shape = RoundedCornerShape(16.dp),
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 randomNpc?.let {

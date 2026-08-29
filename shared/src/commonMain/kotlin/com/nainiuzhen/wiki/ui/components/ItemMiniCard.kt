@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -55,15 +54,13 @@ fun ItemMiniCard(
                 modifier = Modifier.size(48.dp),
             )
             if (num != null) {
-                // 数量角标：显示在图片上层、右对齐下对齐（右下角），带主题色底便于阅读
+                // 数量角标：显示在图片上层、右对齐下对齐（右下角），无胶囊底、字号更小
                 Text(
                     text = "×$num",
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     textAlign = TextAlign.Center,
-                    color = MiuixTheme.colorScheme.onPrimary,
-                    modifier = Modifier
-                        .background(MiuixTheme.colorScheme.primary, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                    color = MiuixTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 1.dp),
                 )
             }
         }

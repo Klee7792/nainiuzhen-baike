@@ -6,9 +6,9 @@
 //   即使「显示底栏」关闭，pager 仍挂在内容区，滑动照样可用。
 // - 底栏模式修复：把 LocalNavigationBarDisplayMode 从内容区搬到 NavigationBar
 //   的 `mode` 参数，使「仅图标 / 选中显示文字」真正生效。
-// - 悬浮底栏：自绘 AppFloatingNavigationBar（miuix 默认 = 模糊胶囊，
-//   iOS-like = 模糊圆角 + 图标+文字），通过 miuix drawBackdrop 加模糊，
-//   不再依赖 miuix FloatingNavigationBar 的纯色背景。
+// - 悬浮底栏：miuix 默认风格直接复用 miuix 内置 FloatingNavigationBar + textureBlur
+//   （surfaceContainer.copy(0.6f) 混合色 + GlassStrokeMiddleLight 玻璃描边），浅色模式不再像白底污渍；
+//   iOS-like 走 IosLiquidGlassNavigationBar 液态玻璃底栏。
 // - 切页时重置 MiuixScrollBehavior 的 heightOffset / contentOffset，使顶栏
 //   在新页面回到展开状态。
 
@@ -16,6 +16,7 @@ package com.nainiuzhen.wiki.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,10 +48,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -67,7 +66,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
+import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
+import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.FloatingToolbar
+import top.yukonga.miuix.kmp.basic.FloatingToolbarDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
@@ -76,11 +78,12 @@ import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.blur
-import top.yukonga.miuix.kmp.blur.drawBackdrop
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.blur.highlight.Highlight
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Add
@@ -143,31 +146,53 @@ fun MainScreen() {
                             badge = badgeProvider,
                         )
                     } else {
-                        AppFloatingNavigationBar(
-                            backdrop = backdrop,
-                            isIos = false,
+                        // miuix 风格悬浮底栏：对齐 miuix demo——内置 FloatingNavigationBar + textureBlur
+                        // （surfaceContainer.copy(0.6f) 混合色 + GlassStrokeMiddleLight 玻璃描边），
+                        // blur 激活时 color=Transparent 让毛玻璃透出，浅色模式不再像白底污渍。
+                        val blurActive = backdrop != null
+                        val floatingBarColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
+                        val floatingBarShape = RoundedCornerShape(FloatingToolbarDefaults.CornerRadius)
+                        val isBarDark = when (appState.colorMode) {
+                            0 -> isSystemInDarkTheme()
+                            1 -> true
+                            else -> false
+                        }
+                        val floatingHighlight = remember(isBarDark) {
+                            if (isBarDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
+                        }
+                        FloatingNavigationBar(
+                            modifier = if (blurActive) {
+                                Modifier.textureBlur(
+                                    backdrop = backdrop,
+                                    shape = floatingBarShape,
+                                    blurRadius = 25f,
+                                    colors = BlurDefaults.blurColors(
+                                        blendColors = listOf(
+                                            BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                                        ),
+                                    ),
+                                    highlight = floatingHighlight,
+                                )
+                            } else {
+                                Modifier
+                            },
+                            color = floatingBarColor,
                             horizontalAlignment = when (appState.floatingNavigationBarPosition) {
                                 1 -> Alignment.Start
                                 2 -> Alignment.End
                                 else -> Alignment.CenterHorizontally
                             },
-                            items = listOf(
-                                AppNavItem(
-                                    label = "主页",
-                                    icon = MiuixIcons.Home,
-                                    selected = currentPage == 0,
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                                    badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
-                                ),
-                                AppNavItem(
-                                    label = "设置",
-                                    icon = MiuixIcons.Settings,
-                                    selected = currentPage == 1,
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                                    badge = if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null,
-                                ),
-                            ),
-                        )
+                        ) {
+                            navItems.forEachIndexed { index, item ->
+                                FloatingNavigationBarItem(
+                                    selected = currentPage == index,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                    icon = item.icon,
+                                    label = item.label,
+                                    badge = badgeProvider(index),
+                                )
+                            }
+                        }
                     }
                 } else {
                     // 非悬浮底栏：把 mode 真正传给 NavigationBar，修复"仅图标/选中显示文字"无效问题
@@ -273,147 +298,3 @@ private fun NavigationBadgeDot() {
     )
 }
 
-// —— 悬浮底栏（自绘，支持 miuix 默认风格 + 模糊 / iOS-like 风格）——
-
-/** 悬浮底栏条目。 */
-private data class AppNavItem(
-    val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val selected: Boolean,
-    val onClick: () -> Unit,
-    val badge: (@Composable () -> Unit)? = null,
-)
-
-/** 未选中图标 / 文字的透明度。 */
-private const val UNSELECTED_ALPHA: Float = 0.55f
-
-/**
- * 应用悬浮底栏：替代 miuix `FloatingNavigationBar` 以支持背景模糊与 iOS-like 样式。
- * - 默认（[isIos] = false）：胶囊形（cornerRadius=50dp），仅图标 + 角标；开启模糊时背景采样 [backdrop] 形成毛玻璃。
- * - iOS（[isIos] = true）：使用 [com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar] 液态玻璃底栏（折射 / 高光 / 按住拖动切换 / 选中果冻弹跳）。
- */
-@Composable
-private fun AppFloatingNavigationBar(
-    backdrop: LayerBackdrop?,
-    isIos: Boolean,
-    horizontalAlignment: Alignment.Horizontal,
-    items: List<AppNavItem>,
-) {
-    val blurSupported = isRuntimeShaderSupported()
-    val showBlur = backdrop != null && blurSupported
-    val shape = if (isIos) RoundedCornerShape(28.dp) else RoundedCornerShape(50.dp)
-    // 浅色主题下 surfaceContainer 偏灰易显"污渍"，改用 surface 基色并提高模糊不透明度，使底栏更干净
-    val barColor = MiuixTheme.colorScheme.surface
-    val translucent = barColor.copy(alpha = if (showBlur) 0.9f else 1f)
-    val blurPx = with(LocalDensity.current) { 25.dp.toPx() }
-    val hOutSide = if (isIos) 24.dp else 36.dp
-    val navBarBottomPadding = WindowInsets.navigationBars
-        .only(WindowInsetsSides.Bottom)
-        .asPaddingValues()
-        .calculateBottomPadding()
-    val bottomInset = if (navBarBottomPadding > 0.dp) 26.dp + navBarBottomPadding else 36.dp
-    val minHeight = if (isIos) 56.dp else 52.dp
-    val innerHPadding = if (isIos) 8.dp else 12.dp
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = if (horizontalAlignment == Alignment.Start) hOutSide else 0.dp,
-                end = if (horizontalAlignment == Alignment.End) hOutSide else 0.dp,
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .selectableGroup()
-                .padding(bottom = bottomInset)
-                .defaultMinSize(minHeight = minHeight)
-                .then(
-                    if (backdrop != null && blurSupported) {
-                        Modifier.drawBackdrop(
-                            backdrop = backdrop,
-                            shape = { shape },
-                            effects = {
-                                blur(blurPx, blurPx)
-                            },
-                            onDrawSurface = { drawRect(translucent) },
-                        )
-                    } else {
-                        Modifier.background(translucent, shape)
-                    },
-                )
-                .dropShadow(
-                    shape = shape,
-                    shadow = Shadow(radius = 10.dp, color = Color.Black, alpha = 0.2f),
-                )
-                .padding(horizontal = innerHPadding)
-                .align(horizontalAlignment)
-                .pointerInput(Unit) {
-                    detectTapGestures { /* 消费空白处点击，避免穿透到下层内容 */ }
-                },
-            horizontalArrangement = if (isIos) Arrangement.SpaceEvenly else Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            items.forEach { item ->
-                val baseColor = MiuixTheme.colorScheme.onSurfaceContainer
-                val tint = if (item.selected) baseColor else baseColor.copy(alpha = UNSELECTED_ALPHA)
-                if (isIos) {
-                    // iOS-like：图标 + 文字，等宽
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .selectable(
-                                selected = item.selected,
-                                onClick = item.onClick,
-                                role = Role.Tab,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            )
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        BadgedBox(badge = { item.badge?.invoke() }) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                tint = tint,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = item.label,
-                            fontSize = 11.sp,
-                            fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = tint,
-                            maxLines = 1,
-                        )
-                    }
-                } else {
-                    // 默认：仅图标 + 角标，content-sized（胶囊视觉）
-                    Column(
-                        modifier = Modifier
-                            .selectable(
-                                selected = item.selected,
-                                onClick = item.onClick,
-                                role = Role.Tab,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            )
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        BadgedBox(badge = { item.badge?.invoke() }) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                tint = tint,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
