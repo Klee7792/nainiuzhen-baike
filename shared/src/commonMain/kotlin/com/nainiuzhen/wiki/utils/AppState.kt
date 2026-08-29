@@ -4,32 +4,32 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
- * å…¨å±€åº”ç”¨è®¾ç½®çŠ¶æ€ã€‚ç”± [com.nainiuzhen.wiki.App] æŒæœ‰å¹¶é€šè¿‡ CompositionLocal ä¸‹å‘ï¼›
- * è®¾ç½®é¡µï¼ˆ[com.nainiuzhen.wiki.ui.settings.SettingsScreen]ï¼‰é€šè¿‡
- * [LocalUpdateAppSettings] ä¿®æ”¹ï¼Œå¹¶ç»ç”± [com.nainiuzhen.wiki.utils.AppSettingsStore] è½ç›˜ã€‚
+ * È«¾ÖÓ¦ÓÃÉèÖÃ×´Ì¬¡£ÓÉ [com.nainiuzhen.wiki.App] ³ÖÓĞ²¢Í¨¹ı CompositionLocal ÏÂ·¢£»
+ * ÉèÖÃÒ³£¨[com.nainiuzhen.wiki.ui.settings.SettingsScreen]£©Í¨¹ı
+ * [LocalUpdateAppSettings] ĞŞ¸Ä£¬²¢¾­ÓÉ [com.nainiuzhen.wiki.utils.AppSettingsStore] ÂäÅÌ¡£
  *
- * v5 å˜æ›´ï¼ˆç›¸å¯¹ v4ï¼‰ï¼š
- * - ç§»é™¤ `isDark`ï¼Œæ–°å¢ `colorMode`ï¼ˆ0=ç³»ç»Ÿ/Autoã€1=æ·±è‰²ã€2=æµ…è‰²ï¼‰ä¸ `monet`ï¼ˆMonet å–è‰²å¼€å…³ï¼‰ï¼Œ
- *   äºŒè€…ç»„åˆæˆ 6 æ€ä¸»é¢˜ï¼ˆå‰ 3 æ€ Monet å…³ã€å 3 æ€ Monet å¼€ï¼‰ã€‚
- * - æ–°å¢ 14 ä¸ªå¼€å…³ï¼ˆ#3ï¼‰ï¼Œå…¨éƒ¨åœ¨æ­¤é›†ä¸­å£°æ˜å¹¶ç”± [AndroidAppSettingsStore] æŒä¹…åŒ–è¯»å†™ã€‚
+ * v5 ±ä¸ü£¨Ïà¶ÔÓÚ v4£©£º
+ * - ÒÆ³ı `isDark`£¬ĞÂÔö `colorMode`£¨0=ÏµÍ³/Auto¡¢1=ÉîÉ«¡¢2=Ç³É«£©Óë `monet`£¨Monet È¡É«¿ª¹Ø£©£¬
+ *   Á½Õß×éºÏ³É 6 Ì×Ö÷Ìâ£¨Ç° 3 Ì× Monet ¹Ø¡¢ºó 3 Ì× Monet ¿ª£©¡£
+ * - ĞÂÔö 14 ¸ö¿ª¹Ø£¨#3£©£¬È«²¿ÔÚ´Ë¼¯ÖĞÉùÃ÷²¢ÓÉ [AndroidAppSettingsStore] ³Ö¾Ã»¯¶ÁĞ´¡£
  */
 data class AppState(
-    // â€”â€” ä¸»é¢˜ï¼ˆå–ä»£æ—§ isDarkï¼‰â€”â€”
-    val colorMode: Int = 0, // 0=ç³»ç»Ÿ(Auto) 1=æ·±è‰² 2=æµ…è‰²
-    val monet: Boolean = false, // Monet å–è‰²å¼€å…³ï¼ˆä¸ colorMode ç»„åˆæˆ 6 æ€ï¼‰
-    // â€”â€” v4 æ²¿ç”¨ â€”â€”
+    // ¡ª¡ª Ö÷Ö÷Ìâ£¨È¡´ú¾É isDark£©¡ª¡ª //
+    val colorMode: Int = 0, // 0=ÏµÍ³(Auto) 1=ÉîÉ« 2=Ç³É«
+    val monet: Boolean = false, // Monet È¡É«¿ª¹Ø£¨Óë colorMode ×éºÏ³É 6 Ì×£©
+    // ¡ª¡ª v4 ÑØÓÃ ¡ª¡ª //
     val enableBlur: Boolean = true,
     val enableSquircle: Boolean = true,
-    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=Modalï¼ˆpit#4ï¼Œæ—  AOSPï¼‰
+    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=Modal£¨git#4£¬ÎŞ AOSP£©
     val enableSwipeBack: Boolean = true,
-    // â€”â€” v5 æ–°å¢ 14 å¼€å…³ï¼ˆ#3ï¼Œå…¨éƒ¨çœŸæ­£æ¥çº¿ï¼‰â€”â€”
+    // ¡ª¡ª v5 ĞÂÔö 14 ¿ª¹Ø£¨#3£¬È«²¿ÕæÕı½ÓĞø£©¡ª¡ª //
     val enableCornerClip: Boolean = true, // Enable Corner Clip
     val scrollEndHaptic: Boolean = false, // Enable Scroll End Haptic
     val pageUserScroll: Boolean = true, // Enable Page User Scroll
     val showTopAppBar: Boolean = true, // Show TopAppBar
     val topAppBarBlurStyle: Int = 0, // TopAppBar Blur Style (0=Gaussian 1=Progressive)
     val showNavigationBar: Boolean = true, // Show NavigationBar
-    val showNavigationBadge: Boolean = false, // Show Navigation Badgeï¼ˆé»˜è®¤å…³é—­ï¼Œé¿å…é®ä½åº•æ  iconï¼‰
+    val showNavigationBadge: Boolean = false, // Show Navigation Badge£¨Ä¬ÈÏ¹Ø±Õ£¬±ÜÃâÕÚ×¡µ×À¸ icon£©
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
     val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
@@ -38,13 +38,13 @@ data class AppState(
     val floatingActionButtonPosition: Int = 0, // FAB Position (0=End 1=Start 2=Center)
     val enableDim: Boolean = false, // Enable Dim
     val blockInputDuringTransition: Boolean = false, // Block Input During Transition
-    // â€”â€” v6 æ–°å¢ â€”â€”
+    // ¡ª¡ª v6 ĞÂÔö ¡ª¡ª //
     val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
 )
 
-/** åº”ç”¨ç‰ˆæœ¬å±•ç¤ºåï¼ˆä¸ build.ps1 çš„ build number åŒæ­¥ï¼›vN â†” 1.0.N â†” build-Nï¼‰ã€‚ */
-const val APP_VERSION_NAME = "v1.0.10"
+/** Ó¦ÓÃ°æ±¾Õ¹Ê¾Ãû£¨Óë build.ps1 µÄ build number Í¬²½£ºvN <-> 1.0.N <-> build-N£©¡£ */
+const val APP_VERSION_NAME = "v1.0.12"
 
 val LocalAppSettings = compositionLocalOf { AppState() }
 

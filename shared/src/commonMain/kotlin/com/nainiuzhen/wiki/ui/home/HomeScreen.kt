@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -91,11 +93,16 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         title = "物品大全",
                         summary = "查询全部物品资料",
                         startContent = {
-                            firstItem?.let {
-                                SpriteImage(
-                                    frameKey = it.iconFrameKey,
-                                    modifier = Modifier.size(56.dp).padding(start = 8.dp),
-                                )
+                            Box(
+                                modifier = Modifier.size(92.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                firstItem?.let {
+                                    SpriteImage(
+                                        frameKey = it.iconFrameKey,
+                                        modifier = Modifier.size(56.dp),
+                                    )
+                                }
                             }
                         },
                         onClick = { navigator.push(Route.ItemList) },
@@ -110,11 +117,16 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         title = "配方查询",
                         summary = "图纸与菜谱制作指引",
                         startContent = {
-                            firstRecipe?.let {
-                                SpriteImage(
-                                    frameKey = it.iconFrameKey,
-                                    modifier = Modifier.size(56.dp).padding(start = 8.dp),
-                                )
+                            Box(
+                                modifier = Modifier.size(92.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                firstRecipe?.let {
+                                    SpriteImage(
+                                        frameKey = it.iconFrameKey,
+                                        modifier = Modifier.size(56.dp),
+                                    )
+                                }
                             }
                         },
                         onClick = { navigator.push(Route.RecipeList) },
@@ -129,8 +141,13 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                         title = "NPC 资料",
                         summary = "村民喜好与日程安排",
                         startContent = {
-                            randomNpc?.let {
-                                NpcPortraitImage(npcId = it.id, modifier = Modifier.size(92.dp))
+                            Box(
+                                modifier = Modifier.size(92.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                randomNpc?.let {
+                                    NpcPortraitImage(npcId = it.id, modifier = Modifier.size(92.dp))
+                                }
                             }
                         },
                         onClick = { navigator.push(Route.NpcList) },

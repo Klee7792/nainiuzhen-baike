@@ -37,24 +37,32 @@ $buildNo = [int](Get-Content $NumberFile -Raw).Trim()
 $buildNo++
 Set-Content $NumberFile -Value $buildNo -Encoding ascii -NoNewline
 
-# ---- compile (release + debug dual package) ----
-Write-Host "==> start build #$buildNo (release + debug) ..."
-& $gradle -p $ProjectRoot clean assembleRelease assembleDebug --no-daemon --stacktrace
+# ---- stamp version from build number (single source of truth = build_number.txt) ----
+# 应用内展示版本（APP_VERSION_NAME）与 Android 应用信息（versionName/versionCode）随 build 自动 +1，
+# 无需手动改多处。约定：vN <-> 1.0.N <-> versionCode N <-> build-N。
+$verName = "1.0.$buildNo"
+$verDisp = "v1.0.$buildNo"
+$appStateKt = Join-Path $ProjectRoot "shared/src/commonMain/kotlin/com/nainiuzhen/wiki/utils/AppState.kt"
+$gradleKts  = Join-Path $ProjectRoot "app/build.gradle.kts"
+(Get-Content $appStateKt) -replace 'APP_VERSION_NAME = "v[^"]*"', "APP_VERSION_NAME = `"$verDisp`"" | Set-Content $appStateKt
+(Get-Content $gradleKts)  -replace 'versionCode = \d+',          "versionCode = $buildNo"   | Set-Content $gradleKts
+(Get-Content $gradleKts)  -replace 'versionName = "[^"]*"',      "versionName = `"$verName`"" | Set-Content $gradleKts
+Write-Host "==> version stamped: $verDisp (versionCode $buildNo)"
+
+# ---- compile (release only; debug 不再产出) ----
+Write-Host "==> start build #$buildNo (release) ..."
+& $gradle -p $ProjectRoot clean assembleRelease --no-daemon --stacktrace
 if ($LASTEXITCODE -ne 0) { Write-Error "build failed, aborted (build number not rolled back)"; exit 1 }
 
-# ---- locate produced APKs (scope to outputs dir to avoid Gradle .transforms cache noise) ----
+# ---- locate produced APK (scope to outputs dir to avoid Gradle .transforms cache noise) ----
 $apkOutDir = Join-Path $ProjectRoot "app/build/outputs"
 $apks = Get-ChildItem -Path $apkOutDir -Recurse -Filter "*.apk" -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending
-function Copy-Apk($variant, $suffix) {
-    $apk = $apks | Where-Object { $_.FullName -like "*$variant*" } | Select-Object -First 1
-    if (-not $apk) { Write-Error "$variant APK not found under $apkOutDir"; exit 1 }
-    $dest = Join-Path $BuildsDir ("nainiuzhen-baike_v{0}_{1}.apk" -f $buildNo, $suffix)
-    Copy-Item $apk.FullName $dest -Force
-    Write-Host "==> APK stored: $dest"
-}
-Copy-Apk "release" "release"
-Copy-Apk "debug"   "debug"
+$apk = $apks | Where-Object { $_.FullName -like "*release*" } | Select-Object -First 1
+if (-not $apk) { Write-Error "release APK not found under $apkOutDir"; exit 1 }
+$dest = Join-Path $BuildsDir ("nainiuzhen-baike_v{0}_release.apk" -f $buildNo)
+Copy-Item $apk.FullName $dest -Force
+Write-Host "==> APK stored: $dest"
 
 # ---- build notes ----
 if (-not (Test-Path $NoteFile)) { "# Build Notes`n" | Out-File $NoteFile -Encoding utf8 }

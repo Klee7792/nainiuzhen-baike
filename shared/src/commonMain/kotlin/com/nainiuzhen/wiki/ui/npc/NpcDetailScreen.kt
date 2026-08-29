@@ -67,23 +67,29 @@ fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
         header = { npc?.let { NpcDetailHeader(npc = it) } },
         buttons = {
             if (npc != null) {
-                TextButton(
-                    text = "日程",
-                    enabled = npc.maxStar > 0,
-                    onClick = {
-                        if (npc.maxStar > 0) {
-                            navigator.push(Route.NpcSchedule(npc.id))
-                            onDismissRequest()
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    modifier = Modifier.fillMaxWidth(0.49f),
-                )
-                TextButton(
-                    text = "关闭",
-                    onClick = onDismissRequest,
-                    modifier = Modifier.fillMaxWidth(0.49f),
-                )
+                // 用 Box(0.49f) 包裹，规避 miuix TextButton 内部 fillMaxWidth 覆盖 0.49f
+                // 导致两按钮未左右对齐的问题；外层 Row(SpaceBetween) 使它们分居左右两端。
+                Box(modifier = Modifier.fillMaxWidth(0.49f)) {
+                    TextButton(
+                        text = "日程",
+                        enabled = npc.maxStar > 0,
+                        onClick = {
+                            if (npc.maxStar > 0) {
+                                navigator.push(Route.NpcSchedule(npc.id))
+                                onDismissRequest()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Box(modifier = Modifier.fillMaxWidth(0.49f)) {
+                    TextButton(
+                        text = "关闭",
+                        onClick = onDismissRequest,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         },
     ) {
@@ -247,13 +253,13 @@ private fun FavorSection(
     // 过滤：物品 ID=0（配置文件占位）或不存在的物品
     val items = ids.mapNotNull { id -> if (id != 0) data.itemById(id) else null }
     if (items.isEmpty()) return
-    Spacer(Modifier.size(8.dp))
+    Spacer(Modifier.size(4.dp))
     Column {
         SmallTitle(text = title, textColor = color)
         // 标题下加同色下划线
         HorizontalDivider(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.8f)
                 .padding(top = 2.dp),
             thickness = 1.dp,
             color = color.copy(alpha = 0.5f),

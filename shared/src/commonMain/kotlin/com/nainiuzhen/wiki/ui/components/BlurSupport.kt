@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -11,9 +13,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
@@ -119,12 +124,29 @@ fun AppTopAppBar(
     largeTitle: String? = null,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
+    subtitle: String? = null,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
     BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
+        // 副标题（如列表计数）作为标题第 2 行，渲染在顶栏 bottomContent 顶部，随顶栏折叠一起
+        // 移动；居中、12sp、跟随主题次级文字色、仅换行无额外间距。
+        val barBottomContent: @Composable () -> Unit = {
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp, bottom = 2.dp),
+                )
+            }
+            bottomContent()
+        }
         if (largeTitle != null) {
             TopAppBar(
                 title = title,
@@ -133,7 +155,7 @@ fun AppTopAppBar(
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = bottomContent,
+                bottomContent = barBottomContent,
                 modifier = modifier,
             )
         } else {
@@ -143,7 +165,7 @@ fun AppTopAppBar(
                 color = barColor,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                bottomContent = bottomContent,
+                bottomContent = barBottomContent,
                 modifier = modifier,
             )
         }
@@ -166,6 +188,7 @@ fun AppSubPageScaffold(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
+    subtitle: String? = null,
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -179,6 +202,7 @@ fun AppSubPageScaffold(
                 backdrop = backdrop,
                 navigationIcon = navigationIcon,
                 actions = actions,
+                subtitle = subtitle,
                 bottomContent = bottomContent,
                 modifier = modifier,
             )

@@ -151,6 +151,12 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     checked = appState.showNavigationBar,
                     onCheckedChange = { updateAppState(appState.copy(showNavigationBar = it)) },
                 )
+                SwitchPreference(
+                    title = "显示底栏角标",
+                    summary = "底栏图标右上角显示更新提示红点",
+                    checked = appState.showNavigationBadge,
+                    onCheckedChange = { updateAppState(appState.copy(showNavigationBadge = it)) },
+                )
                 OverlayDropdownPreference(
                     items = listOf("图标+文字", "仅图标", "选中显示文字"),
                     selectedIndex = appState.navigationBarMode,

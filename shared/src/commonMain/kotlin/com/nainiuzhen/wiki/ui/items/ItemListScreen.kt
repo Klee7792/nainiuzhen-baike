@@ -103,9 +103,9 @@ fun ItemListScreen() {
                 )
             }
         },
+        subtitle = "共 ${filtered.size} 个物品",
         bottomContent = {
             ItemListBottomContent(
-                count = filtered.size,
                 query = query,
                 onQueryChange = { query = it },
             )
@@ -152,31 +152,18 @@ fun ItemListScreen() {
  */
 @Composable
 private fun ItemListBottomContent(
-    count: Int,
     query: String,
     onQueryChange: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 左对齐，与下方搜索框左边缘对齐；收起（无搜索词）时不留额外间距
-        Text(
-            text = "共 $count 个物品",
-            fontSize = 12.sp,
-            textAlign = TextAlign.Start,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, bottom = if (query.isBlank()) 0.dp else 2.dp),
-        )
-        TextField(
-            value = query,
-            onValueChange = onQueryChange,
-            label = "搜索物品",
-            colors = searchFieldColors(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-        )
-    }
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = "搜索物品",
+        colors = searchFieldColors(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+    )
 }
 
 

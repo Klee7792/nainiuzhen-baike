@@ -1,5 +1,4 @@
-// 奶牛镇百科 · :app 模块（仅 Android 入口：MainActivity + Manifest）
-
+// 奶牛镇百�?· :app 模块（仅 Android 入口：MainActivity + Manifest�?
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
@@ -18,8 +17,8 @@ android {
         applicationId = "com.nainiuzhen.wiki"
         minSdk = 24
         targetSdk = 37
-        versionCode = 9
-        versionName = "1.0.9"
+        versionCode = 12
+        versionName = "1.0.12"
     }
 
     compileOptions {
