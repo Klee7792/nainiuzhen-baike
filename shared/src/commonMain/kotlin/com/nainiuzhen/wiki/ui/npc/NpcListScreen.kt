@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki.ui.npc
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -159,6 +160,7 @@ private fun NpcGridCell(npc: NpcInfo, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
     ) {
         Column(
@@ -181,18 +183,28 @@ private fun NpcGridCell(npc: NpcInfo, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                contentAlignment = Alignment.Center,
+                    .background(
+                        color = MiuixTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(percent = 50),
+                    )
+                    .padding(vertical = 6.dp, horizontal = 14.dp),
             ) {
-                Text(
-                    text = npc.name,
-                    style = MiuixTheme.textStyles.body2,
-                    maxLines = 1,
-                    softWrap = false,
-                    textAlign = TextAlign.Center,
-                    color = MiuixTheme.colorScheme.onSurface,
-                )
+                // 内层滚动视口：宽度=胶囊内宽，文字超宽只在这里滚动，胶囊本身不动。
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = npc.name,
+                        style = MiuixTheme.textStyles.body2,
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        color = MiuixTheme.colorScheme.onPrimary,
+                    )
+                }
             }
         }
     }

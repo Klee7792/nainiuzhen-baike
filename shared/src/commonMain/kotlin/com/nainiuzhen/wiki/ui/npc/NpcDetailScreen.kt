@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -22,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.repository.DataRepository
@@ -144,54 +149,90 @@ private fun NpcDetailDialog(
     }
 }
 
-/** 固定顶栏：NPC 立绘（放大 120%）+ 右侧名称 / 住址 / 生日 / 最高好感。 */
+/**
+ * 固定顶栏（高 144.dp），左右分栏：
+ * - 左侧：140.dp 正方形容器，NPC 立绘填满高度、xy 居中、两侧裁剪（[ContentScale.Crop]）。
+ * - 右侧：名称区（四层：名字 + 住址 + 生日 + 好感），层级划分为「名字」与「信息组」两级，
+ *   名字调大 2 号（18→20.sp）并左对齐，信息组紧凑排布。
+ *
+ * 间距（相对 dialog 外框）：左图左缘 = OverlayDialog insideMargin 24 + 外层 Column 水平 12 = 36.dp；
+ * 名称区右缘同理 36.dp；左图与名称区间距 = Row spacedBy 12.dp。
+ */
 @Composable
 private fun NpcDetailHeader(npc: NpcInfo) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(144.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        NpcPortraitImage(
-            npcId = npc.id,
-            modifier = Modifier.height(144.dp),
-            contentScale = ContentScale.Fit,
-        )
+        // 左侧：140.dp 正方形，立绘填满高度、xy 居中、两侧裁剪。
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .background(
+                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(16.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            NpcPortraitImage(
+                npcId = npc.id,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        // 右侧：名称区（四层，层级划分为「名字」+「信息组」）。
         Column(
             modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center,
         ) {
+            // 第一级：名字（调大 2 号、左对齐）
             Text(
                 text = npc.name,
-                style = MiuixTheme.textStyles.title4,
+                style = MiuixTheme.textStyles.title4.copy(fontSize = 20.sp),
+                textAlign = TextAlign.Start,
                 color = MiuixTheme.colorScheme.onBackground,
             )
-            Text(
-                text = "住址：${npc.address}",
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            Text(
-                text = "生日：${npc.birthday}",
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            // 好感 max：以「好感：N」+ 红色矢量心图标呈现（替代橙色双心与 emoji）。
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            Spacer(Modifier.size(8.dp))
+            // 第二级：信息组（住址 / 生日 / 好感），组内紧凑。
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = "好感：${npc.maxStar}",
+                    text = "住址：${npc.address}",
                     style = MiuixTheme.textStyles.body2,
+                    textAlign = TextAlign.Start,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
-                Icon(
-                    imageVector = MiuixIcons.FavoritesFill,
-                    contentDescription = null,
-                    tint = Color(0xFFE53935),
-                    modifier = Modifier.size(14.dp),
+                Text(
+                    text = "生日：${npc.birthday}",
+                    style = MiuixTheme.textStyles.body2,
+                    textAlign = TextAlign.Start,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
+                // 好感 max：以「好感：N」+ 红色矢量心图标呈现（替代橙色双心与 emoji）。
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "好感：${npc.maxStar}",
+                        style = MiuixTheme.textStyles.body2,
+                        textAlign = TextAlign.Start,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Icon(
+                        imageVector = MiuixIcons.FavoritesFill,
+                        contentDescription = null,
+                        tint = Color(0xFFE53935),
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
         }
     }

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -92,11 +94,21 @@ private fun RecipeDetailBody(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SpriteImage(frameKey = recipe.iconFrameKey, modifier = Modifier.size(64.dp))
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(
+                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(16.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            SpriteImage(frameKey = recipe.iconFrameKey, modifier = Modifier.size(64.dp))
+        }
         Column {
             Text(
                 text = recipe.name,
-                style = MiuixTheme.textStyles.title4,
+                style = MiuixTheme.textStyles.title3,
                 color = MiuixTheme.colorScheme.onBackground,
             )
             Text(

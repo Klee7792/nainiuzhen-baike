@@ -1,7 +1,6 @@
 package com.nainiuzhen.wiki.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.components.MenuCard
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -110,10 +109,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 firstItem?.let {
                                     SpriteImage(
                                         frameKey = it.iconFrameKey,
-                                        // [TEMP] 临时红框：观察图片本体相对淡色底托的位置关系，后续可删
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .border(2.dp, Color.Red, RoundedCornerShape(10.dp)),
+                                        modifier = Modifier.size(56.dp),
                                     )
                                 }
                             }
@@ -142,10 +138,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 firstRecipe?.let {
                                     SpriteImage(
                                         frameKey = it.iconFrameKey,
-                                        // [TEMP] 临时红框：观察图片本体相对淡色底托的位置关系，后续可删
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .border(2.dp, Color.Red, RoundedCornerShape(10.dp)),
+                                        modifier = Modifier.size(56.dp),
                                     )
                                 }
                             }
@@ -172,12 +165,10 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 randomNpc?.let {
-                                    // [TEMP] 临时红框：观察图片本体相对淡色底托的位置关系，后续可删
                                     NpcPortraitImage(
                                         npcId = it.id,
-                                        modifier = Modifier
-                                            .size(92.dp)
-                                            .border(2.dp, Color.Red, RoundedCornerShape(12.dp)),
+                                        modifier = Modifier.size(92.dp),
+                                        contentScale = ContentScale.Crop,
                                     )
                                 }
                             }

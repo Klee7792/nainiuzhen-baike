@@ -17,8 +17,8 @@ android {
         applicationId = "com.nainiuzhen.wiki"
         minSdk = 24
         targetSdk = 37
-        versionCode = 20
-        versionName = "1.2.0"
+        versionCode = 21
+        versionName = "1.2.1"
     }
 
     compileOptions {

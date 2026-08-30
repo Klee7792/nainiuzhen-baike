@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,9 +102,11 @@ private fun ItemDetailBody(item: ItemInfo) {
 }
 
 /**
- * 名称·素材图区：左侧图示 + 右侧名称与售价行。
+ * 名称·素材图区：左侧图示 + 右侧名称（及可选售价行）。
  *
- * 名称额外右移 [ITEM_NAME_INDENT]，与左侧图示保持约一个汉字的间距。
+ * 名称额外右移 [ITEM_NAME_INDENT]，与左侧图示保持约一个汉字的间距；
+ * 名称随 Row 的 [Alignment.CenterVertically] 与图示上下（垂直 / Y 轴）居中。
+ * 无售价的物品（如「糖果壁纸」）不渲染售价行，仅显示名称。
  */
 @Composable
 private fun ItemHeaderSection(item: ItemInfo) {
@@ -109,28 +114,45 @@ private fun ItemHeaderSection(item: ItemInfo) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SpriteImage(frameKey = item.iconFrameKey, modifier = Modifier.size(56.dp))
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(
+                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(12.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            SpriteImage(frameKey = item.iconFrameKey, modifier = Modifier.size(56.dp))
+        }
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = item.name,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 color = MiuixTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(start = ITEM_NAME_INDENT),
             )
-            Spacer(Modifier.height(8.dp))
-            ItemPriceRow(price = item.price, categoryLabel = item.categoryLabel)
+            // 无售价（如「糖果壁纸」）则不显示售价行，仅名称与左侧图示；
+            // 名称随 Row 的 CenterVertically 与图示上下（垂直 / Y 轴）居中。
+            if (item.price != null) {
+                Spacer(Modifier.height(8.dp))
+                ItemPriceRow(price = item.price, categoryLabel = item.categoryLabel)
+            }
         }
     }
 }
 
 /**
- * 售价行：
- * - 物品无售价，或类别不在 [StarPricePolicy.WHITELIST] 内时，只显示基础售价列（左对齐）。
+ * 售价行（仅在有售价时由调用方渲染）：
+ * - 类别不在 [StarPricePolicy.WHITELIST] 内时，只显示基础售价列（左对齐）。
  * - 命中白名单时显示 4 等分列：「售价」+ 白 / 金 / 紫三档星级图示，
  *   每列下方是该档**最终计算结果**（[StarTier.value]），不再展示倍率前缀。
+ *
+ * 无售价（price == null，如「糖果壁纸」）的行已在 [ItemHeaderSection] 隐藏，此处仅作防御。
  */
 @Composable
 private fun ItemPriceRow(price: Int?, categoryLabel: String) {
+    if (price == null) return
     val priceText = if (price != null) "${price}金币" else "—"
     val tiers = StarPricePolicy.tiers(price, categoryLabel)
     if (tiers == null) {
@@ -138,14 +160,15 @@ private fun ItemPriceRow(price: Int?, categoryLabel: String) {
         Column(modifier = Modifier.fillMaxWidth().padding(start = ITEM_NAME_INDENT)) {
             Text(
                 text = "售价",
-                fontSize = 9.sp,
+                fontSize = 16.sp,
+                lineHeight = 16.sp,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 maxLines = 1,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = priceText,
-                fontSize = 11.sp,
+                fontSize = 8.sp,
                 color = MiuixTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
@@ -172,7 +195,7 @@ private fun ItemPriceRow(price: Int?, categoryLabel: String) {
     }
 }
 
-/** 普通售价列：上标签（9sp）+ 下数值（11sp），居中、不换行。 */
+/** 普通售价列：上标签（12sp，但强制占位高度 = 星级图示 16dp，保证 4 列数值对齐）+ 下数值（8sp），居中、不换行。 */
 @Composable
 private fun PriceCell(
     label: String,
@@ -183,17 +206,21 @@ private fun PriceCell(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // 字号 12.sp 舒适可读；Modifier.height(16.dp) 把占位高度锁死成与星级图示(16dp)一致，
+        // 不依赖 lineHeight 近似，4 列金币必然同高对齐。
         Text(
             text = label,
-            fontSize = 9.sp,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
             textAlign = TextAlign.Center,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             maxLines = 1,
+            modifier = Modifier.height(STAR_IMAGE_SIZE),
         )
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            fontSize = 11.sp,
+            fontSize = 8.sp,
             textAlign = TextAlign.Center,
             color = MiuixTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -201,7 +228,7 @@ private fun PriceCell(
     }
 }
 
-/** 星级售价列：上星级图示（[StarImage]）+ 下最终价格（11sp），居中、不换行。 */
+/** 星级售价列：上星级图示（[StarImage]，16dp）+ 下最终价格（8sp），居中、不换行。 */
 @Composable
 private fun StarPriceCell(
     tier: StarTier,
@@ -219,7 +246,7 @@ private fun StarPriceCell(
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            fontSize = 11.sp,
+            fontSize = 8.sp,
             textAlign = TextAlign.Center,
             color = MiuixTheme.colorScheme.onSurface,
             maxLines = 1,

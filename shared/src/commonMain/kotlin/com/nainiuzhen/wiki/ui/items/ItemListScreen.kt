@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,6 +28,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
@@ -169,37 +173,61 @@ private fun ItemListBottomContent(
 }
 
 
-/** 单个物品方块：正方形切片 + 名称（11sp，超出宽度横向滚动）。 */
+/** 单个物品方块：上半图标区（亮白圆角底、仅上方圆角）+ 下半名称区（透明、无圆角、蓝色满宽胶囊，文字超宽在胶囊内滚动）。 */
 @Composable
 private fun ItemGridCell(item: ItemInfo, onClick: () -> Unit) {
+    val topShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(topShape)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        SpriteImage(
-            frameKey = item.iconFrameKey,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
-            contentScale = ContentScale.Fit,
-        )
+        // 图标区：亮白底（与 NPC 卡片同色 surfaceContainer）+ 仅上方圆角；图片裁到同一圆角。
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(top = 2.dp),
+                .aspectRatio(1f)
+                .background(
+                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    shape = topShape,
+                )
+                .clip(topShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = item.name,
-                fontSize = 11.sp,
-                maxLines = 1,
-                softWrap = false,
-                textAlign = TextAlign.Center,
-                color = MiuixTheme.colorScheme.onSurface,
+            SpriteImage(
+                frameKey = item.iconFrameKey,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
             )
+        }
+        // 名称区：透明（跟随内容区灰底）、无圆角；胶囊宽度=卡片宽（固定），文字超宽在胶囊内部滚动。
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MiuixTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(percent = 50),
+                )
+                .padding(top = 2.dp, start = 8.dp, end = 8.dp),
+        ) {
+            // 内层滚动视口：宽度=胶囊内宽，文字超宽只在这里滚动，胶囊本身不动。
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = item.name,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    color = MiuixTheme.colorScheme.onPrimary,
+                )
+            }
         }
     }
 }
