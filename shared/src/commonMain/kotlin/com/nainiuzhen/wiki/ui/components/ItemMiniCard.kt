@@ -159,10 +159,10 @@ fun ItemCardRow(
  * - 两侧渐变淡出（背景色→透明）**始终绘制**，不依赖模糊是否可用。这样在 dialog 等
  *   [layerBackdrop] 采样偶发失效的场景下，边缘过渡依然可见（#26 修复：此前 dialog 内
  *   仅依赖模糊层、采样失败时整段硬切无效果）。
- * - 当系统支持高斯模糊（[rememberAppBlurBackdrop] 返回非 null，即「启用模糊」开启
- *   且运行环境支持 RuntimeShader / Android 12+）时，把内部内容注册为模糊采样源
- *   （[layerBackdrop]），并在渐变之上左右各叠加一个 [textureBlur] 高斯模糊层（与顶栏
- *   [BlurSupport.BlurredBar] 同参数），形成更通透的「高斯边缘」。
+ * - **不绑定「启用模糊」开关**（变更点 #27-A）：只要运行环境支持 RuntimeShader /
+ *   Android 12+（[rememberDialogSideBlurBackdrop] 返回非 null）即叠加左右高斯模糊层，
+ *   与顶栏 [BlurSupport.BlurredBar] 同机制；通透度比旧版略提高（渐变 alpha 0.85→0.7、
+ *   模糊叠加 alpha 0.4→0.3），使侧栏更清透。不支持时仅保留渐变兜底。
  *
  * 渐变/模糊层无指针处理，不拦截滚动手势。外部签名保持不变，调用方
  * `if (items.size > 4) FadeEdges { row() } else row()` 继续可用。
@@ -172,7 +172,7 @@ fun FadeEdges(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val backdrop = rememberAppBlurBackdrop()
+    val backdrop = rememberDialogSideBlurBackdrop()
     Box(modifier = modifier) {
         // 内层 Box 持有真正的内容。支持模糊时叠加 layerBackdrop，使该行物品成为
         // 模糊采样源，供两侧 textureBlur 边缘层采样。
@@ -193,7 +193,7 @@ fun FadeEdges(
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(MiuixTheme.colorScheme.surface.copy(alpha = 0.85f), Color.Transparent),
+                        listOf(MiuixTheme.colorScheme.surface.copy(alpha = 0.7f), Color.Transparent),
                     ),
                 ),
         )
@@ -204,7 +204,7 @@ fun FadeEdges(
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color.Transparent, MiuixTheme.colorScheme.surface.copy(alpha = 0.85f)),
+                        listOf(Color.Transparent, MiuixTheme.colorScheme.surface.copy(alpha = 0.7f)),
                     ),
                 ),
         )
@@ -222,7 +222,7 @@ fun FadeEdges(
                         blurRadius = 25f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(
-                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.4f)),
+                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.3f)),
                             ),
                         ),
                     ),
@@ -238,7 +238,7 @@ fun FadeEdges(
                         blurRadius = 25f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(
-                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.4f)),
+                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.3f)),
                             ),
                         ),
                     ),

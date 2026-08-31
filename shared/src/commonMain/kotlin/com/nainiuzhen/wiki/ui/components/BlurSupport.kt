@@ -45,6 +45,22 @@ fun rememberAppBlurBackdrop(): LayerBackdrop? {
 }
 
 /**
+ * 与 [rememberAppBlurBackdrop] 类似，但**不绑定**「设置页 → 启用模糊」开关：
+ * 只要运行环境支持 RuntimeShader（Android 12+）即返回非 null。
+ * 用于所有 dialog 左右侧栏的边缘高斯模糊（变更点 #27-A：统一加高斯模糊、通透度略提高、
+ * 不再跟随「启用模糊」开关，仅受运行环境着色器能力约束；不支持时回落到渐变兜底）。
+ */
+@Composable
+fun rememberDialogSideBlurBackdrop(): LayerBackdrop? {
+    if (!isRuntimeShaderSupported()) return null
+    val surfaceColor = MiuixTheme.colorScheme.surface
+    return rememberLayerBackdrop {
+        drawRect(surfaceColor)
+        drawContent()
+    }
+}
+
+/**
  * 模糊顶栏容器：把 [backdrop] 以高斯或渐进模糊形式铺到顶栏背景上。
  * 内容（真正的 TopAppBar）通过 [content] 传入。
  */

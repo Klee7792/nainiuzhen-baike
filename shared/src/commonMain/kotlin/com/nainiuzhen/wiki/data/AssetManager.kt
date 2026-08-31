@@ -133,6 +133,23 @@ class AssetManager(
         return match?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() } ?: "其他"
     }
 
+    /**
+     * 类别归一化（变更点 #27-B）：在 [extractCategory] 之后再做一次性字符串合并，
+     * 把分散的同义 / 细分类别归并到统一标签：
+     *  ① 其他 & 其它 → 其他
+     *  ② XX皮肤 & 皮肤 → 皮肤（所有以「皮肤」结尾的标签，如 主房皮肤 / 床皮肤 / 信箱皮肤 …）
+     *  ③ 各种鱼类 → 鱼类（河鱼 / 海鱼 / 湖鱼 / 珍稀鱼类 及其「低级」变体）
+     * 注意：鱼饵、鱼食 虽含「鱼」字但不属于鱼类，不在此合并。
+     */
+    private val FISH_CATEGORY_KEYWORDS = listOf("鱼类", "河鱼", "海鱼", "湖鱼", "珍稀鱼类")
+    private fun normalizeCategory(raw: String): String {
+        var c = raw
+        if (c == "其它") c = "其他"
+        if (c.endsWith("皮肤")) c = "皮肤"
+        if (FISH_CATEGORY_KEYWORDS.any { c.contains(it) }) c = "鱼类"
+        return c
+    }
+
     private fun loadItems(
         atlas: SpriteAtlas,
         iconMapping: Map<Int, String>,
@@ -141,13 +158,13 @@ class AssetManager(
     ): List<ItemInfo> {
         val raw =
             json.decodeFromString<Map<String, ItemRaw>>(AssetLoader.loadText("config/item_database.json"))
-        return raw.values.mapNotNull { r ->
+        val parsed = raw.values.mapNotNull { r ->
             // 过滤：非 debug 包剔除黑名单 id（清单见上方 loadBlacklist，人工维护，勿自动还原）
             if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
             val mapped = iconMapping[r.id ?: 0]
             val candidate = mapped ?: r.icon?.toString() ?: (r.id ?: 0).toString()
             val frameKey = resolveFrameKey(atlas, candidate)
-            val category = extractCategory(r.desc)
+            val category = normalizeCategory(extractCategory(r.desc)) // #27-B 一次性归一化
             val group =
                 when (atlas.sheetFor(frameKey)) {
                     "equip" -> ItemGroup.Equip
@@ -167,6 +184,12 @@ class AssetManager(
                 categoryLabel = category,
                 group = group,
             )
+        }
+        // #27-B 规则④：合并后仅剩 1 个物品的类别并入「其他」（如 书籍 / 传说道具 / 发型 …）。
+        // 合并只会增大类别规模，故此处仍处 singleton 的必是原 count==1 且未被吸收的类别。
+        val counts = parsed.groupingBy { it.categoryLabel }.eachCount()
+        return parsed.map { item ->
+            if ((counts[item.categoryLabel] ?: 0) <= 1) item.copy(categoryLabel = "其他") else item
         }
     }
 
