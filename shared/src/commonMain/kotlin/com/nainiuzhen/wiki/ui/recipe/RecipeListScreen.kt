@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.data.model.RecipeInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
@@ -155,7 +157,7 @@ fun RecipeListScreen() {
     }
 }
 
-/** 单个配方方块：图标区（透明，正方形严格 4× 原图、xy 居中、不裁圆角）+ 下半名称区（透明、蓝色满宽胶囊，文字超宽在胶囊内滚动）。整体为 v20 风格方形卡片，按压水波纹为方形。 */
+/** 单个配方方块：图标区（浅灰底 surfaceContainer、仅上方圆角、正方形严格 4× 原图、xy 居中）+ 下半名称区（透明、蓝色满宽胶囊，文字超宽在胶囊内滚动）。整体为 v20 风格方形卡片，按压水波纹为方形。 */
 @Composable
 private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
     Column(
@@ -164,15 +166,19 @@ private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 图标区：透明（跟随内容区灰底）；图片严格 4× 原图、xy 居中，整张方图不裁圆角（v20 风格）。
+        // 图标区：浅灰底（surfaceContainer，略灰于页面白底）+ 仅上方圆角；图片裁到同一圆角（恢复 #21 灰底，#26 误删）。
+        val topShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f),
+                .aspectRatio(1f)
+                .background(color = MiuixTheme.colorScheme.surfaceContainer, shape = topShape)
+                .clip(topShape),
             contentAlignment = Alignment.Center,
         ) {
             SpriteImage(
                 frameKey = recipe.iconFrameKey,
+                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
                 filterQuality = FilterQuality.None,
                 scaleContext = SpriteScaleContext.Card,
