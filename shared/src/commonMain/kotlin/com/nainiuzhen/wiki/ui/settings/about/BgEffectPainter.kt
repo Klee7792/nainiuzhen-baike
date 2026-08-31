@@ -1,24 +1,24 @@
 // Copyright 2026, compose-miuix-ui contributors
 // SPDX-License-Identifier: Apache-2.0
-//
-// 从 miuix 示例 `component.effect.BgEffectPainter` 移植（仅 OS3 + 移除 DeviceType）。
-// 将 OS3 片段着色器包装为 Brush，供 [bgEffectDraw] 绘制。
 
 package com.nainiuzhen.wiki.ui.settings.about
 
 import androidx.compose.ui.graphics.Brush
 import top.yukonga.miuix.kmp.blur.RuntimeShader
 import top.yukonga.miuix.kmp.blur.asBrush
+import kotlin.math.cos
+import kotlin.math.sin
 
-/**
- * OS3 动态背景 painter：持有 RuntimeShader 及其 uniforms，按需上传。
- * - [updateResolution] / [updateBoundIfNeeded] / [updatePresetIfNeeded] / [updateColors] /
- *   [updateAnimTime] / [updatePointsAnim] 均带缓存，未变化时跳过 setFloatUniform。
- * - [brush] 由 [asBrush] 暴露，draw 阶段读取。
- */
-internal class BgEffectPainter {
+internal class BgEffectPainter(
+    private val isOs3: Boolean = true,
+) {
 
-    private val runtimeShader: RuntimeShader = RuntimeShader(OS3_BG_FRAG).also(::initStaticUniforms)
+    val runtimeShader by lazy {
+        val shaderCode = if (isOs3) OS3_BG_FRAG else OS2_BG_FRAG
+        RuntimeShader(shaderCode).also {
+            initStaticUniforms(it)
+        }
+    }
 
     val brush: Brush get() = runtimeShader.asBrush()
 
@@ -27,8 +27,9 @@ internal class BgEffectPainter {
     private val colorsBuffer = FloatArray(16)
     private val pointsAnimBuffer = FloatArray(8)
 
-    private var animTime: Float = Float.NaN
+    private var animTime = Float.NaN
     private var isDarkCached: Boolean? = null
+    private var deviceTypeCached: DeviceType? = null
 
     private var presetApplied = false
 
@@ -37,16 +38,23 @@ internal class BgEffectPainter {
     private var cachedTotalWidth = Float.NaN
 
     private var cachedColorStage = Float.NaN
-    private var cachedColorsPreset: BgEffectConfig? = null
+    private var cachedColorsPreset: BgEffectConfig.Config? = null
 
     private var cachedPointsAnimTime = Float.NaN
-    private var cachedPointsAnimPreset: BgEffectConfig? = null
+    private var cachedPointsAnimPreset: BgEffectConfig.Config? = null
+
+    companion object {
+        private const val U_TRANSLATE_Y = 0f
+        private const val U_ALPHA_MULTI = 1f
+        private const val U_NOISE_SCALE = 1.5f
+        private const val U_POINT_RADIUS_MULTI = 1f
+    }
 
     private fun initStaticUniforms(shader: RuntimeShader) {
-        shader.setFloatUniform("uTranslateY", 0f)
-        shader.setFloatUniform("uNoiseScale", 1.5f)
-        shader.setFloatUniform("uPointRadiusMulti", 1f)
-        shader.setFloatUniform("uAlphaMulti", 1f)
+        shader.setFloatUniform("uTranslateY", U_TRANSLATE_Y)
+        shader.setFloatUniform("uNoiseScale", U_NOISE_SCALE)
+        shader.setFloatUniform("uPointRadiusMulti", U_POINT_RADIUS_MULTI)
+        shader.setFloatUniform("uAlphaMulti", U_ALPHA_MULTI)
     }
 
     fun updateResolution(width: Float, height: Float) {
@@ -62,7 +70,7 @@ internal class BgEffectPainter {
         runtimeShader.setFloatUniform("uAnimTime", animTime)
     }
 
-    fun updatePointsAnim(time: Float, preset: BgEffectConfig) {
+    fun updatePointsAnim(time: Float, preset: BgEffectConfig.Config) {
         if (cachedPointsAnimTime == time && cachedPointsAnimPreset === preset) return
 
         val offset = preset.pointOffset
@@ -70,8 +78,8 @@ internal class BgEffectPainter {
         while (i < 4) {
             val srcX = preset.points[i * 3]
             val srcY = preset.points[i * 3 + 1]
-            val animX = srcX + kotlin.math.sin(time + srcY) * offset
-            val animY = srcY + kotlin.math.cos(time + animX) * offset
+            val animX = srcX + sin(time + srcY) * offset
+            val animY = srcY + cos(time + animX) * offset
             pointsAnimBuffer[i * 2] = animX
             pointsAnimBuffer[i * 2 + 1] = animY
             i++
@@ -82,7 +90,7 @@ internal class BgEffectPainter {
         cachedPointsAnimPreset = preset
     }
 
-    fun updateColors(preset: BgEffectConfig, stage: Float) {
+    fun updateColors(preset: BgEffectConfig.Config, stage: Float) {
         if (cachedColorsPreset === preset && cachedColorStage == stage) return
 
         val base = stage.toInt()
@@ -98,7 +106,7 @@ internal class BgEffectPainter {
         cachedColorStage = stage
     }
 
-    private fun colorsForCycleIndex(preset: BgEffectConfig, index: Int): FloatArray = when (index.mod(4)) {
+    private fun colorsForCycleIndex(preset: BgEffectConfig.Config, index: Int): FloatArray = when (index.mod(4)) {
         1 -> preset.colors1
         3 -> preset.colors3
         else -> preset.colors2
@@ -124,17 +132,19 @@ internal class BgEffectPainter {
         cachedTotalWidth = totalWidth
     }
 
-    fun updatePresetIfNeeded(isDark: Boolean) {
-        if (presetApplied && isDarkCached == isDark) return
+    fun updatePresetIfNeeded(deviceType: DeviceType, isDark: Boolean) {
+        if (presetApplied && isDarkCached == isDark && deviceTypeCached == deviceType) return
 
-        applyPreset(isDark)
+        applyPreset(deviceType, isDark)
 
         isDarkCached = isDark
+        deviceTypeCached = deviceType
         presetApplied = true
     }
 
-    private fun applyPreset(isDark: Boolean) {
-        val preset = BgEffectConfigs.getOS3Phone(isDark)
+    private fun applyPreset(deviceType: DeviceType, isDark: Boolean) {
+        val preset = BgEffectConfig.get(deviceType, isDark, isOs3)
+
         runtimeShader.setFloatUniform("uPoints", preset.points)
         runtimeShader.setFloatUniform("uLightOffset", preset.lightOffset)
         runtimeShader.setFloatUniform("uSaturateOffset", preset.saturateOffset)

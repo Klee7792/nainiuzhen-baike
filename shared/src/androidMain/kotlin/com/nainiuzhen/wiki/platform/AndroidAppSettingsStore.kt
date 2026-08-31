@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki.platform
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.nainiuzhen.wiki.utils.AppSettingsStore
 import com.nainiuzhen.wiki.utils.AppState
 
@@ -22,7 +23,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         navTransitionStyle = prefs.getInt(KEY_TRANSITION, 0),
         enableSwipeBack = prefs.getBoolean(KEY_SWIPE_BACK, true),
         enableCornerClip = prefs.getBoolean(KEY_CORNER_CLIP, true),
-        scrollEndHaptic = prefs.getBoolean(KEY_SCROLL_HAPTIC, false),
+        scrollEndHaptic = prefs.getBoolean(KEY_SCROLL_HAPTIC, true),
         pageUserScroll = prefs.getBoolean(KEY_PAGE_SCROLL, true),
         showTopAppBar = prefs.getBoolean(KEY_SHOW_TOP_BAR, true),
         topAppBarBlurStyle = prefs.getInt(KEY_TOP_BAR_BLUR_STYLE, 0),
@@ -35,9 +36,15 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         showFloatingActionButton = prefs.getBoolean(KEY_FLOATING_FAB, false),
         floatingActionButtonPosition = prefs.getInt(KEY_FLOATING_FAB_POS, 0),
         enableDim = prefs.getBoolean(KEY_DIM, false),
-        blockInputDuringTransition = prefs.getBoolean(KEY_BLOCK_INPUT, false),
+        blockInputDuringTransition = prefs.getBoolean(KEY_BLOCK_INPUT, true),
         floatingNavigationBarStyle = prefs.getInt(KEY_FLOATING_NAV_BAR_STYLE, 0),
         floatingNavigationBarPosition = prefs.getInt(KEY_FLOATING_NAV_BAR_POS, 0),
+        homeImageScale = prefs.getScaleFloat(KEY_HOME_IMAGE_SCALE, 8f),
+        cardImageScale = prefs.getScaleFloat(KEY_CARD_IMAGE_SCALE, 5f),
+        dialogBodyImageScale = prefs.getScaleFloat(KEY_DIALOG_BODY_IMAGE_SCALE, 6f),
+        dialogRecipeImageScale = prefs.getScaleFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, 6f),
+        dialogFavHateImageScale = prefs.getScaleFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
+        scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
     )
 
     override fun save(state: AppState) {
@@ -65,6 +72,12 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putBoolean(KEY_BLOCK_INPUT, state.blockInputDuringTransition)
             putInt(KEY_FLOATING_NAV_BAR_STYLE, state.floatingNavigationBarStyle)
             putInt(KEY_FLOATING_NAV_BAR_POS, state.floatingNavigationBarPosition)
+            putFloat(KEY_HOME_IMAGE_SCALE, state.homeImageScale)
+            putFloat(KEY_CARD_IMAGE_SCALE, state.cardImageScale)
+            putFloat(KEY_DIALOG_BODY_IMAGE_SCALE, state.dialogBodyImageScale)
+            putFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, state.dialogRecipeImageScale)
+            putFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, state.dialogFavHateImageScale)
+            putFloat(KEY_SCALE_STEP, state.scaleStep)
             apply()
         }
     }
@@ -93,5 +106,24 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_BLOCK_INPUT = "blockInputDuringTransition"
         const val KEY_FLOATING_NAV_BAR_STYLE = "floatingNavigationBarStyle"
         const val KEY_FLOATING_NAV_BAR_POS = "floatingNavigationBarPosition"
+        const val KEY_HOME_IMAGE_SCALE = "homeImageScale"
+        const val KEY_CARD_IMAGE_SCALE = "cardImageScale"
+        const val KEY_DIALOG_BODY_IMAGE_SCALE = "dialogBodyImageScale"
+        const val KEY_DIALOG_RECIPE_IMAGE_SCALE = "dialogRecipeImageScale"
+        const val KEY_DIALOG_FAV_HATE_IMAGE_SCALE = "dialogFavHateImageScale"
+        const val KEY_SCALE_STEP = "scaleStep"
+    }
+}
+
+/**
+ * 兼容迁移读取：旧版本把倍率以 Int 固化进 SharedPreferences，升级到 Float 后直接
+ * [android.content.SharedPreferences.getFloat] 会抛 `Integer cannot be cast to Float`。
+ * 这里按实际存储类型读取：Float 直接用、Int 转 Float、缺失则回退默认值。
+ */
+private fun SharedPreferences.getScaleFloat(key: String, default: Float): Float {
+    return when (val v = this.all[key]) {
+        is Float -> v
+        is Int -> v.toFloat()
+        else -> default
     }
 }

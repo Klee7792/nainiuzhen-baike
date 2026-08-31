@@ -1,25 +1,31 @@
-// 奶牛镇百科 · 关于子页（对照 miuix demo AboutPage 重写）
+// 奶牛镇百科 · 关于子页（100% 复刻 miuix demo AboutPage）
 //
-// 变更点：
-// - 用真实 app 图标（assets/ic_launcher.png，经 LocalSpriteRepository.getAssetImage 解码）替换临时"奶"字；不可走 composeResources(Res.*)，否则 APK 无该资源会崩溃。
-// - 标题加 textureBlur + DstIn 前景模糊，呈现 demo 同款发光/玻璃文字效果。
-// - 改用 LazyColumn + logoSpacer 实现滚动与吸附顶栏；原 Column.verticalScroll 导致整体一起滚动。
-// - 卡片使用 ColorBlendToken 玻璃混合参数，并对齐 demo 的 blurRadius/noise。
-// - 降低整体顶部留白，使图标/标题视觉居中；背景随滚动淡出为 surface 纯色。
-// - 保留 #16 崩溃修复：backdrop 仅由 BgEffectBackground 内 Spacer 捕获一次，卡片/标题是兄弟节点而非子节点。
+// 与 demo 的差异（按用户要求）：
+// - 标题 "Miuix for Compose" → "奶牛镇百科"
+// - 图标走 app 自有图标（assets/ic_launcher.png，经 LocalSpriteRepository 解码），非 demo 的 Res.drawable.ic_launcher
+// - 版本号走 LocalAppVersion（Android 端经 BuildConfig 注入），格式与 demo 一致："vX.Y.Z (N)"
+// - 4 个选项文字中文化：查看源码 / 加入群组 / 开源协议 / 第三方开源协议
+// 其余滚动联动、波浪背景、顶栏渐显、OS2/OS3 弹窗、滚动条等均对齐 demo。
+
+@file:OptIn(ExperimentalScrollBarApi::class)
 
 package com.nainiuzhen.wiki.ui.settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,20 +35,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.components.BlurredBar
@@ -51,12 +61,8 @@ import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.ui.settings.about.BgEffectBackground
 import com.nainiuzhen.wiki.ui.settings.about.ColorBlendToken
-import com.nainiuzhen.wiki.utils.APP_VERSION_CODE
-import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
+import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
-import com.nainiuzhen.wiki.utils.showToast
-import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.ImageBitmap
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -70,16 +76,24 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurDefaults
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
 fun AboutScreen() {
@@ -97,6 +111,11 @@ fun AboutScreen() {
     val backdrop = rememberAppBlurBackdrop()
     val scrollBehavior = MiuixScrollBehavior()
     val lazyListState = rememberLazyListState()
+
+    var isOs3Effect by remember { mutableStateOf(true) }
+    var showTextureSet by remember { mutableStateOf(false) }
+    var dynamicBackground by remember { mutableStateOf(isRuntimeShaderSupported()) }
+    var isFullScreenBackground by remember { mutableStateOf(true) }
 
     val scrollProgress by remember {
         derivedStateOf {
@@ -116,8 +135,8 @@ fun AboutScreen() {
         }
     }
 
-    val collapsed by remember { derivedStateOf { scrollProgress >= 0.999f } }
-    val blurActive by remember(backdrop) { derivedStateOf { backdrop != null && scrollProgress >= 0.999f } }
+    val collapsed by remember { derivedStateOf { scrollProgress == 1f } }
+    val blurActive by remember(backdrop) { derivedStateOf { backdrop != null && scrollProgress == 1f } }
 
     Scaffold(
         topBar = {
@@ -139,6 +158,7 @@ fun AboutScreen() {
                     scrollBehavior = scrollBehavior,
                     color = barColor,
                     titleColor = titleColor,
+                    defaultWindowInsetsPadding = false,
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
                             Icon(
@@ -153,31 +173,27 @@ fun AboutScreen() {
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (backdrop != null) Modifier.background(surface) else Modifier),
+            modifier = if (backdrop != null) {
+                Modifier.layerBackdrop(backdrop)
+            } else {
+                Modifier
+            },
         ) {
-            BgEffectBackground(
-                dynamicBackground = true,
+            AboutContent(
+                innerPadding = innerPadding,
+                scrollBehavior = scrollBehavior,
+                lazyListState = lazyListState,
+                scrollProgressProvider = { scrollProgress },
                 isDark = isDark,
-                surface = surface,
-                modifier = Modifier.fillMaxSize(),
-                bgModifier = if (backdrop != null) {
-                    Modifier.layerBackdrop(backdrop)
-                } else {
-                    Modifier
-                },
-                alpha = { 1f - scrollProgress },
-            ) {
-                AboutContent(
-                    innerPadding = innerPadding,
-                    lazyListState = lazyListState,
-                    scrollBehavior = scrollBehavior,
-                    scrollProgressProvider = { scrollProgress },
-                    backdrop = backdrop,
-                    isDark = isDark,
-                )
-            }
+                isOs3Effect = isOs3Effect,
+                onOs3EffectChange = { isOs3Effect = it },
+                dynamicBackground = dynamicBackground,
+                onDynamicBackgroundChange = { dynamicBackground = it },
+                isFullScreenBackground = isFullScreenBackground,
+                onFullScreenBackgroundChange = { isFullScreenBackground = it },
+                showTextureSet = showTextureSet,
+                onShowTextureSetChange = { showTextureSet = it },
+            )
         }
     }
 }
@@ -185,18 +201,32 @@ fun AboutScreen() {
 @Composable
 private fun AboutContent(
     innerPadding: PaddingValues,
-    lazyListState: LazyListState,
     scrollBehavior: ScrollBehavior,
+    lazyListState: LazyListState,
     scrollProgressProvider: () -> Float,
-    backdrop: LayerBackdrop?,
     isDark: Boolean,
+    isOs3Effect: Boolean,
+    onOs3EffectChange: (Boolean) -> Unit,
+    dynamicBackground: Boolean,
+    onDynamicBackgroundChange: (Boolean) -> Unit,
+    isFullScreenBackground: Boolean,
+    onFullScreenBackgroundChange: (Boolean) -> Unit,
+    showTextureSet: Boolean,
+    onShowTextureSetChange: (Boolean) -> Unit,
 ) {
     val navigator = LocalNavigator.current
+    val appState = LocalAppSettings.current
+    val uriHandler = LocalUriHandler.current
     val density = LocalDensity.current
 
-    var logoColumnHeightPx by remember { mutableIntStateOf(0) }
-    val logoColumnHeightDp = with(density) { logoColumnHeightPx.toDp() }
+    val backdrop = rememberAppBlurBackdrop()
+    val appVersion = LocalAppVersion.current
 
+    val cardBlend = if (isDark) {
+        ColorBlendToken.Overlay_Thin_Light
+    } else {
+        ColorBlendToken.Pured_Regular_Light
+    }
     val logoBlend = remember(isDark) {
         if (isDark) {
             listOf(
@@ -213,36 +243,53 @@ private fun AboutContent(
         }
     }
 
-    val cardBlend = if (isDark) {
-        ColorBlendToken.Overlay_Thin_Light
-    } else {
-        ColorBlendToken.Pured_Regular_Light
-    }
-
     val horizontalPadding = 24.dp
-    val topPadding = innerPadding.calculateTopPadding() + 120.dp
-    val titleBottomGap = 40.dp
+    val topAppBarPad = innerPadding.calculateTopPadding()
+    val scrollPadding = PaddingValues(
+        top = topAppBarPad,
+        start = horizontalPadding,
+        end = horizontalPadding,
+        bottom = innerPadding.calculateBottomPadding() + 24.dp,
+    )
+    // demo：logoPadding 比 scrollPadding 多 extraTop=40.dp，Column 内再 +52.dp
+    val logoPaddingTop = topAppBarPad + 92.dp
+
+    var logoHeightDp by remember { mutableStateOf(300.dp) }
 
     val spriteRepo = LocalSpriteRepository.current
     val logoBitmap by produceState<ImageBitmap?>(initialValue = null, spriteRepo) {
         value = withContext(Dispatchers.IO) { spriteRepo.getAssetImage("ic_launcher.png") }
     }
 
-    // 固定在上方的图标/标题/版本：不随列表滚动。
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = topPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    BgEffectBackground(
+        dynamicBackground = dynamicBackground,
+        modifier = Modifier.fillMaxSize(),
+        bgModifier = if (backdrop != null) {
+            Modifier.layerBackdrop(backdrop)
+        } else {
+            Modifier
+        },
+        isFullSize = isFullScreenBackground,
+        effectBackground = true,
+        isOs3Effect = isOs3Effect,
+        alpha = { 1f - scrollProgressProvider() },
     ) {
-        Box(
-            modifier = Modifier.onSizeChanged { logoColumnHeightPx = it.height },
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = logoPaddingTop,
+                        start = horizontalPadding,
+                        end = horizontalPadding,
+                    )
+                    .onSizeChanged { size ->
+                        with(density) { logoHeightDp = size.height.toDp() }
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(88.dp)
                         .graphicsLayer {
@@ -255,13 +302,12 @@ private fun AboutContent(
                             scaleY = 1 - (iconProgress * 0.05f)
                         }
                         .background(Color.White),
-                    contentAlignment = Alignment.Center,
                 ) {
                     Image(
                         modifier = Modifier.fillMaxSize(),
                         bitmap = logoBitmap ?: spriteRepo.placeholder(),
                         contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     )
                 }
 
@@ -297,141 +343,189 @@ private fun AboutContent(
                 )
 
                 Text(
-                    text = "$APP_VERSION_NAME ($APP_VERSION_CODE)",
+                    text = "v" + appVersion.name + " (" + appVersion.code + ")",
                     fontSize = 14.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.graphicsLayer {
-                        val p = ((scrollProgressProvider() - 0.05f) / 0.15f)
-                            .coerceIn(0f, 1f)
-                        alpha = 1 - p
-                        scaleX = 1 - (p * 0.05f)
-                        scaleY = 1 - (p * 0.05f)
-                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            val p = ((scrollProgressProvider() - 0.05f) / 0.15f)
+                                .coerceIn(0f, 1f)
+                            alpha = 1 - p
+                            scaleX = 1 - (p * 0.05f)
+                            scaleY = 1 - (p * 0.05f)
+                        },
                 )
             }
-        }
 
-        Spacer(Modifier.height(titleBottomGap))
-    }
-
-    // 可滚动内容：与上方固定区域重叠，通过 logoSpacer 让卡片从标题下方升起。
-    LazyColumn(
-        state = lazyListState,
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentPadding = PaddingValues(
-            top = innerPadding.calculateTopPadding(),
-            start = horizontalPadding,
-            end = horizontalPadding,
-            bottom = 24.dp,
-        ),
-    ) {
-        item(key = "logoSpacer") {
-            Box(
+            // Scrollable content
+            LazyColumn(
+                state = lazyListState,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(logoColumnHeightDp + 160.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) { }
+                    .fillMaxSize()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                contentPadding = scrollPadding,
+            ) {
+                item(key = "logoSpacer") {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(
+                                logoHeightDp + 52.dp + (logoPaddingTop - topAppBarPad) + 126.dp,
+                            )
+                            .pointerInput(Unit) {
+                                detectTapGestures {
+                                    onShowTextureSetChange(true)
+                                }
+                            },
+                        contentAlignment = Alignment.TopCenter,
+                        content = { },
+                    )
+                }
+
+                item(key = "about") {
+                    Box {
+                        Spacer(Modifier.fillParentMaxHeight())
+                        Column(
+                            modifier = Modifier.padding(bottom = scrollPadding.calculateBottomPadding()),
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp)
+                                    .then(
+                                        if (backdrop != null) {
+                                            Modifier.textureBlur(
+                                                backdrop = backdrop,
+                                                shape = RoundedCornerShape(16.dp),
+                                                blurRadius = 60f,
+                                                noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                                colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                                colors = CardDefaults.defaultColors(
+                                    color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+                                    contentColor = MiuixTheme.colorScheme.onSurface,
+                                ),
+                            ) {
+                                ArrowPreference(
+                                    title = "查看源码",
+                                    endActions = {
+                                        Text(
+                                            text = "GitHub",
+                                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        )
+                                    },
+                                    onClick = { uriHandler.openUri("https://github.com/compose-miuix-ui/miuix") },
+                                )
+                                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
+                                ArrowPreference(
+                                    title = "加入群组",
+                                    endActions = {
+                                        Text(
+                                            text = "Telegram",
+                                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        )
+                                    },
+                                    onClick = { uriHandler.openUri("https://t.me/YuKongA13579") },
+                                )
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp)
+                                    .padding(top = 12.dp)
+                                    .then(
+                                        if (backdrop != null) {
+                                            Modifier.textureBlur(
+                                                backdrop = backdrop,
+                                                shape = RoundedCornerShape(16.dp),
+                                                blurRadius = 60f,
+                                                noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                                colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                                colors = CardDefaults.defaultColors(
+                                    color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+                                    contentColor = MiuixTheme.colorScheme.onSurface,
+                                ),
+                            ) {
+                                ArrowPreference(
+                                    title = "开源协议",
+                                    endActions = {
+                                        Text(
+                                            text = "Apache-2.0",
+                                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        )
+                                    },
+                                    onClick = { uriHandler.openUri("https://www.apache.org/licenses/LICENSE-2.0.txt") },
+                                )
+                                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
+                                ArrowPreference(
+                                    title = "第三方开源协议",
+                                    onClick = { navigator.push(Route.License) },
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+            }
+
+            VerticalScrollBar(
+                adapter = rememberScrollBarAdapter(lazyListState),
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                trackPadding = scrollPadding,
+            )
         }
 
-        item(key = "about") {
-            Box {
-                Spacer(Modifier.fillParentMaxHeight())
+        OverlayBottomSheet(
+            show = showTextureSet,
+            title = "背景效果",
+            onDismissRequest = {
+                onShowTextureSetChange(false)
+            },
+            insideMargin = DpSize(0.dp, 0.dp),
+        ) {
+            LazyColumn {
+                item {
+                    val effectVariantOptions = listOf("OS2", "OS3")
+                    OverlayDropdownPreference(
+                        title = "效果样式",
+                        items = effectVariantOptions,
+                        selectedIndex = if (isOs3Effect) 1 else 0,
+                        onSelectedIndexChange = { onOs3EffectChange(it == 1) },
+                    )
 
-                Column(
-                    modifier = Modifier.padding(bottom = 24.dp),
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (backdrop != null) {
-                                    Modifier.textureBlur(
-                                        backdrop = backdrop,
-                                        shape = RoundedCornerShape(16.dp),
-                                        blurRadius = 60f,
-                                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
-                                        colors = BlurDefaults.blurColors(blendColors = cardBlend),
-                                    )
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                        colors = CardDefaults.defaultColors(
-                            color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
-                            contentColor = MiuixTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        ArrowPreference(
-                            title = "查看源码",
-                            endActions = {
-                                Text(
-                                    text = "GitHub",
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
-                            },
-                            onClick = { showToast("还没做") },
-                        )
-                        HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
-                        ArrowPreference(
-                            title = "加入群组",
-                            endActions = {
-                                Text(
-                                    text = "Telegram",
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
-                            },
-                            onClick = { showToast("还没做") },
-                        )
-                    }
+                    SwitchPreference(
+                        title = "动态背景",
+                        checked = dynamicBackground,
+                        onCheckedChange = {
+                            onDynamicBackgroundChange(it)
+                        },
+                    )
 
-                    Spacer(Modifier.height(12.dp))
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (backdrop != null) {
-                                    Modifier.textureBlur(
-                                        backdrop = backdrop,
-                                        shape = RoundedCornerShape(16.dp),
-                                        blurRadius = 60f,
-                                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
-                                        colors = BlurDefaults.blurColors(blendColors = cardBlend),
-                                    )
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                        colors = CardDefaults.defaultColors(
-                            color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
-                            contentColor = MiuixTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        ArrowPreference(
-                            title = "开源协议",
-                            endActions = {
-                                Text(
-                                    text = "Apache-2.0",
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
-                            },
-                            onClick = { showToast("还没做") },
-                        )
-                        HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
-                        ArrowPreference(
-                            title = "第三方开源协议",
-                            onClick = { navigator.push(Route.License) },
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
+                    SwitchPreference(
+                        title = "全屏背景",
+                        checked = isFullScreenBackground,
+                        onCheckedChange = {
+                            onFullScreenBackgroundChange(it)
+                        },
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
                 }
             }
         }

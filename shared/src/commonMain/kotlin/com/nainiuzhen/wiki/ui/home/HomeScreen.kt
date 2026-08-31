@@ -27,9 +27,11 @@ import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.components.MenuCard
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.SpriteImage
+import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Route
+import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.OnResumeEffect
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -50,6 +52,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
     val navigator = LocalNavigator.current
     val data = LocalDataRepository.current
+    val appState = LocalAppSettings.current
+
+    // 悬浮底栏(或普通底栏)高度已由 miuix Scaffold 折进 innerPadding.bottom，
+    // 列表底部直接用该值预留，无需硬编码 88.dp。
+
     // 随机种子：每次 reroll 重新抽取三板块图标（变更点 #34）。
     var seed by remember { mutableStateOf(0) }
     val firstItem = remember(seed, data) { data.items.randomOrNull() }
@@ -81,7 +88,10 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
             .then(
                 if (homeCanScroll) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier,
             ),
-        contentPadding = PaddingValues(top = innerPadding.calculateTopPadding(), bottom = 12.dp),
+        contentPadding = PaddingValues(
+            top = innerPadding.calculateTopPadding(),
+            bottom = innerPadding.calculateBottomPadding() + 12.dp,
+        ),
     ) {
         item(key = "boards") {
             Column(
@@ -109,7 +119,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 firstItem?.let {
                                     SpriteImage(
                                         frameKey = it.iconFrameKey,
-                                        modifier = Modifier.size(56.dp),
+                                        scaleContext = SpriteScaleContext.Home,
                                     )
                                 }
                             }
@@ -138,7 +148,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 firstRecipe?.let {
                                     SpriteImage(
                                         frameKey = it.iconFrameKey,
-                                        modifier = Modifier.size(56.dp),
+                                        scaleContext = SpriteScaleContext.Home,
                                     )
                                 }
                             }

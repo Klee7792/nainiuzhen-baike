@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,12 +20,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -41,6 +46,7 @@ fun ItemMiniCard(
     item: ItemInfo?,
     num: Int? = null,
     onClick: () -> Unit = {},
+    scaleContext: SpriteScaleContext = SpriteScaleContext.DialogRecipe,
 ) {
     Column(
         modifier = Modifier
@@ -56,19 +62,28 @@ fun ItemMiniCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(contentAlignment = Alignment.BottomEnd) {
+        // 图标区固定 48dp 并裁剪：素材倍率只缩放图片本身（居中、溢出裁掉），
+        // 不再撑大背景卡片（修复「卡片随倍率一起缩放」，#22 复盘）。
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(0.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
             SpriteImage(
                 frameKey = item?.iconFrameKey ?: "",
-                modifier = Modifier.size(48.dp),
+                scaleContext = scaleContext,
             )
             if (num != null) {
-                // 数量角标：显示在图片上层、右对齐下对齐（右下角），无胶囊底、字号更小
+                // 数量角标：显示在图片上层右下角，无胶囊底、字号更小
                 Text(
                     text = "×$num",
                     fontSize = 9.sp,
                     textAlign = TextAlign.Center,
                     color = MiuixTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 1.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(start = 1.dp),
                 )
             }
         }
@@ -97,6 +112,7 @@ fun ItemCardRow(
     items: List<ItemInfo?>,
     modifier: Modifier = Modifier,
     onItemClick: (ItemInfo) -> Unit = {},
+    scaleContext: SpriteScaleContext = SpriteScaleContext.DialogRecipe,
 ) {
     if (items.isEmpty()) return
     val row: @Composable () -> Unit = {
@@ -106,7 +122,11 @@ fun ItemCardRow(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 items.forEach { item ->
-                    ItemMiniCard(item = item, onClick = { if (item != null) onItemClick(item) })
+                    ItemMiniCard(
+                        item = item,
+                        onClick = { if (item != null) onItemClick(item) },
+                        scaleContext = scaleContext,
+                    )
                 }
             }
         } else {
@@ -116,7 +136,11 @@ fun ItemCardRow(
             ) {
                 items(items.size) { index ->
                     val item = items[index]
-                    ItemMiniCard(item = item, onClick = { if (item != null) onItemClick(item) })
+                    ItemMiniCard(
+                        item = item,
+                        onClick = { if (item != null) onItemClick(item) },
+                        scaleContext = scaleContext,
+                    )
                 }
             }
         }
@@ -129,37 +153,96 @@ fun ItemCardRow(
 }
 
 /**
- * 横向滚动边缘淡入淡出容器（变更点 #33）：在左右两侧叠加从背景色到透明的渐变，
- * 使横向溢出的物品行在边缘柔和过渡。渐变层无指针处理，不拦截滚动手势。
+ * 横向滚动边缘处理容器：在左右两侧叠加柔和的边缘过渡（「渐变淡出」始终渲染作为兜底，
+ * 支持高斯模糊时再额外叠加 [textureBlur] 增强通透感）。
+ *
+ * - 两侧渐变淡出（背景色→透明）**始终绘制**，不依赖模糊是否可用。这样在 dialog 等
+ *   [layerBackdrop] 采样偶发失效的场景下，边缘过渡依然可见（#26 修复：此前 dialog 内
+ *   仅依赖模糊层、采样失败时整段硬切无效果）。
+ * - 当系统支持高斯模糊（[rememberAppBlurBackdrop] 返回非 null，即「启用模糊」开启
+ *   且运行环境支持 RuntimeShader / Android 12+）时，把内部内容注册为模糊采样源
+ *   （[layerBackdrop]），并在渐变之上左右各叠加一个 [textureBlur] 高斯模糊层（与顶栏
+ *   [BlurSupport.BlurredBar] 同参数），形成更通透的「高斯边缘」。
+ *
+ * 渐变/模糊层无指针处理，不拦截滚动手势。外部签名保持不变，调用方
+ * `if (items.size > 4) FadeEdges { row() } else row()` 继续可用。
  */
 @Composable
 fun FadeEdges(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val backdrop = rememberAppBlurBackdrop()
     Box(modifier = modifier) {
-        content()
+        // 内层 Box 持有真正的内容。支持模糊时叠加 layerBackdrop，使该行物品成为
+        // 模糊采样源，供两侧 textureBlur 边缘层采样。
+        val innerModifier = if (backdrop != null) {
+            Modifier.layerBackdrop(backdrop)
+        } else {
+            Modifier
+        }
+        Box(modifier = innerModifier) {
+            content()
+        }
+        // 两侧「渐变淡出」始终渲染（不依赖 backdrop）：作为兜底，保证在 dialog 等
+        // textureBlur 采样失效的场景下边缘过渡依然可见（#26 修复）。
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .width(16.dp)
+                .width(24.dp)
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(MiuixTheme.colorScheme.surface, Color.Transparent),
+                        listOf(MiuixTheme.colorScheme.surface.copy(alpha = 0.85f), Color.Transparent),
                     ),
                 ),
         )
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .width(16.dp)
+                .width(24.dp)
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color.Transparent, MiuixTheme.colorScheme.surface),
+                        listOf(Color.Transparent, MiuixTheme.colorScheme.surface.copy(alpha = 0.85f)),
                     ),
                 ),
         )
+        // 若系统支持高斯模糊，在渐变之上额外叠加高斯模糊层增强通透感；即便其采样
+        // 偶发失效，下方渐变兜底也已保证可见（双保险）。
+        if (backdrop != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(24.dp)
+                    .fillMaxHeight()
+                    .textureBlur(
+                        backdrop = backdrop,
+                        shape = RectangleShape,
+                        blurRadius = 25f,
+                        colors = BlurDefaults.blurColors(
+                            blendColors = listOf(
+                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.4f)),
+                            ),
+                        ),
+                    ),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(24.dp)
+                    .fillMaxHeight()
+                    .textureBlur(
+                        backdrop = backdrop,
+                        shape = RectangleShape,
+                        blurRadius = 25f,
+                        colors = BlurDefaults.blurColors(
+                            blendColors = listOf(
+                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.4f)),
+                            ),
+                        ),
+                    ),
+            )
+        }
     }
 }

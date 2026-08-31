@@ -23,6 +23,8 @@ import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.ui.components.BasicDetailDialog
 import com.nainiuzhen.wiki.ui.components.RichText
 import com.nainiuzhen.wiki.ui.components.SpriteImage
+import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
+import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.ui.components.StarImage
 import com.nainiuzhen.wiki.ui.recipe.SectionDivider
 import top.yukonga.miuix.kmp.basic.Text
@@ -117,13 +119,14 @@ private fun ItemHeaderSection(item: ItemInfo) {
         Box(
             modifier = Modifier
                 .size(56.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(
                     color = MiuixTheme.colorScheme.surfaceContainer,
                     shape = RoundedCornerShape(12.dp),
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            SpriteImage(frameKey = item.iconFrameKey, modifier = Modifier.size(56.dp))
+            SpriteImage(frameKey = item.iconFrameKey, scaleContext = SpriteScaleContext.DialogBody)
         }
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(

@@ -24,7 +24,7 @@ data class AppState(
     val enableSwipeBack: Boolean = true,
     // —— v5 新增 14 开关（#3，全部真正接续）—— //
     val enableCornerClip: Boolean = true, // Enable Corner Clip
-    val scrollEndHaptic: Boolean = false, // Enable Scroll End Haptic
+    val scrollEndHaptic: Boolean = true, // Enable Scroll End Haptic
     val pageUserScroll: Boolean = true, // Enable Page User Scroll
     val showTopAppBar: Boolean = true, // Show TopAppBar
     val topAppBarBlurStyle: Int = 0, // TopAppBar Blur Style (0=Gaussian 1=Progressive)
@@ -37,17 +37,26 @@ data class AppState(
     val showFloatingActionButton: Boolean = false, // Show FloatingActionButton
     val floatingActionButtonPosition: Int = 0, // FAB Position (0=End 1=Start 2=Center)
     val enableDim: Boolean = false, // Enable Dim
-    val blockInputDuringTransition: Boolean = false, // Block Input During Transition
+    val blockInputDuringTransition: Boolean = true, // Block Input During Transition
     // —— v6 新增 —— //
     val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
+    // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
+    // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
+    val cardImageScale: Float = 5f, // 卡片素材：物品/配方卡片内图片（最大 8）
+    val homeImageScale: Float = 8f, // 主页左侧素材：主页物品/配方入口卡片图（最大 10）
+    val dialogBodyImageScale: Float = 6f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）
+    val dialogRecipeImageScale: Float = 6f, // 弹窗配方素材：配方原料/产物（最大 8）
+    val dialogFavHateImageScale: Float = 6f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
+    val scaleStep: Float = 0.1f, // 滑块步进：0.1 / 0.5 / 1（设置子页可调，#22 步长）
 )
 
-/** 应用版本展示名（与 build.ps1 的 build number 同步：build N -> v1.(N/10).(N%10)）。 */
-const val APP_VERSION_NAME = "v1.2.1"
+/** 运行时应用版本信息：由 Android 端经 [BuildConfig.VERSION_NAME] / [BuildConfig.VERSION_CODE] 注入，
+ * 保证设置页 / 关于页显示的版本与构建产物完全一致（不再依赖编译期常量的手动同步，#26）。 */
+data class AppVersion(val name: String, val code: Int)
 
-/** 应用版本号（与 build.ps1 的 build number 同步）。 */
-const val APP_VERSION_CODE = 21
+/** 应用版本 CompositionLocal：Android 端从 BuildConfig 注入真实值，commonMain 提供默认值兜底。 */
+val LocalAppVersion = compositionLocalOf { AppVersion("1.2.5", 25) }
 
 val LocalAppSettings = compositionLocalOf { AppState() }
 

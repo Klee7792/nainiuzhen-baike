@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcInfo
+import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -48,6 +49,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
@@ -79,7 +81,7 @@ fun NpcListScreen() {
         }
     }
     val filtered = remember(base, query) {
-        if (query.isBlank()) base else base.filter { it.name.contains(query, ignoreCase = true) }
+        if (query.isBlank()) base else base.filter { it.searchText.contains(query, ignoreCase = true) }
     }
 
     AppSubPageScaffold(
@@ -120,6 +122,7 @@ fun NpcListScreen() {
             state = rememberLazyGridState(),
             modifier = Modifier
                 .fillMaxHeight()
+                .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
             contentPadding = PaddingValues(

@@ -1,9 +1,5 @@
 // Copyright 2026, compose-miuix-ui contributors
 // SPDX-License-Identifier: Apache-2.0
-//
-// 从 miuix 示例 `component.effect.BgEffectModifier` 移植（移除 DeviceType / isFullSize）。
-// 在节点的 draw 中绘制 OS3 动态背景 brush；每帧用 withFrameNanos 推进 animTime。
-// 关于页 isFullSize=true（占满 80% 高度），alpha 固定 1f。
 
 package com.nainiuzhen.wiki.ui.settings.about
 
@@ -18,63 +14,83 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * 将 [painter] 的 OS3 brush 画到节点上：先铺 [surface] 兜底色，再叠加 brush，
- * 最后 `drawContent()` 让上层（如 `layerBackdrop` 之后的内容）正常绘制。
- */
 internal fun Modifier.bgEffectDraw(
     painter: BgEffectPainter,
-    preset: BgEffectConfig,
-    isDark: Boolean,
+    preset: BgEffectConfig.Config,
+    deviceType: DeviceType,
+    isDarkTheme: Boolean,
     surface: Color,
+    effectBackground: Boolean,
+    isFullSize: Boolean,
     playing: Boolean,
     colorStage: () -> Float,
+    alpha: () -> Float,
 ): Modifier = this then BgEffectElement(
     painter = painter,
     preset = preset,
-    isDark = isDark,
+    deviceType = deviceType,
+    isDarkTheme = isDarkTheme,
     surface = surface,
+    effectBackground = effectBackground,
+    isFullSize = isFullSize,
     playing = playing,
     colorStage = colorStage,
+    alpha = alpha,
 )
 
 private data class BgEffectElement(
     val painter: BgEffectPainter,
-    val preset: BgEffectConfig,
-    val isDark: Boolean,
+    val preset: BgEffectConfig.Config,
+    val deviceType: DeviceType,
+    val isDarkTheme: Boolean,
     val surface: Color,
+    val effectBackground: Boolean,
+    val isFullSize: Boolean,
     val playing: Boolean,
     val colorStage: () -> Float,
+    val alpha: () -> Float,
 ) : ModifierNodeElement<BgEffectNode>() {
 
     override fun create(): BgEffectNode = BgEffectNode(
         painter = painter,
         preset = preset,
-        isDark = isDark,
+        deviceType = deviceType,
+        isDarkTheme = isDarkTheme,
         surface = surface,
+        effectBackground = effectBackground,
+        isFullSize = isFullSize,
         playing = playing,
         colorStage = colorStage,
+        alpha = alpha,
     )
 
     override fun update(node: BgEffectNode) {
         node.update(
             painter = painter,
             preset = preset,
-            isDark = isDark,
+            deviceType = deviceType,
+            isDarkTheme = isDarkTheme,
             surface = surface,
+            effectBackground = effectBackground,
+            isFullSize = isFullSize,
             playing = playing,
             colorStage = colorStage,
+            alpha = alpha,
         )
     }
 }
 
 private class BgEffectNode(
     private var painter: BgEffectPainter,
-    private var preset: BgEffectConfig,
-    private var isDark: Boolean,
+    private var preset: BgEffectConfig.Config,
+    private var deviceType: DeviceType,
+    private var isDarkTheme: Boolean,
     private var surface: Color,
+    private var effectBackground: Boolean,
+    private var isFullSize: Boolean,
     private var playing: Boolean,
     private var colorStage: () -> Float,
+    private var alpha: () -> Float,
 ) : Modifier.Node(),
     DrawModifierNode {
 
@@ -93,17 +109,25 @@ private class BgEffectNode(
 
     fun update(
         painter: BgEffectPainter,
-        preset: BgEffectConfig,
-        isDark: Boolean,
+        preset: BgEffectConfig.Config,
+        deviceType: DeviceType,
+        isDarkTheme: Boolean,
         surface: Color,
+        effectBackground: Boolean,
+        isFullSize: Boolean,
         playing: Boolean,
         colorStage: () -> Float,
+        alpha: () -> Float,
     ) {
         this.painter = painter
         this.preset = preset
-        this.isDark = isDark
+        this.deviceType = deviceType
+        this.isDarkTheme = isDarkTheme
         this.surface = surface
+        this.effectBackground = effectBackground
+        this.isFullSize = isFullSize
         this.colorStage = colorStage
+        this.alpha = alpha
 
         if (this.playing != playing) {
             this.playing = playing
@@ -135,18 +159,28 @@ private class BgEffectNode(
     }
 
     override fun ContentDrawScope.draw() {
-        // 1) 铺底色
         drawRect(surface)
-        // 2) 动态 OS3 brush（isFullSize=true → 占用 80% 高度居中）
-        val drawHeight = size.height * 0.8f
-        painter.updateResolution(size.width, size.height)
-        painter.updateBoundIfNeeded(drawHeight, size.height, size.width)
-        painter.updatePresetIfNeeded(isDark)
-        painter.updateColors(preset, colorStage())
-        painter.updateAnimTime(animTime)
-        painter.updatePointsAnim(animTime, preset)
-        drawRect(painter.brush, alpha = 1f)
-        // 3) 放行子内容
+        if (effectBackground) {
+            val alphaValue = alpha()
+            if (alphaValue <= 0f) {
+                animationJob?.cancel()
+                animationJob = null
+            } else if (playing && animationJob == null) {
+                startAnimation()
+            }
+            if (alphaValue > 0f) {
+                val drawHeight = if (isFullSize) size.height * 0.8f else size.height * 0.5f
+
+                painter.updateResolution(size.width, size.height)
+                painter.updateBoundIfNeeded(drawHeight, size.height, size.width)
+                painter.updatePresetIfNeeded(deviceType, isDarkTheme)
+                painter.updateColors(preset, colorStage())
+                painter.updateAnimTime(animTime)
+                painter.updatePointsAnim(animTime, preset)
+
+                drawRect(painter.brush, alpha = alphaValue)
+            }
+        }
         drawContent()
     }
 }

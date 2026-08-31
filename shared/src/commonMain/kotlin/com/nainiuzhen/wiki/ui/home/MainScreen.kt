@@ -227,6 +227,9 @@ fun MainScreen() {
             ) {
                 HorizontalPager(
                     state = pagerState,
+                    // 主页↔设置 的左右滑动只受「允许手动滑动翻页」(pageUserScroll) 控制。
+                    // 「启用滑动返回」(enableSwipeBack) 是另一回事：管的是子页从侧边滑动
+                    // 返回上一页（NavDisplay.swipeDismiss），与主页 pager 无关。
                     userScrollEnabled = appState.pageUserScroll,
                 ) { page ->
                     when (page) {

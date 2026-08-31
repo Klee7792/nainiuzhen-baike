@@ -2,6 +2,7 @@ package com.nainiuzhen.wiki.ui.settings
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
@@ -15,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.nav.Route
-import com.nainiuzhen.wiki.utils.APP_VERSION_NAME
+import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -27,6 +28,8 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.animation.AnimatedVisibility
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
  * 设置页（底栏第 2 页「设置」的主体，无自身顶栏/底栏，由 [com.nainiuzhen.wiki.ui.home.MainScreen] 包裹）。
@@ -46,8 +49,12 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
     val sprite = LocalSpriteRepository.current
     val appState = LocalAppSettings.current
     val updateAppState = LocalUpdateAppSettings.current
+    val appVersion = LocalAppVersion.current
     var cacheSize by remember { mutableStateOf(sprite.cacheSizeBytes()) }
-    val version = sprite.currentVersion()
+
+    // 悬浮底栏(或普通底栏)的高度已由 miuix Scaffold 折进 innerPadding.bottom
+    // （见 miuix Scaffold.kt：bottomBarPlaceable.height 会并入 innerPadding.bottom），
+    // 因此列表底部直接用该值预留即可，无需硬编码 88.dp。
 
     // 色彩模式选项随 Monet 开关联动（前 3 态 Monet 关、后 3 态 Monet 开）。
     val colorModeOptions = if (appState.monet) {
@@ -59,8 +66,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
+            .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        // 底部预留顶栏/底栏高度，避免「关于」等末项被底栏遮挡（变更点 #37）
+        // 底部预留 = Scaffold 已为悬浮底栏(或普通底栏)预留的 innerPadding.bottom
+        // （miuix 会把 bottomBar 高度折进 innerPadding.bottom），再 +12.dp 留白，
+        // 保证「关于」等末项可完整滚到浮栏之上、不被遮挡（对齐 miuix demo）。
         contentPadding = PaddingValues(
             top = innerPadding.calculateTopPadding(),
             bottom = innerPadding.calculateBottomPadding() + 12.dp,
@@ -84,12 +94,6 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     summary = "跟随系统壁纸动态取色",
                     checked = appState.monet,
                     onCheckedChange = { updateAppState(appState.copy(monet = it)) },
-                )
-                SwitchPreference(
-                    title = "启用模糊",
-                    summary = "顶栏模糊效果",
-                    checked = appState.enableBlur,
-                    onCheckedChange = { updateAppState(appState.copy(enableBlur = it)) },
                 )
             }
 
@@ -116,17 +120,6 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     checked = appState.enableCornerClip,
                     onCheckedChange = { updateAppState(appState.copy(enableCornerClip = it)) },
                 )
-                SwitchPreference(
-                    title = "启用遮罩变暗",
-                    summary = "转场时背景遮罩变暗",
-                    checked = appState.enableDim,
-                    onCheckedChange = { updateAppState(appState.copy(enableDim = it)) },
-                )
-                SwitchPreference(
-                    title = "转场时拦截输入",
-                    checked = appState.blockInputDuringTransition,
-                    onCheckedChange = { updateAppState(appState.copy(blockInputDuringTransition = it)) },
-                )
             }
 
             SmallTitle(text = "显示")
@@ -140,56 +133,67 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     checked = appState.showTopAppBar,
                     onCheckedChange = { updateAppState(appState.copy(showTopAppBar = it)) },
                 )
-                OverlayDropdownPreference(
-                    items = listOf("高斯模糊", "渐进模糊"),
-                    selectedIndex = appState.topAppBarBlurStyle,
-                    title = "顶栏模糊样式",
-                    onSelectedIndexChange = { updateAppState(appState.copy(topAppBarBlurStyle = it)) },
+                SwitchPreference(
+                    title = "启用模糊",
+                    summary = "顶栏模糊效果",
+                    checked = appState.enableBlur,
+                    onCheckedChange = { updateAppState(appState.copy(enableBlur = it)) },
                 )
+                AnimatedVisibility(visible = appState.showTopAppBar && appState.enableBlur) {
+                    OverlayDropdownPreference(
+                        items = listOf("高斯模糊", "渐进模糊"),
+                        selectedIndex = appState.topAppBarBlurStyle,
+                        title = "顶栏模糊样式",
+                        onSelectedIndexChange = { updateAppState(appState.copy(topAppBarBlurStyle = it)) },
+                    )
+                }
                 SwitchPreference(
                     title = "显示底栏",
                     checked = appState.showNavigationBar,
                     onCheckedChange = { updateAppState(appState.copy(showNavigationBar = it)) },
                 )
-                SwitchPreference(
-                    title = "显示底栏角标",
-                    summary = "底栏图标右上角显示更新提示红点",
-                    checked = appState.showNavigationBadge,
-                    onCheckedChange = { updateAppState(appState.copy(showNavigationBadge = it)) },
-                )
-                OverlayDropdownPreference(
-                    items = listOf("图标+文字", "仅图标", "选中显示文字"),
-                    selectedIndex = appState.navigationBarMode,
-                    title = "底栏模式",
-                    onSelectedIndexChange = { updateAppState(appState.copy(navigationBarMode = it)) },
-                )
-                SwitchPreference(
-                    title = "悬浮底栏",
-                    checked = appState.useFloatingNavigationBar,
-                    onCheckedChange = { updateAppState(appState.copy(useFloatingNavigationBar = it)) },
-                )
-                if (appState.useFloatingNavigationBar) {
+                AnimatedVisibility(visible = appState.showNavigationBar && !appState.useFloatingNavigationBar) {
                     OverlayDropdownPreference(
-                        items = listOf("Miuix", "iOS"),
-                        selectedIndex = appState.floatingNavigationBarStyle,
-                        title = "悬浮底栏样式",
-                        onSelectedIndexChange = {
-                            updateAppState(appState.copy(floatingNavigationBarStyle = it))
-                        },
+                        items = listOf("图标+文字", "仅图标", "选中显示文字"),
+                        selectedIndex = appState.navigationBarMode,
+                        title = "底栏模式",
+                        onSelectedIndexChange = { updateAppState(appState.copy(navigationBarMode = it)) },
                     )
-                    // iOS 样式下不提供 Position 选项（与 miuix demo 一致）。
-                    if (appState.floatingNavigationBarStyle == 0) {
-                        OverlayDropdownPreference(
-                            items = listOf("中心", "开始", "结束"),
-                            selectedIndex = appState.floatingNavigationBarPosition,
-                            title = "悬浮底栏位置",
-                            onSelectedIndexChange = {
-                                updateAppState(appState.copy(floatingNavigationBarPosition = it))
-                            },
+                }
+                AnimatedVisibility(visible = appState.showNavigationBar) {
+                    Column {
+                        SwitchPreference(
+                            title = "悬浮底栏",
+                            checked = appState.useFloatingNavigationBar,
+                            onCheckedChange = { updateAppState(appState.copy(useFloatingNavigationBar = it)) },
                         )
+                        AnimatedVisibility(visible = appState.useFloatingNavigationBar) {
+                            Column {
+                                OverlayDropdownPreference(
+                                    items = listOf("Miuix", "iOS"),
+                                    selectedIndex = appState.floatingNavigationBarStyle,
+                                    title = "悬浮底栏样式",
+                                    onSelectedIndexChange = {
+                                        updateAppState(appState.copy(floatingNavigationBarStyle = it))
+                                    },
+                                )
+                                AnimatedVisibility(visible = appState.floatingNavigationBarStyle == 0) {
+                                    Column {
+                                        OverlayDropdownPreference(
+                                            items = listOf("中心", "开始", "结束"),
+                                            selectedIndex = appState.floatingNavigationBarPosition,
+                                            title = "悬浮底栏位置",
+                                            onSelectedIndexChange = {
+                                                updateAppState(appState.copy(floatingNavigationBarPosition = it))
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                }
+            }
 
             SmallTitle(text = "交互")
             Card(
@@ -203,7 +207,8 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     onCheckedChange = { updateAppState(appState.copy(scrollEndHaptic = it)) },
                 )
                 SwitchPreference(
-                    title = "允许页面手动滚动",
+                    title = "允许手动滑动翻页",
+                    summary = "主页与设置页可左右滑动切换",
                     checked = appState.pageUserScroll,
                     onCheckedChange = { updateAppState(appState.copy(pageUserScroll = it)) },
                 )
@@ -214,6 +219,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 modifier = Modifier.padding(horizontal = 12.dp),
             ) {
                 ArrowPreference(
+                    title = "素材缩放设置",
+                    summary = "卡片 / 主页 / 弹窗素材放大倍率",
+                    onClick = { navigator.push(Route.ImageScaleSettings) },
+                )
+                ArrowPreference(
                     title = "清理缓存",
                     summary = "切片缓存 ${formatSize(cacheSize)}",
                     onClick = {
@@ -223,7 +233,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 BasicComponent(
                     title = "版本",
-                    summary = "$APP_VERSION_NAME ($version)",
+                    summary = "${appVersion.name} (${appVersion.code})",
                 )
                 ArrowPreference(
                     title = "关于",

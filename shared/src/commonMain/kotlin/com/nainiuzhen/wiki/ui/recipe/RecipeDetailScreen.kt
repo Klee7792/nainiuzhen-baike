@@ -24,9 +24,12 @@ import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.RecipeInfo
 import com.nainiuzhen.wiki.ui.components.BasicDetailDialog
+import com.nainiuzhen.wiki.ui.components.FadeEdges
 import com.nainiuzhen.wiki.ui.components.ItemMiniCard
 import com.nainiuzhen.wiki.ui.components.RichText
 import com.nainiuzhen.wiki.ui.components.SpriteImage
+import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
+import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.ui.items.ItemDetailScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -97,13 +100,14 @@ private fun RecipeDetailBody(
         Box(
             modifier = Modifier
                 .size(64.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .background(
                     color = MiuixTheme.colorScheme.surfaceContainer,
                     shape = RoundedCornerShape(16.dp),
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            SpriteImage(frameKey = recipe.iconFrameKey, modifier = Modifier.size(64.dp))
+            SpriteImage(frameKey = recipe.iconFrameKey, scaleContext = SpriteScaleContext.DialogBody)
         }
         Column {
             Text(
@@ -190,7 +194,8 @@ fun SectionDivider(modifier: Modifier = Modifier) {
 }
 
 /**
- * 物品卡片行：≤4 张时整体水平居中；超过 4 张则横向滚动。
+ * 物品卡片行：≤4 张时整体水平居中（不裁切、不加边缘）；超过 4 张则横向滚动，
+ * 并套用 [FadeEdges] 在两侧加高斯模糊 / 渐变淡入淡出边缘（与 [ItemCardRow] 一致）。
  * 卡片大小、样式与物品区一致，点击穿透到物品详情。
  */
 @Composable
@@ -199,32 +204,39 @@ private fun MaterialCardRow(
     onItemClick: (ItemInfo) -> Unit,
 ) {
     if (items.isEmpty()) return
-    if (items.size <= 4) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            items.forEach { (item, num) ->
-                ItemMiniCard(
-                    item = item,
-                    num = num,
-                    onClick = { if (item != null) onItemClick(item) },
-                )
+    val row: @Composable () -> Unit = {
+        if (items.size <= 4) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                items.forEach { (item, num) ->
+                    ItemMiniCard(
+                        item = item,
+                        num = num,
+                        onClick = { if (item != null) onItemClick(item) },
+                    )
+                }
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(items.size) { index ->
+                    val (item, num) = items[index]
+                    ItemMiniCard(
+                        item = item,
+                        num = num,
+                        onClick = { if (item != null) onItemClick(item) },
+                    )
+                }
             }
         }
+    }
+    if (items.size > 4) {
+        FadeEdges { row() }
     } else {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(items.size) { index ->
-                val (item, num) = items[index]
-                ItemMiniCard(
-                    item = item,
-                    num = num,
-                    onClick = { if (item != null) onItemClick(item) },
-                )
-            }
-        }
+        row()
     }
 }

@@ -217,8 +217,6 @@ fun AppSubPageScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
-        ) {
-            content(innerPadding)
-        }
+        ) { content(innerPadding) }
     }
 }

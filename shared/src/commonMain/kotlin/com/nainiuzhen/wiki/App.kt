@@ -42,6 +42,8 @@ import com.nainiuzhen.wiki.utils.AppState
 import com.nainiuzhen.wiki.utils.AppSettingsStore
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
+import com.nainiuzhen.wiki.utils.AppVersion
+import com.nainiuzhen.wiki.utils.LocalAppVersion
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
@@ -69,6 +71,7 @@ fun App(
     cache: SpriteCacheManager,
     isDebug: Boolean,
     settings: AppSettingsStore,
+    appVersion: AppVersion,
 ) {
     var appState by remember { mutableStateOf(settings.load()) }
     val updateAppState: (AppState) -> Unit = remember { { new -> appState = new; settings.save(new) } }
@@ -83,6 +86,7 @@ fun App(
             LocalAppSettings provides appState,
             LocalUpdateAppSettings provides updateAppState,
             LocalSquircleEnabled provides appState.enableSquircle,
+            LocalAppVersion provides appVersion,
         ) {
             SetStatusBarLightIcons(light = !isDark)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.nainiuzhen.wiki.data.source.AppContextHolder
 import com.nainiuzhen.wiki.BuildConfig
+import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.platform.AndroidAppSettingsStore
 import com.nainiuzhen.wiki.platform.AndroidSpriteCacheManager
 import com.nainiuzhen.wiki.platform.AndroidSpriteSlicer
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
                 ),
                 isDebug = BuildConfig.DEBUG,
                 settings = AndroidAppSettingsStore(this),
+                appVersion = AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
             )
         }
     }

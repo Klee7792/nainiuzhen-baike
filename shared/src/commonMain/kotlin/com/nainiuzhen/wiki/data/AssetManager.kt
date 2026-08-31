@@ -20,6 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * 资源管理器：在启动时读取全部 JSON / 图集，构建 [DataRepository] 与 [SpriteRepository]。
@@ -40,19 +41,29 @@ class AssetManager(
             explicitNulls = false
         }
 
-    /** 加载全部资源；[isDebug] 为 true 时展示黑名单物品 / NPC，否则过滤。 */
+    /** 加载全部资源；[isDebug] 为 true 时展示黑名单物品 / 配方 / NPC，否则过滤。 */
     suspend fun loadAll(isDebug: Boolean): LoadedData {
         val atlas = buildAtlas()
         val iconMapping = loadIconMapping()
+        // ⚠️ item_blacklist.txt 为【人工维护】清单，非脚本自动生成，切勿用 item_database.json
+        // 全量或任何规则重新生成覆盖，否则会丢失下列手工追加项：
+        //   规则并集 = name 含(作废)/(无用)/(废弃)/(测试)/(测试用) ∪ desc 含 拼接场景使用/不进背包/不需要翻译 ∪ icon=260000
+        //   + 手工追加 = 现有黑名单中未被规则覆盖的 23 个、27XXXX 名称含「预留」的 42 个、id 9
+        // 运行时读取的是 app/src/main/assets/config/ 副本（composeResources/files/ 那份是同步的死副本，也要一并改）。
+        // 调整入口：assets/config/item_blacklist.txt（由 extract_blacklist2.py 生成 blacklist2.json 后回写两处 txt）。
+        // recipe_blacklist.txt 为【人工维护】清单（由 extract_recipe_blacklist.py 生成），同样勿用脚本全量覆盖：
+        //   规则并集 = 某配方 target(产物 id) ∈ 物品黑名单(1200) ∪ 配方自身 icon==260000
+        //   运行时读取 app/src/main/assets/config/ 副本（composeResources/files/ 那份是同步的死副本，也要一并改）。
         val itemBlack = loadBlacklist("config/item_blacklist.txt")
         val npcBlack = loadBlacklist("config/npc_blacklist.txt")
+        val recipeBlack = loadBlacklist("config/recipe_blacklist.txt")
 
         val items = loadItems(atlas, iconMapping, itemBlack, isDebug)
-        val recipes = loadRecipes(iconMapping)
+        val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug)
         val npcs = loadNpcs(npcBlack, isDebug)
         val schedules = loadSchedules()
 
-        val data = DataRepository(items, recipes, npcs, schedules, itemBlack, npcBlack)
+        val data = DataRepository(items, recipes, npcs, schedules, itemBlack, npcBlack, recipeBlack)
         val sprite = SpriteRepository(atlas, slicer, cache)
         return LoadedData(data, sprite)
     }
@@ -79,15 +90,33 @@ class AssetManager(
         return SpriteAtlas(map)
     }
 
-    private fun loadIconMapping(): Map<Int, Int> =
+    private fun loadIconMapping(): Map<Int, String> =
         try {
             val text = AssetLoader.loadText("config/icon_mapping.json")
-            json.decodeFromString<Map<String, Int>>(text)
-                .mapNotNull { (k, v) -> k.toIntOrNull()?.let { it to v } }
+            json.decodeFromString<Map<String, JsonElement>>(text)
+                .mapNotNull { (k, v) ->
+                    val id = k.toIntOrNull() ?: return@mapNotNull null
+                    // 值可能是数字（如 40000107）或带后缀的字符串（如 "40000107_time"），统一取字符串内容。
+                    id to v.jsonPrimitive.content
+                }
                 .toMap()
         } catch (_: Exception) {
             emptyMap()
         }
+
+    /**
+     * 把候选帧名解析为图集中真实存在的帧：先精确匹配；缺失时依次尝试 `_time` / `_view` 后缀
+     * （部分物品 icon 用基础 id 表示，真实切片帧带后缀，例如 40000107 → 40000107_time）。
+     * 仍找不到则原样返回，交由 [SpriteRepository.getImage] 以占位图兜底。
+     */
+    private fun resolveFrameKey(atlas: SpriteAtlas, candidate: String): String {
+        if (atlas.getFrame(candidate) != null) return candidate
+        for (suffix in listOf("_time", "_view")) {
+            val withSuffix = "$candidate$suffix"
+            if (atlas.getFrame(withSuffix) != null) return withSuffix
+        }
+        return candidate
+    }
 
     private fun loadBlacklist(name: String): Set<Int> =
         try {
@@ -106,16 +135,18 @@ class AssetManager(
 
     private fun loadItems(
         atlas: SpriteAtlas,
-        iconMapping: Map<Int, Int>,
+        iconMapping: Map<Int, String>,
         black: Set<Int>,
         isDebug: Boolean,
     ): List<ItemInfo> {
         val raw =
             json.decodeFromString<Map<String, ItemRaw>>(AssetLoader.loadText("config/item_database.json"))
         return raw.values.mapNotNull { r ->
+            // 过滤：非 debug 包剔除黑名单 id（清单见上方 loadBlacklist，人工维护，勿自动还原）
             if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
             val mapped = iconMapping[r.id ?: 0]
-            val frameKey = (mapped ?: r.icon ?: r.id).toString()
+            val candidate = mapped ?: r.icon?.toString() ?: (r.id ?: 0).toString()
+            val frameKey = resolveFrameKey(atlas, candidate)
             val category = extractCategory(r.desc)
             val group =
                 when (atlas.sheetFor(frameKey)) {
@@ -139,12 +170,20 @@ class AssetManager(
         }
     }
 
-    private fun loadRecipes(iconMapping: Map<Int, Int>): List<RecipeInfo> {
+    private fun loadRecipes(
+        atlas: SpriteAtlas,
+        iconMapping: Map<Int, String>,
+        black: Set<Int>,
+        isDebug: Boolean,
+    ): List<RecipeInfo> {
         val raw =
             json.decodeFromString<CompoundRaw>(AssetLoader.loadText("config/compound_unlocks.json"))
         return raw.items.mapNotNull { r ->
+            // 过滤：非 debug 包剔除黑名单 id（清单见上方 loadBlacklist，人工维护，勿自动还原）
+            if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
             val mapped = iconMapping[r.id ?: 0]
-            val frameKey = (mapped ?: r.icon ?: r.id).toString()
+            val candidate = mapped ?: r.icon?.toString() ?: (r.id ?: 0).toString()
+            val frameKey = resolveFrameKey(atlas, candidate)
             RecipeInfo(
                 id = r.id ?: 0,
                 name = r.name,

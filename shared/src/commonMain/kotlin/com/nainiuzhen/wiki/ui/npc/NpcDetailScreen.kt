@@ -32,6 +32,7 @@ import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.repository.DataRepository
 import com.nainiuzhen.wiki.ui.components.ItemCardRow
+import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.RichText
 import com.nainiuzhen.wiki.ui.items.ItemDetailScreen
@@ -301,6 +302,7 @@ private fun FavorSection(
             items = items,
             modifier = Modifier.padding(12.dp),
             onItemClick = onItemClick,
+            scaleContext = SpriteScaleContext.DialogFavHate,
         )
     }
 }

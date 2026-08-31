@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -27,15 +26,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.data.model.RecipeInfo
+import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.SpriteImage
+import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
@@ -49,6 +50,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
@@ -81,7 +83,7 @@ fun RecipeListScreen() {
 
     val base = remember(data, selectedTypes) { data.recipesByCategory(selectedTypes) }
     val filtered = remember(base, query) {
-        if (query.isBlank()) base else base.filter { it.name.contains(query, ignoreCase = true) }
+        if (query.isBlank()) base else base.filter { it.searchText.contains(query, ignoreCase = true) }
     }
 
     AppSubPageScaffold(
@@ -125,6 +127,7 @@ fun RecipeListScreen() {
             state = rememberLazyGridState(),
             modifier = Modifier
                 .fillMaxHeight()
+                .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
             contentPadding = PaddingValues(
@@ -152,33 +155,27 @@ fun RecipeListScreen() {
     }
 }
 
-/** 单个配方方块：上半图标区（亮白圆角底、仅上方圆角）+ 下半名称区（透明、无圆角、蓝色满宽胶囊，文字超宽在胶囊内滚动）。 */
+/** 单个配方方块：图标区（透明，正方形严格 4× 原图、xy 居中、不裁圆角）+ 下半名称区（透明、蓝色满宽胶囊，文字超宽在胶囊内滚动）。整体为 v20 风格方形卡片，按压水波纹为方形。 */
 @Composable
 private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
-    val topShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(topShape)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 图标区：亮白底（与 NPC 卡片同色 surfaceContainer）+ 仅上方圆角；图片裁到同一圆角。
+        // 图标区：透明（跟随内容区灰底）；图片严格 4× 原图、xy 居中，整张方图不裁圆角（v20 风格）。
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .background(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
-                    shape = topShape,
-                )
-                .clip(topShape),
+                .aspectRatio(1f),
             contentAlignment = Alignment.Center,
         ) {
             SpriteImage(
                 frameKey = recipe.iconFrameKey,
-                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
+                filterQuality = FilterQuality.None,
+                scaleContext = SpriteScaleContext.Card,
             )
         }
         // 名称区：透明（跟随内容区灰底）、无圆角；胶囊宽度=卡片宽（固定），文字超宽在胶囊内部滚动。

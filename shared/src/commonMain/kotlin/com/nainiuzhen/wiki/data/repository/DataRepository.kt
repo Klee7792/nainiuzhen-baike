@@ -18,6 +18,7 @@ class DataRepository(
     val schedules: Map<Int, List<NpcSchedule>>,
     val itemBlacklist: Set<Int>,
     val npcBlacklist: Set<Int>,
+    val recipeBlacklist: Set<Int>,
 ) {
     /** 物品按分类标签过滤（空集合 = 全部）。 */
     fun itemsByCategory(labels: Set<String>): List<ItemInfo> =

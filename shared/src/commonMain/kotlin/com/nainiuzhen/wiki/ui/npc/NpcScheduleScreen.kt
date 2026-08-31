@@ -41,6 +41,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
@@ -142,6 +143,7 @@ fun NpcScheduleScreen(npcId: Int) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .overScrollVertical()
                 .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
             contentPadding = PaddingValues(
                 top = innerPadding.calculateTopPadding(),
