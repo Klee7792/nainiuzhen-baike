@@ -35,6 +35,7 @@ import com.nainiuzhen.wiki.ui.components.ItemCardRow
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.RichText
+import com.nainiuzhen.wiki.ui.components.rememberDialogMaxHeight
 import com.nainiuzhen.wiki.ui.items.ItemDetailScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
@@ -105,6 +106,14 @@ fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
 /**
  * 自定义 NPC 详情弹窗骨架：顶栏固定、中部可滚动、按钮置底。
  * 与 [BasicDetailDialog] 保持一致的外边距、宽度、底部对齐，但增加固定 header 插槽。
+ *
+ * H0 热修（横屏按钮消失）：
+ * 1. 外层总高度由硬编码 640.dp 改为 [rememberDialogMaxHeight]（= min(640.dp, 窗口高 × 0.9)），
+ *    横屏（可用高 ≈393dp）时不再溢出屏幕。
+ * 2. 中部内容列由硬编码 `heightIn(max = 400.dp)` 改为 `weight(1f, fill = false)`：
+ *    高度上限交给外层 Column 的剩余空间（- header - 按钮行），不再三重限高叠加。
+ * 3. 按钮 Row 非加权、排在加权内容之后，Column 先测量非加权子项，故按钮始终保有自然高度，
+ *    横屏下「日程」入口不再被压成 0 高。
  */
 @Composable
 private fun NpcDetailDialog(
@@ -114,6 +123,7 @@ private fun NpcDetailDialog(
     buttons: @Composable RowScope.() -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val resolvedMaxHeight = rememberDialogMaxHeight(640.dp)
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
@@ -121,17 +131,18 @@ private fun NpcDetailDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 640.dp)
+                .heightIn(max = resolvedMaxHeight)
                 .padding(horizontal = 12.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             header()
             Spacer(Modifier.size(2.dp))
-            // 中部可滚动内容：有限高度收敛 OverlayDialog 的 Infinity 约束，避免 verticalScroll 崩溃。
+            // 中部可滚动内容：weight 使高度上限 = 外层剩余空间，既收敛 OverlayDialog 的
+            // Infinity 约束（避免 verticalScroll 崩溃），又保证按钮行必有位置。
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

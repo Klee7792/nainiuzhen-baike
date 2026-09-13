@@ -30,8 +30,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  * 每个可选项一个小胶囊，横向依次排布、到行尾自动换行（[FlowRow]）；末尾追加「重置」红字胶囊，
  * 点击清空全部勾选（空集合 = 不过滤 = 全部）。
  *
- * 根容器 `heightIn(max = [FILTER_DIALOG_MAX_HEIGHT])` 收敛 [OverlayDialog] 的 `Infinity` 约束
- * （pit #1），嵌套的 `verticalScroll` 才能正常测量。
+ * 根容器 `heightIn(max = [rememberDialogMaxHeight]`([FILTER_DIALOG_MAX_HEIGHT])`)` 收敛 [OverlayDialog]
+ * 的 `Infinity` 约束（pit #1），同时把上限压到「窗口高 × 0.9」以内，横屏时弹窗不再超出屏幕，
+ * 嵌套的 `verticalScroll` 才能正常测量。
  */
 @Composable
 fun FilterChipDialog(
@@ -42,6 +43,7 @@ fun FilterChipDialog(
     selected: Set<String>,
     onSelectedChange: (Set<String>) -> Unit,
 ) {
+    val resolvedMaxHeight = rememberDialogMaxHeight(FILTER_DIALOG_MAX_HEIGHT)
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
@@ -50,7 +52,7 @@ fun FilterChipDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = FILTER_DIALOG_MAX_HEIGHT)
+                .heightIn(max = resolvedMaxHeight)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {

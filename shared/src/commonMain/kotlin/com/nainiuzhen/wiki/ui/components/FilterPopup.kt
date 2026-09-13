@@ -20,7 +20,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  * 类型多选筛选弹窗（变更点 #24 / #25）：基于 [OverlayDialog] 的类型多选列表。
  * 点击某选项即时切换其选中态（[selected]），并通过 [onSelectedChange] 回传；空集合表示「全部」。
  *
- * 根容器 `heightIn(max = 600.dp)` 收敛 [OverlayDialog] 的 `Infinity` 约束（pit #1）。
+ * 根容器 `heightIn(max = [rememberDialogMaxHeight]`(600.dp)` )` 收敛 [OverlayDialog] 的 `Infinity` 约束（pit #1），
+ * 同时把上限压到「窗口高 × 0.9」以内，横屏时弹窗不再超出屏幕。
  *
  * @param show 是否显示。
  * @param onDismissRequest 关闭回调。
@@ -39,6 +40,7 @@ fun FilterPopup(
     onSelectedChange: (Set<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resolvedMaxHeight = rememberDialogMaxHeight(600.dp)
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
@@ -47,7 +49,7 @@ fun FilterPopup(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = 600.dp)
+                .heightIn(max = resolvedMaxHeight)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {

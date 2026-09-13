@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.CheckboxLocation
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import com.nainiuzhen.wiki.ui.components.rememberDialogMaxHeight
 
 /**
  * 选项数量较少（< 10 项）时的筛选弹窗：每行「标题靠左、控件靠右」，与设置页「色彩模式」等
@@ -25,6 +26,7 @@ import top.yukonga.miuix.kmp.preference.CheckboxPreference
  *
  * 关键：根容器 [Modifier.heightIn] 把 [OverlayDialog] 的 `Infinity` 最大高度约束收敛为有限值
  * （pit #1），内部 `verticalScroll` 才能正常测量；同时高度仍按内容自适应（非固定高度）。
+ * 上限经 [rememberDialogMaxHeight] 再压到「窗口高 × 0.9」以内，避免横屏时超出屏幕。
  *
  * @param show 是否显示。
  * @param options 全部可选项（如配方类型标签）。
@@ -48,6 +50,7 @@ fun FilterOptionsDialog(
     allLabel: String = "全部类型",
     maxHeight: Dp = 480.dp,
 ) {
+    val resolvedMaxHeight = rememberDialogMaxHeight(maxHeight)
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
@@ -56,7 +59,7 @@ fun FilterOptionsDialog(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight)
+                .heightIn(max = resolvedMaxHeight)
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 8.dp),
         ) {
