@@ -15,21 +15,22 @@ $BuildsDir   = Join-Path $ProjectRoot "builds"
 $NumberFile  = Join-Path $BuildsDir "build_number.txt"
 $NoteFile    = Join-Path $BuildsDir "build_notes.md"
 
-# ---- toolchain (reuse D:\Android, do not re-extract) ----
-$env:JAVA_HOME        = "D:\Android\jdk-17.0.20.1"
-$env:ANDROID_HOME     = "D:\Android\Sdk"
-$env:ANDROID_SDK_ROOT = "D:\Android\Sdk"
+# ---- toolchain (portable, under D:\Users\Yun\Documents\1Windows) ----
+$env:JAVA_HOME        = "D:\Users\Yun\Documents\1Windows\jdk-17.0.20.1"
+$env:ANDROID_HOME     = "D:\Users\Yun\Documents\1Windows\Android\Sdk"
+$env:ANDROID_SDK_ROOT = "D:\Users\Yun\Documents\1Windows\Android\Sdk"
 # Canonical Gradle cache for this project.
 # IMPORTANT (avoid the .lock / ACL poison loop):
 #   - Never reuse a GRADLE_USER_HOME that was touched by the Bash *sandbox* — sandbox
 #     runs create native-platform.dll.lock / daemon registry.bin.lock owned by a
 #     SYSTEM/sandbox token the normal user cannot delete, so every later build dies
-#     on AccessDenied. ghome7 is created by the REAL user (non-sandboxed) and only
-#     ever holds caches/jdks (never native/daemon poison).
+#     on AccessDenied. The portable gradle-home is created by the REAL user
+#     (non-sandboxed) and only ever holds caches/jdks (never native/daemon poison).
 #   - When the agent runs this script it MUST use dangerouslyDisableSandbox so Gradle
 #     runs as the real user; otherwise it re-poinsons the cache.
-$env:GRADLE_USER_HOME = "D:\ghome7"
-$gradle = "D:\Android\gradle-9.6.1\bin\gradle.bat"
+#   - ghome7 (gr-home) is the older cache on D:\ghome7; kept only for reference.
+$env:GRADLE_USER_HOME = "D:\Users\Yun\Documents\1Windows\Android\gradle-home"
+$gradle = "D:\Users\Yun\Documents\1Windows\Android\gradle-9.6.1\bin\gradle.bat"
 
 # ---- read and bump build number ----
 if (-not (Test-Path $NumberFile)) { "0" | Out-File $NumberFile -Encoding ascii }
