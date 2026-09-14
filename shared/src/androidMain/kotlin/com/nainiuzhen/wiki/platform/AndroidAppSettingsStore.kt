@@ -45,6 +45,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         dialogRecipeImageScale = prefs.getScaleFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, 6f),
         dialogFavHateImageScale = prefs.getScaleFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
         scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
+        allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, false),
     )
 
     override fun save(state: AppState) {

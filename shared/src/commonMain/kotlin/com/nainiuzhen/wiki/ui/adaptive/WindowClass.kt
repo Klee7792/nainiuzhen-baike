@@ -56,7 +56,11 @@ fun rememberWindowClass(): WindowClass {
     }
 }
 
-/** 矮屏判定：手机横屏、Pura X Max 展开态(940×665) 都命中（窗口高 < 480dp）。 */
+/**
+ * 矮屏判定：窗口高 < 480dp 时命中。
+ *
+ * 手机横屏（如 800×360）命中；而 Pura X Max 展开态(940×665) 高 665dp > 480dp，**不**命中矮窗口判定。
+ */
 @Composable
 fun isShortWindow(): Boolean =
     LocalWindowInfo.current.containerDpSize.height < HEIGHT_MEDIUM
