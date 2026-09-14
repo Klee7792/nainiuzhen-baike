@@ -160,10 +160,11 @@ fun CardNameCapsule(
 /**
  * 按下阴影 + 点击的公共修饰符。
  *
- * 返回的 [Modifier]：
+ * 返回的 [Modifier] 从外到内三层：
  * 1. `shadow`：仅当该板块「圆角」总闸开启**且**当前处于按下态时给 8dp 阴影，否则 0dp。
  *    默认态（圆角组总开关关）⇒ elevation 恒 0 ⇒ **零视觉变化**；开启后按下才出现与圆角一致的阴影轮廓。
- * 2. `clickable`：保留原有水波纹（[LocalIndication]），并把 [onClick] 交给它。
+ * 2. `clip`：把整块卡片的渲染裁成卡片形状。**必须在 `clickable` 之前**，原因见下方注释。
+ * 3. `clickable`：保留原有水波纹（[LocalIndication]），并把 [onClick] 交给它。
  *
  * 意图：让「按下的反馈形状」与「卡片圆角」一致（[com.nainiuzhen.wiki.utils.cardPressShadowShape]），
  * 又不在默认（无圆角）状态下改变任何观感。
@@ -180,12 +181,26 @@ fun rememberCardPressModifier(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val state = LocalAppSettings.current
+    val shape = state.cardPressShadowShape(section)
     return Modifier
         .shadow(
             elevation = if (state.cardPressShadowEnabled(section) && pressed) 8.dp else 0.dp,
-            shape = state.cardPressShadowShape(section),
+            shape = shape,
             clip = false,
         )
+        // ⚠️ 这个 clip 必须在 clickable **之前**（＝外层），顺序不能调换。
+        //
+        // miuix 默认的 LocalIndication 是 MiuixIndication，它在 draw() 里
+        // `drawContent()` 之后直接 `drawRect(size = size)` —— **不带 shape、覆盖整个节点矩形**
+        // （`miuix-ui/.../MiuixIndication.kt:129-135`）。而 Compose 修饰符链是外层先画、
+        // `drawContent()` 再画内层，所以 clickable 的 IndicationModifierNode 画在 drawContent **之后**。
+        // 把 clip 放在 clickable 里面 ⇒ 只裁到内层内容，裁不到外层刚画的那块矩形，
+        // 于是卡片圆角处（CardImageBox 已裁掉的透明角）会露出**直角深色高亮**。
+        //
+        // 放在外层后，clip 图层包住整个 clickable 节点（内容 + 矩形叠加）一并裁成圆角；
+        // 而 shadow 又在 clip 之外，投影照旧按 shape 画，不受影响。
+        // 默认态（圆角总开关关）shape = 四角 0.dp ⇒ 裁的是整块矩形 ⇒ 零视觉变化。
+        .clip(shape)
         .clickable(
             interactionSource = interaction,
             indication = LocalIndication.current,
