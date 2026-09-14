@@ -1,26 +1,29 @@
 package com.nainiuzhen.wiki
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -28,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.AssetManager
+import com.nainiuzhen.wiki.data.source.AssetLoader
 import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
 import com.nainiuzhen.wiki.utils.ApplyPhoneOrientation
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
@@ -42,6 +46,9 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.utils.LocalAppVersion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.foundation.isSystemInDarkTheme
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
@@ -58,7 +65,8 @@ private var cachedLoadedData: com.nainiuzhen.wiki.data.AssetManager.LoadedData? 
  * [slicer] / [cache]，并传入 [isDebug]（决定是否展示黑名单物品 / NPC）。
  *
  * 内部流程：先以协程加载全部资源（构建 [com.nainiuzhen.wiki.data.AssetManager.LoadedData]），
- * 版本不符时清空切片缓存并重切；加载完成后注入 [LocalDataRepository] / [LocalSpriteRepository]，
+ * 再预热切片把全部素材帧切片进内存（真实 0-100% 进度展示于 LoadingScreen，切片不落盘）；
+ * 全部就绪后注入 [LocalDataRepository] / [LocalSpriteRepository]，
  * 渲染 [com.nainiuzhen.wiki.ui.home.MainScreen]（它自己持有全应用唯一的返回栈）。
  * 进程存活时复用已加载数据（[cachedLoadedData]）。
  */
@@ -102,23 +110,38 @@ private fun AppRoot(
     // 进程存活且已加载过时，初始值直接复用 [cachedLoadedData]，避免切后台回前台
     // （Activity 重建导致 remember 重置）时闪一下 LoadingScreen，被误认为「重新加载」。
     val loadedState = remember { mutableStateOf(cachedLoadedData) }
+    // 加载进度（去磁盘化后的「内存切片」阶段）：done < 0 表示尚未进入切片阶段（准备数据中）；
+    // 切片阶段 done ∈ 0..total，驱动 LoadingScreen 的确定进度条与百分比文字。
+    var preloadDone by remember { mutableStateOf(-1) }
+    var preloadTotal by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
-        // 进程存活且版本未变更时直接复用已加载数据（变更点 #27，避免后台回前台重新加载）。
-        if (cachedLoadedData == null || cache.needsRebuild()) {
-            if (cache.needsRebuild()) cache.clear()
+        // 进程存活时直接复用已加载数据（变更点 #27，避免后台回前台重新加载）。
+        if (cachedLoadedData == null) {
+            // 去磁盘化：切片全量驻内存、不再写盘；启动时顺手删除旧版本残留的磁盘切片目录
+            // （一次性清理，幂等，try-catch 包住避免清理失败阻塞启动）。
+            runCatching { cache.clear() }
             // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
             // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
             val data = withContext(Dispatchers.IO) {
                 AssetManager(slicer, cache).loadAll(isDebug)
             }
-            cache.markBuilt()
+            // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
+            // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
+            withContext(Dispatchers.IO) {
+                data.sprite.preloadAllSprites { done, total ->
+                    withContext(Dispatchers.Main) {
+                        preloadDone = done
+                        preloadTotal = total
+                    }
+                }
+            }
             cachedLoadedData = data
         }
         loadedState.value = cachedLoadedData
     }
     val loaded = loadedState.value
     if (loaded == null) {
-        LoadingScreen()
+        LoadingScreen(slicer = slicer, preloadDone = preloadDone, preloadTotal = preloadTotal)
     } else {
         // 这里不再持有返回栈 / 导航器：全应用**唯一**的返回栈由 MainScreen 持有，
         // 它不受「数据加载完成」以外的任何重组影响，且它的宿主组件永远不被销毁
@@ -133,7 +156,26 @@ private fun AppRoot(
 }
 
 @Composable
-private fun LoadingScreen() {
+private fun LoadingScreen(
+    slicer: SpriteSlicer,
+    preloadDone: Int,
+    preloadTotal: Int,
+) {
+    // logo：加载页尚未 provide LocalSpriteRepository，故直接用 AssetLoader + slicer
+    // 从 assets 根解码应用图标（ic_launcher.png，与 AboutScreen 同源），失败时回退占位方块。
+    val logo by produceState<ImageBitmap?>(initialValue = null, slicer) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                slicer.decode(AssetLoader.loadBytes("ic_launcher.png"))
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+    // 进度：准备数据阶段（done < 0）恒为 0；切片阶段 done/total 归一到 0..1。
+    val fraction =
+        if (preloadDone < 0 || preloadTotal <= 0) 0f
+        else (preloadDone.toFloat() / preloadTotal).coerceIn(0f, 1f)
     // 适配深色模式：以主题背景色铺底，跟随色彩模式（#139 / bug-v7 #1）
     Box(
         modifier = Modifier
@@ -145,7 +187,9 @@ private fun LoadingScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // 上方图标：512 方形源图，圆角显示（此处以主题色圆角方块 + 文字作为占位 Logo）
+            // 上方图标：真实应用图标（assets/ic_launcher.png）圆角显示；解码失败回退占位方块
+            // （logo 为委托属性无法智能转换，先落到局部非委托变量再判空）。
+            val logoBitmap = logo
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -153,23 +197,44 @@ private fun LoadingScreen() {
                     .background(MiuixTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "牛",
-                    fontSize = 56.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onPrimary,
-                )
+                if (logoBitmap != null) {
+                    Image(
+                        bitmap = logoBitmap,
+                        contentDescription = "应用图标",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Text(
+                        text = "牛",
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.onPrimary,
+                    )
+                }
             }
             Spacer(Modifier.height(28.dp))
-            // 进度条：宽 100% 内间距，xy 居中
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp),
-            )
+            // 进度条（确定模式）+ 百分比文字：done < 0 时进度 0
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 48.dp),
+            ) {
+                LinearProgressIndicator(
+                    progress = fraction,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "${(fraction * 100).toInt()}%",
+                    color = MiuixTheme.colorScheme.onBackground,
+                )
+            }
             Spacer(Modifier.height(12.dp))
-            // 加载中文字在进度条下方
-            Text(text = "加载中…", color = MiuixTheme.colorScheme.onBackground)
+            // 加载阶段文案：数据加载（切片前）/ 素材切片（0-100%）
+            Text(
+                text = if (preloadDone < 0) "准备数据…" else "正在加载素材…",
+                color = MiuixTheme.colorScheme.onBackground,
+            )
         }
     }
 }

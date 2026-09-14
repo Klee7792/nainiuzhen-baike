@@ -7,14 +7,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
-import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
@@ -41,17 +36,16 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  * - 14 个开关：逐项 [SwitchPreference] / [OverlayDropdownPreference] 接线（中文命名），全部经
  *   [LocalAppSettings]/[LocalUpdateAppSettings] 持久化（开关清单见设计文档 §3.1）。
  * - 关于：[ArrowPreference] 跳转 [Route.About]。
- * 通用（v4 沿用）：启用圆角 / 启用模糊 / 过渡动画；数据：清理缓存 / 版本。
+ * 通用（v4 沿用）：启用圆角 / 启用模糊 / 过渡动画；数据：版本
+ * （「清理缓存」入口已随切片去磁盘化移除：切片全量驻内存、不再写盘）。
  * v8 追加：新增「屏幕 → 手机横屏」开关（绑定 `appState.allowPhoneLandscape`，默认关 = 锁竖屏，仅对手机生效）。
  */
 @Composable
 fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
     val navigator = LocalNavigator.current
-    val sprite = LocalSpriteRepository.current
     val appState = LocalAppSettings.current
     val updateAppState = LocalUpdateAppSettings.current
     val appVersion = LocalAppVersion.current
-    var cacheSize by remember { mutableStateOf(sprite.cacheSizeBytes()) }
 
     // 悬浮底栏(或普通底栏)的高度已由 miuix Scaffold 折进 innerPadding.bottom
     // （见 miuix Scaffold.kt：bottomBarPlaceable.height 会并入 innerPadding.bottom），
@@ -243,14 +237,8 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     summary = "卡片 / 主页 / 弹窗素材放大倍率",
                     onClick = { navigator.openTopLevel(Route.ImageScaleSettings) },
                 )
-                ArrowPreference(
-                    title = "清理缓存",
-                    summary = "切片缓存 ${formatSize(cacheSize)}",
-                    onClick = {
-                        sprite.clearCache()
-                        cacheSize = sprite.cacheSizeBytes()
-                    },
-                )
+                // 「清理缓存」入口已隐藏：切片全量驻内存、不再落盘（磁盘切片残留由启动时
+                // AppRoot 清理，内存表由 preloadAllSprites 全量重建），该入口失去意义。
                 BasicComponent(
                     title = "版本",
                     summary = "${appVersion.name} (${appVersion.code})",
@@ -263,10 +251,4 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
             }
         }
     }
-}
-
-/** 缓存字节数格式化为 KB / MB 文本。 */
-private fun formatSize(bytes: Long): String {
-    val mb = bytes / 1024.0 / 1024.0
-    return if (mb < 1) "${(bytes / 1024).toInt()} KB" else "%.2f MB".format(mb)
 }

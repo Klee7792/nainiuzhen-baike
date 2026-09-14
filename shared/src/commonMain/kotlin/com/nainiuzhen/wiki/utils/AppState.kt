@@ -49,6 +49,10 @@ data class AppState(
     val dialogRecipeImageScale: Float = 6f, // 弹窗配方素材：配方原料/产物（最大 8）
     val dialogFavHateImageScale: Float = 6f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
     val scaleStep: Float = 0.1f, // 滑块步进：0.1 / 0.5 / 1（设置子页可调，#22 步长）
+    // —— 卡片文字倍率（素材缩放设置子页「卡片文字」组，只能调小）—— //
+    // 1.0 = 卡片名称当前字号（物品/配方调用点的 11.sp）；下限 0.5。
+    val itemCardTextScale: Float = 1.0f, // 物品大全卡片文字倍率（最小 0.5）
+    val recipeCardTextScale: Float = 1.0f, // 配方查询卡片文字倍率（最小 0.5）
     // —— v8 新增：手机横屏开关（大屏适配 §8.3）—— //
     // 默认 false = 锁竖屏；true = 允许自由旋转。仅在手机（<sw600dp）生效，大屏由系统忽略方向请求。
     val allowPhoneLandscape: Boolean = false,

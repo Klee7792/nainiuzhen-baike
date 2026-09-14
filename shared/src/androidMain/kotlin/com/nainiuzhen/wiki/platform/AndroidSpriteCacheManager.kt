@@ -6,8 +6,10 @@ import java.io.File
 /**
  * 基于 `java.io.File` 的切片缓存管理器（Android）。
  *
- * 缓存结构：`{cacheDir}/nainiuzhen/sprites/{frameKey}.png` + 版本标记 `version.txt`。
- * 版本不符时由 [clear] 清空重切。
+ * 去磁盘化后切片全量驻内存、**不再写盘**：本类只剩「清理旧版本残留」的职责——
+ * 启动时由 [App] 调用 [clear] 删除旧目录 `{cacheDir}/nainiuzhen/`
+ * （含 `sprites/` 切片与 `version.txt` 版本标记），设置页「清理缓存」亦经此清理。
+ * 读取（[read]）与写入（[write]）方法保留仅为兼容接口契约，新路径不再调用。
  */
 class AndroidSpriteCacheManager(
     private val cacheDir: String,

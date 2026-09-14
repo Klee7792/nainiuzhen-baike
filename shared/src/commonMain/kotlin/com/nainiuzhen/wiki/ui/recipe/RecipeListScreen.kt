@@ -181,10 +181,12 @@ private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
             )
         }
         // 名称区：可选蓝胶囊 + 单行文字（超宽在胶囊内横向滚动）。
+        // 字号随「素材缩放设置 → 卡片文字」倍率缩小（1.0 = 原始 11.sp）。
+        val appState = LocalAppSettings.current
         CardNameCapsule(
             section = CardSection.Recipe,
             text = recipe.name,
-            fontSize = 11.sp,
+            fontSize = (11f * appState.recipeCardTextScale).sp,
         )
     }
 }

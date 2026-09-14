@@ -18,32 +18,57 @@ import com.nainiuzhen.wiki.data.source.SpriteSlicer
  * - [slice]：从图集字节裁剪单帧；处理 Cocos2d 的 rotated（顺时针 90° 打包 → 逆时针还原）。
  *   裁剪/旋转后，将结果贴回一张 `sourceSize` 透明画布（偏移为 `sourceColorRect`），
  *   以还原 plist 中被裁剪掉的透明边距，保证图标对齐（参考 `smart_picture_tool.py` 的 `_slice_plist_new`）。
+ * - [sliceBatch]：启动预热切片专用——解码图集一次后批量裁出全部帧（每帧复用同一 sheet 位图）。
  * - [decode]/[encode]：PNG 字节与 [ImageBitmap] 互转（用于缓存与 NPC / 星级原图）。
  */
 class AndroidSpriteSlicer : SpriteSlicer {
     override fun slice(sheetBytes: ByteArray, frame: SpriteAtlasFrame): ImageBitmap {
         val sheet = BitmapFactory.decodeByteArray(sheetBytes, 0, sheetBytes.size) ?: return placeholder()
         return try {
-            val left = frame.rect.left
-            val top = frame.rect.top
-            val w = frame.rect.width
-            val h = frame.rect.height
-            // rotated 帧在图集中占位为 h × w，裁剪框需交换宽高；rotated=false 时为 w × h。
-            val cropped =
-                if (frame.rotated) {
-                    val raw = Bitmap.createBitmap(sheet, left, top, h, w)
-                    rotateCcw(raw) // 还原图集中顺时针打包的帧：逆时针 90°
-                } else {
-                    Bitmap.createBitmap(sheet, left, top, w, h)
-                }
-            // 贴回 sourceSize 透明画布，偏移为 sourceColorRect（若均为 0 则等价无操作）。
-            val placed = placeOnSourceCanvas(cropped, frame.sourceSize, frame.sourceColorRect)
-            placed.asImageBitmap()
-        } catch (_: Exception) {
-            placeholder()
+            sliceFromSheet(sheet, frame)
         } finally {
             sheet.recycle()
         }
+    }
+
+    override fun sliceBatch(
+        sheetBytes: ByteArray,
+        frames: Map<String, SpriteAtlasFrame>,
+    ): Map<String, ImageBitmap> {
+        // 解码图集仅一次，逐帧裁剪后统一回收 sheet 位图（启动预热切片主路径）。
+        val sheet = BitmapFactory.decodeByteArray(sheetBytes, 0, sheetBytes.size)
+            ?: return frames.mapValues { placeholder() }
+        return try {
+            frames.mapValues { (_, frame) -> sliceFromSheet(sheet, frame) }
+        } finally {
+            sheet.recycle()
+        }
+    }
+
+    /**
+     * 在已解码的图集 [Bitmap] 上裁剪单帧（不回收 sheet，由调用方统一回收）。
+     * 处理 Cocos2d 的 rotated（顺时针 90° 打包 → 逆时针还原），
+     * 裁剪/旋转后将结果贴回 `sourceSize` 透明画布（偏移 `sourceColorRect`），
+     * 以还原 plist 中被裁剪掉的透明边距，保证图标对齐（参考 `smart_picture_tool.py` 的 `_slice_plist_new`）。
+     */
+    private fun sliceFromSheet(sheet: Bitmap, frame: SpriteAtlasFrame): ImageBitmap = try {
+        val left = frame.rect.left
+        val top = frame.rect.top
+        val w = frame.rect.width
+        val h = frame.rect.height
+        // rotated 帧在图集中占位为 h × w，裁剪框需交换宽高；rotated=false 时为 w × h。
+        val cropped =
+            if (frame.rotated) {
+                val raw = Bitmap.createBitmap(sheet, left, top, h, w)
+                rotateCcw(raw) // 还原图集中顺时针打包的帧：逆时针 90°
+            } else {
+                Bitmap.createBitmap(sheet, left, top, w, h)
+            }
+        // 贴回 sourceSize 透明画布，偏移为 sourceColorRect（若均为 0 则等价无操作）。
+        val placed = placeOnSourceCanvas(cropped, frame.sourceSize, frame.sourceColorRect)
+        placed.asImageBitmap()
+    } catch (_: Exception) {
+        placeholder()
     }
 
     /** 逆时针旋转 90°（对应 Python PIL `Image.ROTATE_90` 的逆），把图集中顺时针打包的帧还原为正向。 */
