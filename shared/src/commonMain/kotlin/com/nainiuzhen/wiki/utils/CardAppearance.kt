@@ -102,6 +102,35 @@ fun AppState.cardPressShadowShape(section: CardSection): Shape =
 fun AppState.cardPressShadowEnabled(section: CardSection): Boolean = cardCornerEnabled(section)
 
 // ————————————————————————————————————————————————————————————
+// 共用四角读写（组级「板块同步」开启时，圆角组的「四角同步」行用）
+// ————————————————————————————————————————————————————————————
+
+/**
+ * 共用四角的「四角同步」当前值。
+ *
+ * 「板块同步」开启后 3 个板块共用同一份设置，以 [CardSection.Item] 的字段为**基准值**读取；
+ * 写入时一次改 3 个板块（见 [withSharedCornerSync4] / [withSharedCorner]）。
+ */
+fun AppState.sharedCornerSync4(): Boolean = cardCornerItemSync4
+
+/** 写共用「四角同步」：同时写 3 个板块的 `Sync4`。 */
+fun AppState.withSharedCornerSync4(v: Boolean): AppState =
+    copy(
+        cardCornerItemSync4 = v,
+        cardCornerRecipeSync4 = v,
+        cardCornerNpcSync4 = v,
+    )
+
+/** 共用模式下某个角的当前值（以 [CardSection.Item] 为基准）。 */
+fun AppState.sharedCorner(c: CardCorner): Boolean = cardCornerChildOf(CardSection.Item, c)
+
+/** 写共用模式下某个角：同时写 3 个板块该角。 */
+fun AppState.withSharedCorner(c: CardCorner, v: Boolean): AppState =
+    cardCornerChildOfSet(CardSection.Item, c, v)
+        .cardCornerChildOfSet(CardSection.Recipe, c, v)
+        .cardCornerChildOfSet(CardSection.Npc, c, v)
+
+// ————————————————————————————————————————————————————————————
 // 内部：把「板块 → 各组的子字段」的 when 收在一处
 // ————————————————————————————————————————————————————————————
 
@@ -191,6 +220,14 @@ class CardToggleGroup(
     val cornerOf: (AppState, CardSection, CardCorner) -> Boolean = { _, _, _ -> false },
     /** 写某板块某角。 */
     val withCorner: (AppState, CardSection, CardCorner, Boolean) -> AppState = { s, _, _, _ -> s },
+    /** 共用「四角同步」当前值（「板块同步」开启时用；默认恒 true，非圆角组不渲染该行）。 */
+    val sharedCornerSyncOf: (AppState) -> Boolean = { true },
+    /** 写共用「四角同步」（一次写 3 个板块的 Sync4）。 */
+    val withSharedCornerSync: (AppState, Boolean) -> AppState = { s, _ -> s },
+    /** 共用某角当前值（以 `CardSection.Item` 为基准）。 */
+    val sharedCornerOf: (AppState, CardCorner) -> Boolean = { _, _ -> false },
+    /** 写共用某角（一次写 3 个板块该角）。 */
+    val withSharedCorner: (AppState, CardCorner, Boolean) -> AppState = { s, _, _ -> s },
 ) {
     /**
      * 总开关打开后，某板块子开关「实际显示」的值。
@@ -215,7 +252,15 @@ val CARD_TOGGLE_GROUPS: List<CardToggleGroup> = listOf(
         masterOf = { it.cardBgMaster },
         withMaster = { s, v -> s.copy(cardBgMaster = v) },
         syncOf = { it.cardBgSync },
-        withSync = { s, v -> s.copy(cardBgSync = v) },
+        withSync = { s, v ->
+            if (v) {
+                s.copy(cardBgSync = true)
+            } else {
+                // 关闭板块同步：把总开关当前值落到 3 个板块，避免关闭瞬间三张卡片同时丢背景
+                val mv = s.cardBgMaster
+                s.copy(cardBgSync = false, cardBgItem = mv, cardBgRecipe = mv, cardBgNpc = mv)
+            }
+        },
         childOf = { s, sec -> s.cardBgChild(sec) },
         withChild = { s, sec, v ->
             when (sec) {
@@ -232,7 +277,24 @@ val CARD_TOGGLE_GROUPS: List<CardToggleGroup> = listOf(
         masterOf = { it.cardCornerMaster },
         withMaster = { s, v -> s.copy(cardCornerMaster = v) },
         syncOf = { it.cardCornerSync },
-        withSync = { s, v -> s.copy(cardCornerSync = v) },
+        withSync = { s, v ->
+            if (v) {
+                s.copy(cardCornerSync = true)
+            } else {
+                // 关闭板块同步：把总开关值落到 3 个板块，并把「四角同步」统一为当前共用值
+                val mv = s.cardCornerMaster
+                val shared4 = s.cardCornerItemSync4
+                s.copy(
+                    cardCornerSync = false,
+                    cardCornerItem = mv,
+                    cardCornerRecipe = mv,
+                    cardCornerNpc = mv,
+                    cardCornerItemSync4 = shared4,
+                    cardCornerRecipeSync4 = shared4,
+                    cardCornerNpcSync4 = shared4,
+                )
+            }
+        },
         childOf = { s, sec -> s.cardCornerChild(sec) },
         withChild = { s, sec, v ->
             when (sec) {
@@ -245,22 +307,55 @@ val CARD_TOGGLE_GROUPS: List<CardToggleGroup> = listOf(
         withCorners = true,
         cornerSyncOf = { s, sec -> s.cardCornerSync4(sec) },
         withCornerSync = { s, sec, v ->
-            when (sec) {
-                CardSection.Item -> s.copy(cardCornerItemSync4 = v)
-                CardSection.Recipe -> s.copy(cardCornerRecipeSync4 = v)
-                CardSection.Npc -> s.copy(cardCornerNpcSync4 = v)
+            if (v) {
+                when (sec) {
+                    CardSection.Item -> s.copy(cardCornerItemSync4 = true)
+                    CardSection.Recipe -> s.copy(cardCornerRecipeSync4 = true)
+                    CardSection.Npc -> s.copy(cardCornerNpcSync4 = true)
+                }
+            } else {
+                // 关闭该板块四角同步：把当前生效值（跟随态下 = 板块圆角值）落到该板块的 4 个角
+                val eff = if (s.cardCornerSync) s.cardCornerMaster else s.cardCornerChild(sec)
+                val off = when (sec) {
+                    CardSection.Item -> s.copy(cardCornerItemSync4 = false)
+                    CardSection.Recipe -> s.copy(cardCornerRecipeSync4 = false)
+                    CardSection.Npc -> s.copy(cardCornerNpcSync4 = false)
+                }
+                CardCorner.entries.fold(off) { acc, c -> acc.cardCornerChildOfSet(sec, c, eff) }
             }
         },
         cornerOf = { s, sec, c -> s.cardCornerChildOf(sec, c) },
         withCorner = { s, sec, c, v -> s.cardCornerChildOfSet(sec, c, v) },
+        sharedCornerSyncOf = { it.sharedCornerSync4() },
+        withSharedCornerSync = { s, v ->
+            if (v) {
+                s.withSharedCornerSync4(true)
+            } else {
+                // 关闭共用四角同步：把当前生效值（共用/跟随态下四角恒跟总开关）落到 3 板块 × 4 角
+                val eff = s.cardCornerMaster
+                CardCorner.entries.fold(s.withSharedCornerSync4(false)) { acc, c ->
+                    acc.withSharedCorner(c, eff)
+                }
+            }
+        },
+        sharedCornerOf = { s, c -> s.sharedCorner(c) },
+        withSharedCorner = { s, c, v -> s.withSharedCorner(c, v) },
     ),
     CardToggleGroup(
-        title = "文字胶囊",
+        title = "胶囊背景",
         summary = "名称那行的蓝底胶囊；关 = 纯文字",
         masterOf = { it.cardCapsuleMaster },
         withMaster = { s, v -> s.copy(cardCapsuleMaster = v) },
         syncOf = { it.cardCapsuleSync },
-        withSync = { s, v -> s.copy(cardCapsuleSync = v) },
+        withSync = { s, v ->
+            if (v) {
+                s.copy(cardCapsuleSync = true)
+            } else {
+                // 关闭板块同步：把总开关当前值落到 3 个板块，避免关闭瞬间三处胶囊同时消失
+                val mv = s.cardCapsuleMaster
+                s.copy(cardCapsuleSync = false, cardCapsuleItem = mv, cardCapsuleRecipe = mv, cardCapsuleNpc = mv)
+            }
+        },
         childOf = { s, sec -> s.cardCapsuleChild(sec) },
         withChild = { s, sec, v ->
             when (sec) {
