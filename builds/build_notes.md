@@ -21,3 +21,4 @@
 - #26  2026-08-31 07:37  侧边模糊渐变兜底+版本动态注入: FadeEdges 改为两侧渐变淡出始终渲染(alpha0.85,宽24dp)作兜底+支持模糊时叠加textureBlur(0.4)增强(dialog采样失效也能见); 版本改从BuildConfig经LocalAppVersion动态注入(AppState.kt删硬编码常量,MainActivity注入,Settings/About读LocalAppVersion); build.ps1移除废弃常量patch; 1.2.6(26)
 - #27  2026-08-31 16:56  物品类型合并+dialog侧栏模糊重构: ①AssetManager.normalizeCategory 归一化(其它→其他/XX皮肤→皮肤/河海湖珍稀鱼类→鱼类,鱼饵鱼食不并); ②loadItems 二次统计把仅1物品的类别并入其他(其他1162/皮肤154/鱼类84,类别111→82); ③FadeEdges 改用 rememberDialogSideBlurBackdrop 不绑"启用模糊"开关(仅RuntimeShader),通透度略提高(渐变0.85→0.7/模糊0.4→0.3); 1.2.7(27)
 - #28  2026-08-31 23:36  列表卡片灰底恢复: 物品/配方子页面网格卡片图标区在 #26 重构时被误删 surfaceContainer 灰底(透出页面白底→浅色模式看着发白); 本次在 ItemGridCell/RecipeGridCell 图标 Box 恢复 surfaceContainer 背景+仅上方圆角(16dp)+clip,图片改 fillMaxSize 裁到同一圆角; 浅色模式略灰、深色不变; 1.2.8(28)
+- #30  2026-09-14 17:30  大屏适配收尾: 主页-子页分栏 + 左栏平级跳转(openTopLevel) + 弹窗左栏补遮罩(弹窗优先) + 弹窗右栏自动居中(零偏移常量); 文档 LARGE_SCREEN_ADAPTATION.md 已同步; 1.3.0(30)
