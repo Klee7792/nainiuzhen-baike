@@ -81,7 +81,7 @@ Column (fillMaxWidth)
 
 ### 2.3 关于"dialog 底部与屏幕底还空着一个 dialog 高度"
 
-**待真机确认**。当前推断：miuix 在「小屏」分支用 `Alignment.BottomCenter` 定位（`DialogContentLayout.kt:295-296`），而我们的 `Column` 带 `heightIn(max = 640.dp)`；当内容实际高度**小于** 640dp 时，容器仍按较大的测量值占位，于是底部出现空档。这条**不作为独立缺陷立项**——第 7 节的三分区重构（改用 `fillMaxHeight(0.9f)` + `weight(1f)`）会一并消除，届时以真机复核为准。
+**待真机确认**。当前推断：miuix 在「小屏」分支用 `Alignment.BottomCenter` 定位（`DialogContentLayout.kt:295-296`），而我们的 `Column` 带 `heightIn(max = 640.dp)`；当内容实际高度**小于** 640dp 时，容器仍按较大的测量值占位，于是底部出现空档。这条**不作为独立缺陷立项**——第 7 节的三分区重构（改用 `rememberDialogMaxHeight` 限高 + `weight(1f, fill=false)`）会一并消除，届时以真机复核为准。
 
 ### 2.4 现状配置（决定了方案边界）
 
@@ -231,36 +231,45 @@ androidx.compose.material3:material3-window-size-class-android:1.5.0-alpha22
 
 | 手段 | 用途 | 禁止用途 |
 | --- | --- | --- |
-| `currentWindowAdaptiveInfo().windowSizeClass` | ✅ 所有布局分支 | — |
+| `LocalWindowInfo.current.containerDpSize`（宽/高）+ 自算断点 | ✅ 所有布局分支（已实现，`WindowClass.kt`，零新增依赖） | — |
 | `sw600dp` 资源限定符 | ✅ 整机级静态资源（dimens / 图片） | ❌ 布局分支 |
 | `WindowInfoTracker` + `FoldingFeature` | ✅ 铰链避让、Tabletop/Book 姿态特化 | ❌ 判断手机/平板 |
 
-### 4.2 判定函数（拟）
+> ⚠️ 方案稿原计划用 `currentWindowAdaptiveInfo().windowSizeClass`，**已否决**（理由见 §4.2.1）。现统一以 `LocalWindowInfo.current.containerDpSize` 为唯一依据。
+
+### 4.2 判定函数（已落地 · `WindowClass.kt`）
+
+> ⚠️ **与早期规划不一致**：本文档早期（方案稿）落点是 `currentWindowAdaptiveInfo().windowSizeClass`，**实际未采用**。已实现版本改用 `LocalWindowInfo.current.containerDpSize`，判点与 AndroidX `WindowSizeClass` 官方断点值一致、零新增依赖。
 
 ```kotlin
-// 建议落点：shared/.../ui/adaptive/WindowClass.kt（新建）
+// 落点：shared/src/commonMain/kotlin/com/nainiuzhen/wiki/ui/adaptive/WindowClass.kt（已提交 1f98c6f）
 enum class WindowClass { COMPACT, MEDIUM, EXPANDED, LARGE }   // 横向分档
 
 @Composable
 fun rememberWindowClass(): WindowClass {
-    val wsc = currentWindowAdaptiveInfo().windowSizeClass
+    val width = LocalWindowInfo.current.containerDpSize.width
     return when {
-        wsc.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND)      -> LARGE      // >=1200
-        wsc.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)   -> EXPANDED   // >=840
-        wsc.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)     -> MEDIUM     // >=600
-        else                                                                          -> COMPACT    // <600
+        width >= 1200.dp -> WindowClass.LARGE      // >=1200
+        width >= 840.dp  -> WindowClass.EXPANDED   // >=840
+        width >= 600.dp  -> WindowClass.MEDIUM     // >=600
+        else             -> WindowClass.COMPACT    // <600
     }
 }
 
-/** 矮屏判定：横屏手机、Pura X Max 展开态(940x665) 都命中 */
+/** 矮屏判定：横屏手机（如 800x360）命中；Pura X Max 展开态(940x665) 高 665dp > 480dp，不命中 */
 @Composable
-fun isShortWindow(): Boolean {
-    val wsc = currentWindowAdaptiveInfo().windowSizeClass
-    return !wsc.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)  // <480
-}
+fun isShortWindow(): Boolean =
+    LocalWindowInfo.current.containerDpSize.height < 480.dp
 ```
 
-> **注意**：从大到小判断（小断点会匹配所有更大档）。
+> **注意**：**从大到小判断**（小断点会匹配所有更大档），否则全部落到 COMPACT。
+
+#### 4.2.1 为什么不用 `currentWindowAdaptiveInfo()`（已定决策，保留备查）
+
+1. **本地 Gradle 缓存缺 `material3-adaptive`**：`currentWindowAdaptiveInfo()` 来自 `org.jetbrains.compose.material3.adaptive:*`，本机缓存里**没有**该 artifact，引入需**联网拉依赖**，与本轮「零新增依赖」约束冲突；
+2. **metadata 编译风险**：`:shared` 目前只有**单一 `androidLibrary` target**，在 `commonMain` 直接引用 Android-only 的 AAR（`androidx.window` 体系）存在 Kotlin Multiplatform metadata 编译兼容风险。
+
+→ 断点比较本身是稳定常数，用 Compose 自带的 `LocalWindowInfo.current.containerDpSize` 语义等价、零新增依赖；后续若需折叠铰链避让等高级形态，再评估是否显式引入 `androidx.window`。
 
 ### 4.3 三档形态 → 布局决策表（建议）
 
@@ -268,7 +277,7 @@ fun isShortWindow(): Boolean {
 | --- | --- | --- | --- | --- |
 | `<600` | **COMPACT**（手机竖屏 / Pura X 外屏 326×326 / 竖屏折叠） | 按屏宽算列（约 4–6 列） | 弹窗（三分区重构） | 即当前手机体验，仅修 P0 |
 | `600–839` | **MEDIUM**（大手机横屏 / 竖屏平板） | 列数增加（约 8–10 列） | 弹窗（三分区） | 二期再评估是否提前上双栏 |
-| `≥840` | **EXPANDED / LARGE**（平板横屏 / Pura X Max 展开 940×665 / 桌面窗口） | 列数封顶 + 内容区限宽居中 | **一期弹窗（三分区）→ 二期列表-详情双栏** | 官方推荐形态；**分两期落地** |
+| `≥840` | **EXPANDED / LARGE**（平板横屏 / Pura X Max 展开 940×665 / 桌面窗口） | 列数无限、填满整行（不封顶不限宽，见 §5.5） | **一期弹窗（三分区）→ 二期列表-详情双栏** | 官方推荐形态；**分两期落地** |
 | 任意宽 + **高<480** | **矮屏叠加态** | 列数不变 | 强制三分区；双栏时压缩 header | 横屏手机、阔比例屏 |
 
 ---
@@ -279,50 +288,37 @@ fun isShortWindow(): Boolean {
 
 `Adaptive(minSize)` **只有下限**：大屏上列数会一直涨、单卡会一直宽，正是用户抱怨的"等比放大"的反面——变成"无限增殖"。需要**上下限双约束**。
 
-### 5.2 推荐算法
+### 5.2 早期草案（⚠️ 已被 §5.5 / `AdaptiveGrid.kt` 取代，保留备查，勿照此实现）
 
-用 `BoxWithConstraints` 读取**真实可用宽度**，自行决定列数，再交给 `GridCells.Fixed`：
+> **本节为方案早期草案，与最终实现不一致**：草案里带了 `maxColumns` 列数上限 + `maxCard` 内容区限宽居中；**实际落地（`AdaptiveGrid.kt`，commit `fc4d10a`）不设列数上限、不设内容区限宽**，网格永远填满整行。以 §5.5 与下方最终函数为准。
 
 ```kotlin
+// ❌ 早期草案（未采用）：带 maxColumns / maxCard 限宽
+fun AdaptiveIconGrid(hPadding, spacing, minCard, maxCard, maxColumns, content) { ... }  // 含 coerceIn(1,maxColumns) 与 gridWidth 限宽居中
+
+// ✅ 最终实现（AdaptiveGrid.kt）：只按 minCard 求最大列数，无上限、无限宽
+fun adaptiveGridColumns(availableWidth: Dp, spacing: Dp, minCard: Dp): Int =
+    ((availableWidth + spacing) / (minCard + spacing)).toInt().coerceAtLeast(1)
+
 @Composable
 fun AdaptiveIconGrid(
-    hPadding: Dp, spacing: Dp,
-    minCard: Dp, maxCard: Dp, maxColumns: Int,
-    content: LazyGridScope.() -> Unit,
+    hPadding: Dp, spacing: Dp, minCard: Dp,
+    modifier: Modifier = Modifier,
+    grid: @Composable (columns: Int) -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val available = maxWidth - hPadding * 2
-
-        // ① 先按最小卡宽求"最多能放几列"
-        val byMin = ((available + spacing) / (minCard + spacing)).toInt()
-        // ② 夹到 [1, maxColumns]（防止小屏出 0 列、大屏列数失控）
-        val columns = byMin.coerceIn(1, maxColumns)
-
-        // ③ 限制内容区总宽 = 列数 × 最大卡宽（防止大屏被拉满），并居中
-        val gridWidth = (columns * maxCard + (columns - 1) * spacing)
-            .coerceAtMost(available)
-
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                modifier = Modifier.width(gridWidth).fillMaxHeight(),
-                contentPadding = PaddingValues(horizontal = hPadding, vertical = hPadding),
-                horizontalArrangement = Arrangement.spacedBy(spacing),
-                verticalArrangement = Arrangement.spacedBy(spacing),
-                content = content,
-            )
-        }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        grid(adaptiveGridColumns(maxWidth - hPadding * 2, spacing, minCard))
     }
 }
 // 卡片内部一律 Modifier.fillMaxWidth() —— 宽度由列数决定，不需要在卡片里写死尺寸
 ```
 
-**设计要点**
+**设计要点（与 §5.5 一致）**
 
-1. **列数三约束**：下限 1（小屏不塌）、上限 `maxColumns`（大屏不失控）、中段由 `minCard` 决定（保证能点得准）。
-2. **内容区限宽居中**：`gridWidth ≤ columns × maxCard`，超过可用宽则回落。这同时满足官方"超宽屏限制最大宽度并居中"的要求。
-3. **卡片自身不设尺寸**：只 `fillMaxWidth()`，宽度完全由列数推导 —— 这样"卡片 min/max"只体现在**参数**里，只有一个真相源。
-4. **卡片保持方形**：现有 `aspectRatio(1f)`（`ItemListScreen.kt:193-195` 等）保持不变，卡片高度随宽度走。
+1. **列数只取下限 1**：`coerceAtLeast(1)` 防小屏出 0 列；**不设上限**（`maxColumns` 已删除）。
+2. **不设内容区限宽、不居中**：`GridCells.Fixed(columns)` 均分填满整行，**永不出两侧留白**（代价见 §5.5：超宽屏列数多）。
+3. **卡片自身不设尺寸**：只 `fillMaxWidth()`，宽度完全由列数推导，只有一个真相源。
+4. **卡片保持方形**：现有 `aspectRatio(1f)` 保持不变，卡片高度随宽度走。
 
 ### 5.3 基线实测：你现在看到的卡片到底多宽
 
@@ -475,35 +471,55 @@ NPC 资料：
 
 ## 7. 方案 C：详情容器重构（P0 修复，必须先做）
 
-### 7.1 目标模式：三分区
+### 7.1 目标模式：三分区（已落地 · `DialogSizing.kt` + 三弹窗）
+
+> ⚠️ **与早期规划不一致**：方案稿写的是外层 `Column(fillMaxHeight(0.9f))`。**实际未用 `fillMaxHeight(0.9f)`**——那样会把短内容弹窗强制撑高。实际是外层 `Column(heightIn(max = rememberDialogMaxHeight(maxHeight)))`，`rememberDialogMaxHeight` 取 `min(原上限, 窗口高 × 0.9)`，**保留 640.dp 上限再二次收敛**。
 
 ```
-Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能用固定 640dp
+Column (fillMaxWidth().heightIn(max = rememberDialogMaxHeight(maxHeight)))  ← 关键：限高按窗口高度收敛，不撑高短内容
 ├── header                            （固定高度，可随形态压缩）
-├── 内容区  weight(1f) + verticalScroll   ← 关键：weight 吃掉"剩余"而非"全部"
-└── footer（按钮）                      ← 关键：不在 scroll 内，永远可见
+├── 内容区  weight(1f, fill=false) + verticalScroll   ← 关键：weight 吃"剩余"且 fill=false，短内容不撑满
+└── footer（按钮 Row，非加权，在 scroll 外）            ← 关键：结构不可挤出
 ```
 
-**三个"关键"就是 P0 的完整修复**：
+**三个"关键"就是 P0 的完整修复（已提交 `8f38394` + `2819dc9`）**：
 
-- `fillMaxHeight(0.9f)` 取代 `heightIn(max = 640.dp)` → 随可用高度伸缩；
-- 内容区 **`weight(1f)`** → Column 先给 footer 留位，剩余才给内容；
-- footer **移出滚动区** → 结构上不可能被挤出。
+- 限高改用 `rememberDialogMaxHeight(maxHeight)`（`DialogSizing.kt`）→ `= Dp(min(max.value, windowHeight × 0.9))`：短内容弹窗按内容自适应收窄，长内容被窗口高 90% 兜住，横屏（≈393dp）不溢出；
+- 内容区 **`weight(1f, fill = false)`** → Column 先测非加权的按钮行（拿自然高度），剩余才给内容；`fill = false` 保证短内容不撑满；
+- footer **移出滚动区、且按钮 Row 非加权** → 结构上不可能被挤出。
 
 ### 7.2 落点清单
 
-| 文件 | 当前 | 改为 |
+| 文件 | 当前 | 改为（已落地） |
 | --- | --- | --- |
-| `ui/components/BasicDetailDialog.kt:37,46-51,55-63` | `maxHeight=640.dp` + 内容列 + 按钮 Row | 三分区；`maxHeight` 参数改为**可用高度比例** |
-| `ui/npc/NpcDetailScreen.kt:121-126,131-137,140-148,167` | 总 640dp + 中部 400dp + header 144dp 固定 | 三分区；header 高度改为**按形态给值**（矮屏压缩） |
+| `ui/components/BasicDetailDialog.kt` | `maxHeight=640.dp` 写死 + 内容列 + 按钮 Row | 三分区；`maxHeight` 经 `rememberDialogMaxHeight` 收敛；内容 `weight(1f, fill=false)`；按钮 Row 非加权移出滚动区；`OverlayDialog(largeScreen=false)` |
+| `ui/npc/NpcDetailScreen.kt` | 总 640dp + 中部 400dp + header 144dp | 三分区；总高 `rememberDialogMaxHeight(640.dp)`；中部改 `weight(1f, fill=false)`；按钮各 `weight(1f)` 且 Row 非加权；`largeScreen=false` |
 | `ui/items/ItemDetailScreen.kt` / `ui/recipe/RecipeDetailScreen.kt` | 内容不滚动，依赖容器 | 保持依赖容器即可（三分区后自动生效） |
-| `ui/components/FilterPopup.kt:50`、`FilterChipDialog.kt:53/87`、`RecipeFilterDialog.kt:49/59` | 硬编码 600/480dp | 统一改走同一套三分区参数 |
+| `ui/components/FilterPopup.kt`、`FilterChipDialog.kt`、`RecipeFilterDialog.kt` | 硬编码 600/480dp + 居中风险 | 统一走 `rememberDialogMaxHeight(...)` + `largeScreen=false` |
 
 ### 7.3 矮屏附加策略
 
 - 横屏（高 <480dp）时，header 允许**横向化**（标题与返回/关闭同排），把纵向空间让给内容；
 - 大屏（≥840dp）详情若走 pane（方案 B），则**根本不进 dialog**，P0 自然消失；
 - 若保留 dialog，宽度用 `usePlatformDefaultWidth = false` + `widthIn(max = 560.dp)`，**避免大屏被拉满**。
+
+### 7.4 强制底部贴合（已落地 · `2819dc9`）
+
+**问题**：miuix `OverlayDialog` 在**宽≥840dp 且 高≥480dp**（即 `isLargeScreen()` 判定）时会改为 **`Alignment.Center`** 居中并对齐限高 `windowHeight × 2/3`，导致大屏/横屏上弹窗**距屏幕底部留白过大**（实测横屏约 229px vs 竖屏约 69px）。这是 **miuix 行为，不是本工程代码 bug**。
+
+**修法**：给所有 `OverlayDialog` 显式传 **`largeScreen = false`**，强制走 `Alignment.BottomCenter`（贴底），使横屏与竖屏观感一致。
+
+**涉及弹窗清单（全量，已 grep `largeScreen` 核实）**：
+
+| 弹窗 | 文件 |
+| --- | --- |
+| 通用详情弹窗 | `ui/components/BasicDetailDialog.kt:53` |
+| NPC 详情弹窗 | `ui/npc/NpcDetailScreen.kt:132` |
+| 筛选弹窗（胶囊） | `ui/components/FilterChipDialog.kt:53` |
+| 筛选弹窗（Popup） | `ui/components/FilterPopup.kt:50` |
+| 配方筛选弹窗 | `ui/recipe/RecipeFilterDialog.kt:60` |
+
+> 与 §7.1 的 `rememberDialogMaxHeight` 是两套独立修复：前者解决"限高 / 横屏按钮消失"，本节能决"横屏底部留白"。两者同属弹窗统一化，但根因不同。
 
 ---
 
@@ -559,11 +575,11 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 | 能力 | 选型 | 依赖 |
 | --- | --- | --- |
-| 窗口判定 | `currentWindowAdaptiveInfo().windowSizeClass`（`androidx.window.core.layout`） | 显式加 `androidx.window:window`（当前传依赖 1.5.0） |
+| 窗口判定 | `LocalWindowInfo.current.containerDpSize` + 自算断点（`WindowClass.kt`，断点值同 AndroidX `WindowSizeClass`） | **零新增依赖**（`androidx.window` 未引入；`currentWindowAdaptiveInfo()` 已否决，理由见 §4.2.1） |
 | 折叠避让 | `WindowInfoTracker` + `FoldingFeature` | 同上 |
 | 自适应网格 | `BoxWithConstraints` + 自算列数 + `GridCells.Fixed` | 无（Compose 自带） |
 | 列表-详情双栏 | **自研** `Row + weight + AnimatedContent + 状态提升`（备选：`NavigableListDetailPaneScaffold`） | 自研=0；用库=`org.jetbrains.compose.material3.adaptive:*` |
-| 详情容器 | 三分区（`fillMaxHeight(0.9f)` + `weight(1f)` + footer） | 无 |
+| 详情容器 | 三分区（`rememberDialogMaxHeight` 限高 + `weight(1f, fill=false)` + footer 非加权） | 无 |
 | 方向 | **设置项「手机横屏」开关** + 运行时 `setRequestedOrientation`（默认关 = 锁竖屏）；大屏开关自动失效 | `AppState`/SettingsStore + `androidMain`（第 8.3） |
 | 状态保存 | `ViewModel` / `SavedStateHandle`（`configChanges` 已挡重建，但进程回收仍需） | 视需要 |
 
@@ -575,32 +591,34 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 > 已定节奏：**先热修 P0 → 一期（地基 + 网格）→ 二期（双栏 + 收尾）**。
 > 原则：**先修阻塞，再做体验，最后做形态**。每阶段独立可验收、可回滚。
+>
+> **状态图例**：✅ 已落地（附 commit）｜🚧 进行中｜⏳ 未开始｜❌ 已作废 / 未落地。
 
-### 🔥 热修 H0 · 详情弹窗三分区（立即 · 最高优先级）
+### 🔥 热修 H0 · 详情弹窗三分区（立即 · 最高优先级）— ✅ 已落地 `8f38394`
 
 **目标：立刻恢复 NPC 日程入口，解除阻塞。**（大屏锁不住 + 手机可点按钮切横屏 → 横屏仍属常规可达状态，此缺陷属高频复现）
 
-1. `ui/components/BasicDetailDialog.kt`：`:37` 的 `maxHeight = 640.dp` 改为**按可用高度的比例**（`fillMaxHeight(0.9f)`）；`:46-51` 内容列加 **`weight(1f)`**；`:55-63` 按钮 Row **移出滚动区**并加最小高度保护；
+1. `ui/components/BasicDetailDialog.kt`：`maxHeight` 经 **`rememberDialogMaxHeight`**（= min(640.dp, 窗口高×0.9)）收敛（非纯 `fillMaxHeight(0.9f)`）；内容列加 **`weight(1f, fill=false)`**；按钮 Row **移出滚动区且非加权**；`OverlayDialog(largeScreen=false)` 强制贴底；
 2. `ui/npc/NpcDetailScreen.kt`：`:121-126` 总限高、`:131-137` 中部限高、`:140-148` 按钮 Row 同样改三分区；`:167` 的 header `144.dp` 在矮屏下允许压缩；
 3. 三个筛选弹窗统一参数：`FilterPopup.kt:50`（600dp）、`FilterChipDialog.kt:53/87`（600dp）、`RecipeFilterDialog.kt:49/59`（480dp）。
 
 - **验收**：K40 **横屏**（915×393dp）下，物品/配方/NPC 详情底部按钮**全部可见可点**、**NPC 日程可进入**；竖屏零回归；浅色/深色均正常。
 
-### 一期 · 阶段 1：地基（不改用户可见行为）
+### 一期 · 阶段 1：地基（不改用户可见行为）— ✅ 已落地 `1f98c6f` / `fc4d10a`
 
 4. 新建 `shared/.../ui/adaptive/WindowClass.kt`：`WindowClass` 枚举 + `rememberWindowClass()` / `isShortWindow()`（第 4.2 节）；
-5. `shared/build.gradle.kts` **显式声明** `androidx.window`（不依赖传递依赖）；
+5. ~~`shared/build.gradle.kts` **显式声明** `androidx.window`~~ ❌ **已作废 / 未落地**：实际改用 `LocalWindowInfo`（§4.2），**未引入 `androidx.window`**，`shared/build.gradle.kts` 无该声明（已 grep 核实）。
 6. 新建 `AdaptiveIconGrid` 通用组件（第 5.2 节算法封装）。
 
 - **验收**：编译通过；三列表替换为 `AdaptiveIconGrid` 后，**手机竖屏列数与现状完全一致**（K40 = 6 / 6 / 3 列，零视觉回归）。
 
-### 一期 · 阶段 2：自适应网格参数化（按实测基线反推）
+### 一期 · 阶段 2：自适应网格参数化（按实测基线反推）— ✅ 已落地 `fc4d10a`
 
 7. 按第 5.3–5.5 节接入三个列表：`minCard` 物品/配方 **47dp**、NPC **104dp**；规则 = "最大列数且单卡 ≥ minCard"，**填满整行**；仅当内容区 > 1280dp 才封顶居中。
 
 - **验收**：K40 竖屏 **6 / 6 / 3 列不变、卡宽 54.7dp 与现状一致**；卡宽全程落在 **48–55dp**（NPC 100–133dp）；平板/大屏**不再等比放大**；**不出现两侧留白**；分屏、自由窗口拖拉宽度时实时重排不崩。
 
-### 一期 · 阶段 3：手机方向设置项
+### 一期 · 阶段 3：手机方向设置项 — ✅ 已落地 `a1ffc84` + 修复 `70de16f`
 
 8. 新增设置项 `allowPhoneLandscape`（`utils/AppState.kt` + `platform/AndroidAppSettingsStore.kt`），默认**关**；
 9. `androidMain` 实现"按设置应用方向"：关 → `SCREEN_ORIENTATION_PORTRAIT`；开 → `SCREEN_ORIENTATION_UNSPECIFIED`。启动时应用一次 + 开关切换时立即应用（第 8.3 节）；
@@ -608,7 +626,7 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 - **验收**：默认状态下手机**竖屏锁定**、晃动设备不会转横；打开开关后**恢复自由旋转**；关掉开关若当前是横屏应**自动回竖屏**；切换过程**状态不丢**；大屏上开关无效（横竖屏都正常自适应）。
 
-### 二期 · 阶段 4：大屏双栏（宽 ≥840dp **且** 高 ≥480dp）
+### 二期 · 阶段 4：大屏双栏（宽 ≥840dp **且** 高 ≥480dp）— 🚧 进行中（正在实现，未完成）
 
 11. 按第 6.1 节条件为物品/配方/NPC 接入自研双栏（`Row` + `widthIn(min=300, max=380)` + `weight(1f)` + `AnimatedContent` + 状态提升）；
 12. 不满足条件（含**手机横屏 915×393dp**）保持单栏 + 弹窗（H0 已修好）；右栏详情**自带滚动** —— 注意 `RecipeDetailScreen` / `NpcDetailScreen` **自身无滚动**（P2-1），脱离 dialog 容器后必须补；
@@ -616,7 +634,7 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 - **验收**：平板横屏、Pura X Max 展开态（940×665）下左列表 + 右详情同屏；详情可滚动、按钮可见；**手机横屏（915×393dp）保持单栏**、不走双栏。
 
-### 二期 · 阶段 5：收尾
+### 二期 · 阶段 5：收尾 — ⏳ 未开始
 
 14. 折叠姿态（Tabletop / Book）避让 —— **可选**，视是否有折叠设备；
 15. 状态保存复核（`ViewModel` / `SavedStateHandle`；因 `configChanges` 挡了重建，旋转不丢 UI 状态，但进程回收仍需兜底）。
@@ -639,7 +657,7 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 **网格自适应（目标：卡宽全程 48–55dp；NPC 100–133dp）**
 - [ ] 360dp 小屏：物品/配方 6 列 · 49.3dp；NPC 3 列 · 104dp
-- [ ] 392dp（K40）：6 / 6 / 3 列 · 54.7dp / 114.7dp（= 现状）
+- [x] 392dp（K40）：6 / 6 / 3 列 · 54.7dp / 114.7dp（= 现状）✅（唯一有实测基线的宽度档）
 - [ ] 411dp：物品/配方 7 列 · 48.4dp
 - [ ] 440dp（Pura X 内屏 440×707）：7 列 · 52.6dp；NPC 3 列 · 130.7dp
 - [ ] 326×326（Pura X 外屏方屏）：物品/配方 5 列 · 54dp，UI 不挤压
@@ -675,7 +693,7 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 
 | 风险 | 等级 | 说明 / 缓解 |
 | --- | --- | --- |
-| miuix 的 `isLargeScreen()` 阈值（480×840）与我们的判定不一致 | 中 | 两套判定并存可能出现"我们判大屏、miuix 判小屏"的错配。**缓解**：详情改三分区并显式 `fillMaxHeight(0.9f)`，不再依赖 miuix 的定位/限高分支；必要时同步调整 miuix 库（该库为本地 `includeBuild`，**可改**） |
+| miuix 的 `isLargeScreen()` 阈值（480×840）与我们的判定不一致 | 中 | 两套判定并存可能出现"我们判大屏、miuix 判小屏"的错配。**缓解**：详情改三分区并经 `rememberDialogMaxHeight` 限高（= min(原上限, 窗口高×0.9)），不再依赖 miuix 的定位/限高分支；必要时同步调整 miuix 库（该库为本地 `includeBuild`，**可改**） |
 | miuix `OverlayDialog` 的定位行为（2.3 的空档问题） | 中 | 需真机截图确认；三分区重构后复验 |
 | `NavigableListDetailPaneScaffold` 为 `@Experimental` + alpha | 中 | **缓解**：选自研双栏路径，规避 |
 | 国内 ROM 覆盖手机方向锁 | 低 | 接受现状；保证横屏可用 |
@@ -724,6 +742,19 @@ Column (fillMaxHeight(0.9f))          ← 关键：必须显式限高，不能�
 - ❌ 大屏一次性上双栏 —— 改分两期（6.0）；
 - ❌ 卡片"大卡 / 小卡"预设 —— 改为**以实测基线 + ±20px 反推**参数（5.3–5.5）；
 - ❌ BottomSheet 作为大屏详情形态 —— 不采用。
+
+---
+
+## 14. 已知偏差与遗留
+
+> 本轮把文档与已提交实现（`git log` 见 §10）对齐，以下为**如实记录的偏差与遗留**，供下一轮避免重复规划、改坏已验代码。
+
+1. **判定 API 改用 `LocalWindowInfo.containerDpSize`，未用 `currentWindowAdaptiveInfo()`**：断点值（1200/840/600.dp，从大到小）与 AndroidX `WindowSizeClass` 一致，但实现路径不同。原因见 §4.2.1（`material3-adaptive` 不在本地缓存 + `:shared` 单 `androidLibrary` target 的 metadata 风险）。
+2. **未引入 `androidx.window` 依赖**：`shared/build.gradle.kts` 无 `androidx.window` 声明（已 grep 核实）；窗口判定零新增依赖。
+3. **「手机横屏」开关曾在 `a1ffc84` 漏写 `load()` 读取，导致重启后失效**，已在 `70de16f` 修复（QA 发现）。
+4. **`rememberWindowClass()` / `isShortWindow()` 目前尚无调用方**：仅作为阶段 4（大屏双栏）的地基预埋，待二期接入。
+5. **构建环境红线**：本机仅 13GB 内存，`gradle.properties` 的 `-Xmx8g`（`org.gradle.jvmargs`）在该配置下可能导致 JVM 原生 OOM；且增量构建可能出现「全部 UP-TO-DATE 的假 BUILD SUCCESSFUL」——验证必须看 `compileAndroidMain` / `compileDebugKotlin` 是否**真执行** + 比对 APK 的 mtime，不能只看末尾 BUILD SUCCESSFUL。
+6. **二次核实**：本文档 §5.2 与 §5.3–5.5 的矛盾已在本轮修正（§5.2 标注为早期草案、已被取代）；§4.2 / §7 / §9 中与实现不符的描述已同步修正。
 
 ---
 
