@@ -42,6 +42,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  *   [LocalAppSettings]/[LocalUpdateAppSettings] 持久化（开关清单见设计文档 §3.1）。
  * - 关于：[ArrowPreference] 跳转 [Route.About]。
  * 通用（v4 沿用）：启用圆角 / 启用模糊 / 过渡动画；数据：清理缓存 / 版本。
+ * v8 追加：新增「屏幕 → 手机横屏」开关（绑定 `appState.allowPhoneLandscape`，默认关 = 锁竖屏，仅对手机生效）。
  */
 @Composable
 fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
@@ -193,6 +194,20 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                         }
                     }
                 }
+            }
+
+            SmallTitle(text = "屏幕")
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp),
+            ) {
+                SwitchPreference(
+                    title = "手机横屏",
+                    summary = "仅对手机生效",
+                    checked = appState.allowPhoneLandscape,
+                    onCheckedChange = { updateAppState(appState.copy(allowPhoneLandscape = it)) },
+                )
             }
 
             SmallTitle(text = "交互")

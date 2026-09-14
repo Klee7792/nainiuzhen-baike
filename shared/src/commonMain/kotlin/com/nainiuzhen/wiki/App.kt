@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.AssetManager
 import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
+import com.nainiuzhen.wiki.utils.ApplyPhoneOrientation
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
 import com.nainiuzhen.wiki.ui.nav.AppNavHost
@@ -89,6 +90,8 @@ fun App(
             LocalAppVersion provides appVersion,
         ) {
             SetStatusBarLightIcons(light = !isDark)
+            // 按「手机横屏」设置应用方向：启动时一次 + 开关切换时立即生效（大屏适配 §8.3）。
+            ApplyPhoneOrientation(allowLandscape = appState.allowPhoneLandscape)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)
         }
     }

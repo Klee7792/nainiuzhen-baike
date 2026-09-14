@@ -78,6 +78,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, state.dialogRecipeImageScale)
             putFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, state.dialogFavHateImageScale)
             putFloat(KEY_SCALE_STEP, state.scaleStep)
+            putBoolean(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
             apply()
         }
     }
@@ -112,6 +113,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_DIALOG_RECIPE_IMAGE_SCALE = "dialogRecipeImageScale"
         const val KEY_DIALOG_FAV_HATE_IMAGE_SCALE = "dialogFavHateImageScale"
         const val KEY_SCALE_STEP = "scaleStep"
+        const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
     }
 }
 
