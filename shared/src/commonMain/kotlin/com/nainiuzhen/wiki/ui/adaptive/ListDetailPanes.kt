@@ -1,19 +1,21 @@
 package com.nainiuzhen.wiki.ui.adaptive
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
+import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -27,6 +29,16 @@ private val LIST_PANE_MIN_WIDTH = 300.dp
 private val LIST_PANE_MAX_WIDTH = 380.dp
 
 /**
+ * 「单栏 ↔ 双栏」分割比例的补间时长（毫秒）。
+ *
+ * 横竖屏切换时，本容器不做任何结构性重建 —— 只是把分割比例 `0f ↔ 1f` 插值，
+ * 于是「左栏的出现 / 消失」天然变成一段平滑滑动，而不是硬切。
+ * 320ms 对齐 miuix 导航过渡的量级（`NavTransitions.MiuixDefault`），
+ * 使左栏滑动与右栏内子页的 NavDisplay 过渡看起来是同一次动作的两半。
+ */
+private const val PANE_SPLIT_MS = 320
+
+/**
  * 是否启用「列表-详情」双栏（设计文档 §6.1）。
  *
  * 启用条件：**宽 ≥ 840dp 且 高 ≥ 480dp**。只判宽度不够 —— 手机横屏（如 915×393dp）
@@ -37,6 +49,10 @@ private val LIST_PANE_MAX_WIDTH = 380.dp
  * - 平板 / 桌面窗口 / 模拟器横屏（1105×726dp）→ true（双栏）
  *
  * 说明：实现时先取一次 [rememberWindowClass] 存进局部变量，避免重复调用。
+ *
+ * ⚠️ 本函数只决定**布局形态**，不再决定「谁来渲染子页」——渲染方永远是同一个
+ * `NavDisplay`（见 `MainScreen` / `SubPageNavHost`）。横竖屏切换时它会在 true / false
+ * 之间翻转，而翻转只带来尺寸与位置的变化，不会销毁任何 composition。
  */
 @Composable
 fun rememberUseDualPane(): Boolean {
@@ -45,21 +61,6 @@ fun rememberUseDualPane(): Boolean {
     return wideEnough && !isShortWindow()
 }
 
-/**
- * 大屏双栏容器：左列表栏 + 右详情面板。
- *
- * 左栏宽度 = 窗口宽 × [LIST_PANE_WIDTH_FRACTION]，再夹紧到
- * `[LIST_PANE_MIN_WIDTH, LIST_PANE_MAX_WIDTH]`；右栏 `weight(1f)` 吃满剩余空间：
- * - 840dp 屏 → 左 300dp（触底）
- * - 1200dp 及以上 → 左 380dp（封顶）
- *
- * 不加任何分割线 / 底色 / 装饰，保持本项目「简洁无多余装饰」的卡片风格。
- * 调用方需自行用 [rememberUseDualPane] 判断是否调用本组件。
- *
- * @param modifier 外层修饰。
- * @param list 左栏内容（列表）；入参为分配给它自身的修饰符（`fillMaxSize`）。
- * @param detail 右栏内容（详情）；入参同上。
- */
 /**
  * 左（列表）栏宽度：窗口宽 × 0.34，夹紧到 [300.dp, 380.dp]。
  * 顶栏限宽与双栏分栏共用本函数，保证两者算出的宽度严格一致。
@@ -70,19 +71,92 @@ fun rememberListPaneWidth(): Dp {
     return (windowWidth * LIST_PANE_WIDTH_FRACTION).coerceIn(LIST_PANE_MIN_WIDTH, LIST_PANE_MAX_WIDTH)
 }
 
+/**
+ * 「列表层 / 详情层」**双层常驻**容器（大屏适配 §6、横竖屏状态保持）。
+ *
+ * 本容器永远是同一段代码路径、同一棵子树结构，只有两个子槽位：
+ *
+ * ```
+ * Layout {
+ *     list(Modifier.fillMaxSize())    // 槽位 0：列表层（主页 + 设置）
+ *     detail(Modifier.fillMaxSize())  // 槽位 1：详情层（唯一返回栈的 NavDisplay）
+ * }
+ * ```
+ *
+ * 由归一化分割比例 `t`（0 = 单栏，1 = 双栏）驱动两个槽位的位置与宽度：
+ *
+ * | | 列表层 | 详情层 |
+ * |---|---|---|
+ * | `t = 0`（单栏） | `x=0`，满宽 | `x=0`，满宽（叠在列表层上） |
+ * | `t = 1`（双栏） | `x=0`，宽 [rememberListPaneWidth] | `x=左栏宽`，宽 = 余下 |
+ *
+ * `t ∈ (0,1)` 即过渡中途，两层平滑滑动。
+ *
+ * ### 为什么不用 `Row` + `weight(1f)`
+ *
+ * `Row { Box(width); Box(weight(1f)) }` 在「单栏 / 双栏」之间切换时**分支结构不同**，
+ * 会让 Compose 把整棵子树拆掉重建 —— 于是横竖屏一换，子页的滚动位置、搜索词、筛选、
+ * 正在展示的弹窗全部丢失（用户反馈的「转屏就刷新」）。改成**恒定结构 + 只动尺寸**后，
+ * 两个槽位在组件树中的位置永远不变，composition 原地保留。
+ *
+ * ### 命中测试
+ *
+ * 详情层在单栏（`t = 0`）时满宽叠在列表层上方，而 miuix `NavDisplay` 的每个 entry 根节点
+ * 都带「命中测试不透明」的指针节点 —— 因此**谁在上层**必须由调用方显式用 `Modifier.zIndex`
+ * 决定（见 `MainScreen` 里 `detailOnTop` 的推导）。本容器自身不干预层级。
+ *
+ * ### 性能
+ *
+ * 补间比例只在下面的 measure 块里读取 ⇒ 一次动画只触发**重新测量/布局**，
+ * 不会让上层及其子树每帧重组。
+ *
+ * ### 约定
+ *
+ * `list` / `detail` 两个 lambda 各自必须**恰好发射一个根节点**（本容器按 `measurables[0]` /
+ * `measurables[1]` 取用）。
+ *
+ * @param dual 是否双栏。旋转会翻转它，但不会重建任何 composition。
+ * @param modifier 外层修饰。
+ * @param list 列表层内容；入参为分配给它自身的修饰符（`fillMaxSize`）。
+ * @param detail 详情层内容；入参同上。
+ */
 @Composable
 fun ListDetailPanes(
+    dual: Boolean,
     modifier: Modifier = Modifier,
     list: @Composable (Modifier) -> Unit,
     detail: @Composable (Modifier) -> Unit,
 ) {
     val listPaneWidth = rememberListPaneWidth()
-    Row(modifier = modifier.fillMaxSize()) {
-        Box(Modifier.width(listPaneWidth).fillMaxHeight()) {
+    // 在 composition 期换算成 px：布局期不再需要 Density，measure 块里纯粹做算术。
+    val listPanePx = with(LocalDensity.current) { listPaneWidth.roundToPx() }
+    val split by animateFloatAsState(
+        targetValue = if (dual) 1f else 0f,
+        animationSpec = tween(durationMillis = PANE_SPLIT_MS, easing = DecelerateEasing(1.5f)),
+        label = "paneSplit",
+    )
+
+    Layout(
+        modifier = modifier.fillMaxSize(),
+        content = {
             list(Modifier.fillMaxSize())
-        }
-        Box(Modifier.weight(1f).fillMaxHeight()) {
             detail(Modifier.fillMaxSize())
+        },
+    ) { measurables, constraints ->
+        val fullWidth = constraints.maxWidth
+        val height = constraints.maxHeight
+        val t = split.coerceIn(0f, 1f)
+        // t=0 ⇒ 列表满宽、详情满宽且不偏移；t=1 ⇒ 列表收缩到左栏、详情让到右栏。
+        val listWidth = (fullWidth + (listPanePx - fullWidth) * t).roundToInt().coerceIn(0, fullWidth)
+        val detailX = (listPanePx * t).roundToInt().coerceIn(0, fullWidth)
+        val detailWidth = fullWidth - detailX
+
+        val listPlaceable = measurables[0].measure(Constraints.fixed(listWidth, height))
+        val detailPlaceable = measurables[1].measure(Constraints.fixed(detailWidth, height))
+
+        layout(fullWidth, height) {
+            listPlaceable.place(0, 0)
+            detailPlaceable.place(detailX, 0)
         }
     }
 }
@@ -107,31 +181,4 @@ fun DetailPaneEmptyHint(
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )
     }
-}
-
-/**
- * 双栏下拦截返回键：右栏有选中项时清空右栏，而不是退出当前列表页。
- *
- * 详情从弹窗改为内嵌面板后，miuix [top.yukonga.miuix.kmp.overlay.OverlayDialog] 内部的返回
- * 处理器不再存在，本组件补上这个消费点。
- *
- * 实现与 miuix 源码 `miuix-ui/.../layout/DialogContentLayout.kt:192-200` 完全一致，直接复用
- * `androidx.navigationevent` 的 compose 返回处理器（`:shared` 已在 commonMain 依赖
- * `androidx.navigationevent:navigationevent-compose`）。
- *
- * 仲裁规则为「最后组合且启用的处理器优先」，因此本处理器在 `enabled = false` 时不消费返回键，
- * 会自然让位给 `NavDisplay` 的路由返回；而筛选弹窗等后组合的弹窗处理器优先级高于本处理器。
- *
- * @param enabled 是否消费返回键（通常传「右栏是否有选中项」）。
- * @param onBack 消费返回键时的回调（通常清空右栏选中项）。
- */
-@Composable
-fun DualPaneBackHandler(enabled: Boolean, onBack: () -> Unit) {
-    val navigationEventState = rememberNavigationEventState(currentInfo = NavigationEventInfo.None)
-    NavigationBackHandler(
-        state = navigationEventState,
-        isBackEnabled = enabled,
-        onBackCancelled = {},
-        onBackCompleted = { onBack() },
-    )
 }

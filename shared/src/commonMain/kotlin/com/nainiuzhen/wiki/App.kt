@@ -32,12 +32,9 @@ import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
 import com.nainiuzhen.wiki.utils.ApplyPhoneOrientation
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
-import com.nainiuzhen.wiki.ui.nav.AppNavHost
+import com.nainiuzhen.wiki.ui.home.MainScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
-import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
-import com.nainiuzhen.wiki.ui.nav.Navigator
-import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.ui.theme.AppTheme
 import com.nainiuzhen.wiki.utils.AppState
 import com.nainiuzhen.wiki.utils.AppSettingsStore
@@ -47,8 +44,6 @@ import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.utils.LocalAppVersion
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.nav.core.NavBackStack
-import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -63,8 +58,9 @@ private var cachedLoadedData: com.nainiuzhen.wiki.data.AssetManager.LoadedData? 
  * [slicer] / [cache]，并传入 [isDebug]（决定是否展示黑名单物品 / NPC）。
  *
  * 内部流程：先以协程加载全部资源（构建 [com.nainiuzhen.wiki.data.AssetManager.LoadedData]），
- * 版本不符时清空切片缓存并重切；加载完成后注入 [LocalDataRepository] / [LocalSpriteRepository] /
- * [LocalNavigator]，渲染 [AppNavHost]。进程存活时复用已加载数据（[cachedLoadedData]）。
+ * 版本不符时清空切片缓存并重切；加载完成后注入 [LocalDataRepository] / [LocalSpriteRepository]，
+ * 渲染 [com.nainiuzhen.wiki.ui.home.MainScreen]（它自己持有全应用唯一的返回栈）。
+ * 进程存活时复用已加载数据（[cachedLoadedData]）。
  */
 @Composable
 fun App(
@@ -124,14 +120,14 @@ private fun AppRoot(
     if (loaded == null) {
         LoadingScreen()
     } else {
-        val backStack = rememberNavBackStack<Route>(Route.Main)
-        val navigator = remember { Navigator(backStack) }
+        // 这里不再持有返回栈 / 导航器：全应用**唯一**的返回栈由 MainScreen 持有，
+        // 它不受「数据加载完成」以外的任何重组影响，且它的宿主组件永远不被销毁
+        // （横竖屏切换、分栏↔单栏切换都只是改尺寸，不重建 composition）。
         CompositionLocalProvider(
             LocalDataRepository provides loaded.data,
             LocalSpriteRepository provides loaded.sprite,
-            LocalNavigator provides navigator,
         ) {
-            AppNavHost(backStack = backStack, navigator = navigator)
+            MainScreen()
         }
     }
 }

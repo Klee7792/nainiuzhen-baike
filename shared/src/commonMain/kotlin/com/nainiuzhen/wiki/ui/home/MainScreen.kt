@@ -63,8 +63,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
-import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
 import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
 import com.nainiuzhen.wiki.ui.adaptive.LocalDetailOverlay
 import com.nainiuzhen.wiki.ui.adaptive.rememberDetailOverlayState
@@ -72,18 +72,11 @@ import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppTopAppBar
 import com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar
 import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
-import com.nainiuzhen.wiki.ui.items.ItemListScreen
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Navigator
 import com.nainiuzhen.wiki.ui.nav.Route
-import com.nainiuzhen.wiki.ui.npc.NpcListScreen
-import com.nainiuzhen.wiki.ui.npc.NpcScheduleScreen
-import com.nainiuzhen.wiki.ui.recipe.RecipeListScreen
-import com.nainiuzhen.wiki.ui.settings.AboutScreen
-import com.nainiuzhen.wiki.ui.settings.CardSettingsScreen
-import com.nainiuzhen.wiki.ui.settings.ImageScaleSettingsScreen
+import com.nainiuzhen.wiki.ui.nav.SubPageNavHost
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
-import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -114,7 +107,6 @@ import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Settings
-import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -138,29 +130,54 @@ private const val DIALOG_DIM_OUT_MS = 250
 private const val DIALOG_CLOSE_GRACE_MS = 280
 
 /**
- * 底栏宿主：2 个标签页——「主页」（3 个图鉴板块）与「设置」（完整设置页）。
- * 通过 HorizontalPager 支持左右滑动切换（不依赖底栏，子页不参与）。
- * 子页（物品 / 配方 / NPC / 日程 / 关于 / 协议 / 图片倍率）通过
- * [com.nainiuzhen.wiki.ui.nav.Navigator.push] 展示——**手机单栏时全屏覆盖，
- * 大屏分栏时落在右侧栏内**（see [MainScreen]）。
+ * 应用主界面：**唯一返回栈** + 「列表层 / 详情层」双层常驻。
+ *
+ * ```
+ * ListDetailPanes {
+ *     列表层：MainPaneShell（顶栏 + 底栏 + 主页/设置 Pager）
+ *     详情层：SubPageNavHost（唯一返回栈的 NavDisplay）
+ * }
+ * ```
+ *
+ * ### 为什么是「唯一栈」
+ *
+ * 改造前工程里有两个返回栈（窗口级单栏用、右栏级分栏用），由 `useDualPane` 决定谁生效，
+ * 而 `useDualPane` 会在旋转时瞬间翻转、栈内容却从不迁移，于是产生三类幽灵状态：
+ *
+ * 1. 横屏看子页 → 转竖屏：切回单栏路径 ⇒ 窗口栈仍是 `[Main]` ⇒ 看到主页（子页"丢了"）；
+ * 2. 竖屏点板块（窗口栈变 `[Main, ItemList]`）→ 回横屏：窗口栈顶让它**全屏**盖住分栏 ⇒ 没有左栏；
+ * 3. 此时按返回：`LocalNavigator` 已换成右栏导航器 ⇒ 弹的是右栏栈 ⇒ 全屏那层不动、底下右栏却变了
+ *    ⇒ 横竖「叠加」。
+ *
+ * 现在只留一个栈，且**永远由同一个 `SubPageNavHost` 渲染**；`useDualPane` 退化为纯粹的
+ * 「布局形态」开关（只影响 [ListDetailPanes] 里两个槽位的尺寸与位置）。旋转时没有任何
+ * composition 被销毁或搬家 ⇒ 子页的滚动位置、搜索词、筛选、**打开着的弹窗**全部原地保留。
+ *
+ * ### 详情层的层级（zIndex）
+ *
+ * 单栏时详情层与列表层满宽重叠，而 miuix `NavDisplay` 会给每个 entry 的根节点挂一个
+ * 「命中测试不透明」的指针节点（`NavDisplay.kt` 的 `opaqueInputModifier`）——它会拦下
+ * 落在自身矩形内的命中测试、不让更下层兄弟节点收到事件。而「没打开任何子页」时详情层
+ * 依然存在（`entry<Route.Main>` 渲染空内容），若它压在列表层上，主页/设置页会**整个点不动**。
+ *
+ * 因此层级必须显式仲裁：只有「分栏」或「确实有子页」时把详情层抬上去；子页被 pop 时
+ * 延后 [DETAIL_TOP_LINGER_MS] 再降下来，否则正在播放的退场动画会被列表层盖住。
  */
+private const val DETAIL_TOP_LINGER_MS = 360L
+
 @Composable
 fun MainScreen() {
     val useDualPane = rememberUseDualPane()
-    val windowNavigator = LocalNavigator.current
 
-    // 右栏自己的一套返回栈：栈底恒为 [Route.Main]（=「尚未打开任何子页」→ 右栏空态）。
-    // 刻意让它与窗口栈**语义完全一致**，于是：
-    //   · `Navigator.push`  = 右栏打开一个子页；
-    //   · `Navigator.pop`   = 退回上一层（栈底保留 ⇒ 退无可退时自动回到空态）。
-    // 结果就是各业务页面里现成的 `navigator.push(...)` / `navigator.pop()` 一行都不用改。
-    // `rememberNavBackStack` 自带 saver，旋转 / 配置变更后右栏内容不丢。
-    val paneBackStack = rememberNavBackStack<Route>(Route.Main)
-    val paneNavigator = remember(paneBackStack) { Navigator(paneBackStack) }
-
-    // 分栏时把 [LocalNavigator] 换成「右栏自己的」：左栏点板块、右栏内点返回箭头、
-    // 详情里点「日程」，全部经由现有页面的 navigator 调用，自动落在右栏栈上。
-    val activeNavigator = if (useDualPane) paneNavigator else windowNavigator
+    // —— 唯一返回栈 ——
+    // 栈底恒为 [Route.Main]（= 详情层当前没有内容）。各业务页里现成的
+    // `navigator.push(...)` / `navigator.pop()` 一行都不用改：
+    //   · push = 详情层打开一个子页（单栏=全屏盖住列表，分栏=落在右栏）；
+    //   · pop  = 退回上一层，栈底保留 ⇒ 退无可退时自动回到空态。
+    // `rememberNavBackStack` 自带 saver；更关键的是它的宿主组件永远不被销毁。
+    val backStack = rememberNavBackStack<Route>(Route.Main)
+    val navigator = remember(backStack) { Navigator(backStack) }
+    val hasDetail = backStack.size > 1
 
     val detailOverlay = rememberDetailOverlayState()
     // 弹窗关闭动画期间的「宽限期」：右下角弹窗正在收起时，左栏继续拦截，避免第二下点击
@@ -183,77 +200,67 @@ fun MainScreen() {
         label = "leftPaneDim",
     )
 
-    CompositionLocalProvider(LocalNavigator provides activeNavigator) {
-        if (useDualPane) {
-            CompositionLocalProvider(LocalDetailOverlay provides detailOverlay) {
-                ListDetailPanes(
-                    list = { modifier ->
-                        Box(modifier) {
-                            MainPaneShell()
-                            // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
-                            // 所以左栏得自己盖一层同色遮罩，并在弹窗期间把点击解释为「先关弹窗」。
-                            if (intercepting) {
-                                val dim = MiuixTheme.colorScheme.windowDimming
-                                Box(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .background(dim.copy(alpha = dim.alpha * leftPaneAlpha))
-                                        .pointerInput(Unit) {
-                                            detectTapGestures { detailOverlay.dismissTop() }
-                                        },
-                                )
-                            }
-                        }
-                    },
-                    detail = { modifier -> DetailPaneHost(modifier, paneBackStack) },
-                )
-            }
-            // 右栏有子页时，系统返回键先退右栏；右栏回到空态后本处理器 enabled=false
-            // 自动让位给 NavDisplay 的路由返回（仲裁规则：最后组合且启用者优先）。
-            DualPaneBackHandler(enabled = paneBackStack.size > 1) { paneNavigator.pop() }
+    // 详情层是否压在列表层之上（见上方文档「详情层的层级」）。
+    // 单栏 + 无子页 ⇒ false：让主页/设置页重新拿回点击。升降走同一 LaunchedEffect：
+    // 上升立即生效（子页一开始入场就得在最上层），下降延后 LINGER，保护退场动画。
+    val wantDetailOnTop = useDualPane || hasDetail
+    var detailOnTop by remember { mutableStateOf(wantDetailOnTop) }
+    LaunchedEffect(wantDetailOnTop) {
+        if (wantDetailOnTop) {
+            detailOnTop = true
         } else {
-            MainPaneShell()
+            delay(DETAIL_TOP_LINGER_MS)
+            detailOnTop = false
         }
+    }
+
+    // 分栏空态提示：只在双栏时给详情层一个占位。单栏时详情层满宽叠在列表层上，
+    // 若也渲染占位会把下面的主页整个盖住，所以留空（NavEntryHost 根节点无底色 ⇒ 透明）。
+    val homePlaceholder: @Composable () -> Unit = remember(useDualPane) {
+        { if (useDualPane) DetailPaneEmptyHint() }
+    }
+
+    CompositionLocalProvider(
+        LocalNavigator provides navigator,
+        LocalDetailOverlay provides detailOverlay,
+    ) {
+        ListDetailPanes(
+            dual = useDualPane,
+            list = { modifier ->
+                Box(modifier) {
+                    MainPaneShell()
+                    // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
+                    // 所以左栏得自己盖一层同色遮罩，并在弹窗期间把点击解释为「先关弹窗」。
+                    if (intercepting) {
+                        val dim = MiuixTheme.colorScheme.windowDimming
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .background(dim.copy(alpha = dim.alpha * leftPaneAlpha))
+                                .pointerInput(Unit) {
+                                    detectTapGestures { detailOverlay.dismissTop() }
+                                },
+                        )
+                    }
+                }
+            },
+            detail = { modifier ->
+                Box(modifier.zIndex(if (detailOnTop) 1f else 0f)) {
+                    SubPageNavHost(
+                        backStack = backStack,
+                        navigator = navigator,
+                        modifier = Modifier.fillMaxSize(),
+                        homePlaceholder = homePlaceholder,
+                    )
+                }
+            },
+        )
     }
 }
 
 /**
- * 右栏：按右栏返回栈栈顶渲染对应子页；栈顶为 [Route.Main]（= 没打开任何子页）时显示空态。
- *
- * 这里渲染的都是**原本为整屏设计的子页**，它们各自带 `AppSubPageScaffold` 顶栏，
- * 因此右栏天然有独立顶栏、随自身内容滚动折叠，与左栏顶栏互不干扰。
- * 各子页顶栏的返回箭头调用的 `navigator.pop()` 会弹右栏栈（[LocalNavigator] 已在此换成
- * 右栏实例），无需为分栏额外写返回逻辑。
- *
- * @param modifier 由 [ListDetailPanes] 分配的右栏修饰符（`fillMaxSize`）。
- * @param backStack 右栏自己的返回栈。
- */
-@Composable
-private fun DetailPaneHost(
-    modifier: Modifier,
-    backStack: NavBackStack,
-) {
-    // 不需要为弹窗做任何"以右栏为基准居中"的处理：子页自带 AppSubPageScaffold（miuix Scaffold），
-    // 而 OverlayDialog 默认 renderInRootScaffold = true ⇒ 弹窗与遮罩会渲染进这个 Scaffold，
-    // 天然以右栏为基准居中、遮罩也只盖右栏。实测卡片中心 x=1518px = 右栏中心，左栏亮度不变。
-    Box(modifier) {
-        when (val route = backStack.lastOrNull()) {
-            null, Route.Main -> DetailPaneEmptyHint()
-            Route.ItemList -> ItemListScreen()
-            Route.RecipeList -> RecipeListScreen()
-            Route.NpcList -> NpcListScreen()
-            is Route.NpcSchedule -> NpcScheduleScreen(npcId = route.npcId)
-            Route.About -> AboutScreen()
-            Route.License -> LicenseScreen()
-            Route.ImageScaleSettings -> ImageScaleSettingsScreen()
-            Route.CardSettings -> CardSettingsScreen()
-        }
-    }
-}
-
-/**
- * 单栏主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
- * 手机铺满整屏；大屏分栏时作为**左栏**（宽度由 [ListDetailPanes] 决定）。
+ * 列表层主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
+ * 单栏时铺满整屏；分栏时作为**左栏**（宽度由 [ListDetailPanes] 决定）。
  */
 @Composable
 private fun MainPaneShell() {
