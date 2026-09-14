@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -39,6 +41,7 @@ import com.nainiuzhen.wiki.data.source.SpriteSlicer
 import com.nainiuzhen.wiki.ui.home.MainScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
+import com.nainiuzhen.wiki.ui.components.AppToastHost
 import com.nainiuzhen.wiki.ui.theme.AppTheme
 import com.nainiuzhen.wiki.utils.AppState
 import com.nainiuzhen.wiki.utils.AppSettingsStore
@@ -46,7 +49,10 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.utils.LocalAppVersion
+import com.nainiuzhen.wiki.utils.appStartElapsedMs
+import com.nainiuzhen.wiki.utils.showToast
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
@@ -97,9 +103,17 @@ fun App(
             // 按「手机横屏」设置应用方向：启动时一次 + 开关切换时立即生效（大屏适配 §8.3）。
             ApplyPhoneOrientation(allowLandscape = appState.allowPhoneLandscape)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)
+            // 主题感知的 Toast 宿主：置于根部、覆盖在页面之上，跟随深浅色 / Monet（#v36）。
+            AppToastHost()
         }
     }
 }
+
+/**
+ * 启动加载页里「准备数据」阶段（读 plist / JSON）在总进度中占的权重，其余归素材切片。
+ * 两个阶段的真实耗时比例随机型波动，这里取经验值：切片帧数多（6565 帧）通常更久，故给足权重。
+ */
+private const val DATA_PHASE_WEIGHT = 0.3f
 
 @Composable
 private fun AppRoot(
@@ -110,10 +124,16 @@ private fun AppRoot(
     // 进程存活且已加载过时，初始值直接复用 [cachedLoadedData]，避免切后台回前台
     // （Activity 重建导致 remember 重置）时闪一下 LoadingScreen，被误认为「重新加载」。
     val loadedState = remember { mutableStateOf(cachedLoadedData) }
-    // 加载进度（去磁盘化后的「内存切片」阶段）：done < 0 表示尚未进入切片阶段（准备数据中）；
-    // 切片阶段 done ∈ 0..total，驱动 LoadingScreen 的确定进度条与百分比文字。
-    var preloadDone by remember { mutableStateOf(-1) }
-    var preloadTotal by remember { mutableStateOf(0) }
+    // 加载进度：分两个阶段拼成**一条连续**的总进度（避免「准备数据」阶段长时间卡在 0%：
+    // 该阶段此前完全没有进度回流，实测占冷启动相当比例）。
+    //   · phase 0 = 准备数据（读 plist / JSON，占前 [DATA_PHASE_WEIGHT]）；
+    //   · phase 1 = 素材切片（主体，占剩余权重）。
+    // done/total 是**当前阶段内部**的步数，LoadingScreen 负责折算成总进度。
+    var loadPhase by remember { mutableIntStateOf(0) }
+    var loadDone by remember { mutableIntStateOf(0) }
+    var loadTotal by remember { mutableIntStateOf(0) }
+    // 冷启动计时：只有本次真的跑完加载流程才有值（>0），热启动 / 后台回前台为 -1 ⇒ 不弹 toast。
+    var startupElapsedMs by remember { mutableLongStateOf(-1L) }
     LaunchedEffect(Unit) {
         // 进程存活时直接复用已加载数据（变更点 #27，避免后台回前台重新加载）。
         if (cachedLoadedData == null) {
@@ -123,26 +143,49 @@ private fun AppRoot(
             // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
             // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
             val data = withContext(Dispatchers.IO) {
-                AssetManager(slicer, cache).loadAll(isDebug)
+                AssetManager(slicer, cache).loadAll(isDebug) { done, total ->
+                    withContext(Dispatchers.Main) {
+                        loadPhase = 0
+                        loadDone = done
+                        loadTotal = total
+                    }
+                }
             }
             // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
             // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
             withContext(Dispatchers.IO) {
                 data.sprite.preloadAllSprites { done, total ->
                     withContext(Dispatchers.Main) {
-                        preloadDone = done
-                        preloadTotal = total
+                        loadPhase = 1
+                        loadDone = done
+                        loadTotal = total
                     }
                 }
             }
             cachedLoadedData = data
+            // 计时点：数据 + 切片都就绪（= 首屏内容齐备）。
+            startupElapsedMs = appStartElapsedMs()
         }
         loadedState.value = cachedLoadedData
     }
     val loaded = loadedState.value
     if (loaded == null) {
-        LoadingScreen(slicer = slicer, preloadDone = preloadDone, preloadTotal = preloadTotal)
+        LoadingScreen(
+            slicer = slicer,
+            phase = loadPhase,
+            done = loadDone,
+            total = loadTotal,
+        )
     } else {
+        // 进入主页后弹一次冷启动耗时（X.XX 秒）。延迟 300ms 让主页首帧先出来，
+        // 避免 toast 抢在界面绘制之前。只在冷启动（真的加载过）时弹。
+        LaunchedEffect(Unit) {
+            val ms = startupElapsedMs
+            if (ms > 0) {
+                delay(300)
+                showToast("启动耗时 ${"%.2f".format(ms / 1000f)} 秒")
+            }
+        }
         // 这里不再持有返回栈 / 导航器：全应用**唯一**的返回栈由 MainScreen 持有，
         // 它不受「数据加载完成」以外的任何重组影响，且它的宿主组件永远不被销毁
         // （横竖屏切换、分栏↔单栏切换都只是改尺寸，不重建 composition）。
@@ -155,11 +198,24 @@ private fun AppRoot(
     }
 }
 
+/**
+ * 启动加载页。
+ *
+ * 进度走**两阶段拼接**的总进度条：准备数据（读 plist / JSON）占前 [DATA_PHASE_WEIGHT]，
+ * 素材切片占剩余权重；两阶段各自内部 0→100%，折算后进度条单调不回退。
+ * 百分比下方同时给出当前阶段的 `done/total` 原始计数（切片阶段即帧数），
+ * 便于直观判断卡在哪一步。
+ *
+ * @param phase 0 = 准备数据，1 = 素材切片。
+ * @param done 当前阶段已完成步数。
+ * @param total 当前阶段总步数；≤0 时进度条为 0。
+ */
 @Composable
 private fun LoadingScreen(
     slicer: SpriteSlicer,
-    preloadDone: Int,
-    preloadTotal: Int,
+    phase: Int,
+    done: Int,
+    total: Int,
 ) {
     // logo：加载页尚未 provide LocalSpriteRepository，故直接用 AssetLoader + slicer
     // 从 assets 根解码应用图标（ic_launcher.png，与 AboutScreen 同源），失败时回退占位方块。
@@ -172,10 +228,13 @@ private fun LoadingScreen(
             }
         }
     }
-    // 进度：准备数据阶段（done < 0）恒为 0；切片阶段 done/total 归一到 0..1。
-    val fraction =
-        if (preloadDone < 0 || preloadTotal <= 0) 0f
-        else (preloadDone.toFloat() / preloadTotal).coerceIn(0f, 1f)
+    // 总进度 = 已完成阶段的权重 + 当前阶段内部进度 × 本阶段权重（单调不回退）。
+    val phaseFraction = if (total <= 0) 0f else (done.toFloat() / total).coerceIn(0f, 1f)
+    val fraction = if (phase == 0) {
+        DATA_PHASE_WEIGHT * phaseFraction
+    } else {
+        DATA_PHASE_WEIGHT + (1f - DATA_PHASE_WEIGHT) * phaseFraction
+    }
     // 适配深色模式：以主题背景色铺底，跟随色彩模式（#139 / bug-v7 #1）
     Box(
         modifier = Modifier
@@ -230,9 +289,13 @@ private fun LoadingScreen(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            // 加载阶段文案：数据加载（切片前）/ 素材切片（0-100%）
+            // 加载阶段文案：数据加载 / 素材切片，均带当前阶段原始计数（切片阶段即帧数）。
             Text(
-                text = if (preloadDone < 0) "准备数据…" else "正在加载素材…",
+                text = if (phase == 0) {
+                    "准备数据… $done/$total"
+                } else {
+                    "正在加载素材… $done/$total"
+                },
                 color = MiuixTheme.colorScheme.onBackground,
             )
         }

@@ -30,7 +30,7 @@ import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
-import com.nainiuzhen.wiki.ui.components.ProvideCardMarqueeWidth
+import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
@@ -113,18 +113,12 @@ fun NpcListScreen() {
             )
         },
     ) { innerPadding ->
-        // 跑马灯同步基准：当前筛选结果里最长的 NPC 名宽度（只在 filtered 变化时重算一次）。
-        // NPC 名称行用 body2 样式（见 NpcGridCell），基准必须同款否则宽度对不上。
-        val marqueeNames = remember(filtered) { filtered.map { it.name } }
         AdaptiveIconGrid(
             hPadding = 12.dp,
             spacing = 12.dp,
             minCard = 104.dp,
         ) { columns ->
-            ProvideCardMarqueeWidth(
-                names = marqueeNames,
-                style = MiuixTheme.textStyles.body2,
-            ) {
+            ProvideMarqueeCoordinator {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     state = rememberLazyGridState(),

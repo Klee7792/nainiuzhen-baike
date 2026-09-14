@@ -54,7 +54,9 @@ fun ItemMiniCard(
             .padding(4.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
-                color = MiuixTheme.colorScheme.surfaceContainer,
+                // 无底色（变更点 #42）：原 surfaceContainer 与 dialog 底色存在色差，显形为突兀灰底。
+                // 保留 .clip：clickable 的水波纹按下反馈形状由它决定，删掉会让圆角变直角（#22 回归教训）。
+                color = Color.Transparent,
                 shape = RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick)
@@ -193,7 +195,7 @@ fun FadeEdges(
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(MiuixTheme.colorScheme.surface.copy(alpha = 0.7f), Color.Transparent),
+                        listOf(MiuixTheme.colorScheme.background.copy(alpha = 0.7f), Color.Transparent),
                     ),
                 ),
         )
@@ -204,7 +206,7 @@ fun FadeEdges(
                 .fillMaxHeight()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color.Transparent, MiuixTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                        listOf(Color.Transparent, MiuixTheme.colorScheme.background.copy(alpha = 0.7f)),
                     ),
                 ),
         )
@@ -222,7 +224,7 @@ fun FadeEdges(
                         blurRadius = 25f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(
-                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.3f)),
+                                BlendColorEntry(color = MiuixTheme.colorScheme.background.copy(alpha = 0.3f)),
                             ),
                         ),
                     ),
@@ -238,7 +240,7 @@ fun FadeEdges(
                         blurRadius = 25f,
                         colors = BlurDefaults.blurColors(
                             blendColors = listOf(
-                                BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.3f)),
+                                BlendColorEntry(color = MiuixTheme.colorScheme.background.copy(alpha = 0.3f)),
                             ),
                         ),
                     ),

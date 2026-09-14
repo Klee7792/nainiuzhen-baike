@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.ItemInfo
@@ -102,7 +103,8 @@ private fun RecipeDetailBody(
                 .size(64.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    // 无底色（变更点 #42）：与 dialog 背景同化，去掉灰色托盘。保留 .clip 维持圆角裁剪。
+                    color = Color.Transparent,
                     shape = RoundedCornerShape(16.dp),
                 ),
             contentAlignment = Alignment.Center,

@@ -5,57 +5,99 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.TextUnit
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
- * 卡片名称跑马灯的**子页面级同步基准**：当前列表里最长那条名称的排版宽度（px）。
+ * 卡片名称跑马灯的**页级协调器**（v36）。
  *
- * 存在意义：v35 起跑马灯改成「首尾相连滚一圈」，如果每张卡片各按自己的文字宽度滚，
- * 长名卡与短名卡的行程不同 ⇒ 同样速度下耗时不同 ⇒ 同屏滚动参差不齐。
- * 于是由子页面统一算一个最长宽度，所有卡片都按它补齐（尾部补空格）⇒ 行程、速度、耗时全部一致。
+ * 存在意义：每张卡片文字长度不同 ⇒ 滚一圈的耗时不同。若各滚各的计时，同屏会参差不齐
+ * （快的已经跑第二圈、慢的还在第一圈）。所以：
  *
- * 取值 `0` 表示「未提供」（例如宿主页面没包 [ProvideCardMarqueeWidth]），
- * 此时 [CardNameCapsule] 退化为「各滚各的旧行为」。
+ * - 每张卡片跑完一圈向协调器报一次到（[lapDone]）；
+ * - **只有当前可见的超宽卡片全部报完**才统一计时 [MARQUEE_PASS_PAUSE_MS]，然后放行下一圈（[awaitLap]）。
+ *
+ * 即「等最慢的那个跑完，大家一起开始下一轮」，这是用户明确要的效果。
+ *
+ * 只滚 [MARQUEE_PASS_COUNT] 圈，放行第 2 圈后协调器不再推进（卡片自己结束）。
  */
-val LocalCardMarqueeMaxWidth = compositionLocalOf { 0 }
+class MarqueeCoordinator {
+    /** 当前参与滚动的卡片（超宽 + 在屏幕可视区内）。 */
+    private val participants = mutableSetOf<Any>()
 
-/**
- * 计算当前列表最长名称宽度并向下提供（供 [CardNameCapsule] 读取）。
- *
- * 只做「按字符数取最长的一条 → 量一次」：字符数比较是 O(n) 且极廉价，
- * 真正昂贵的 `measure` 只发生 1 次（不是 3900 次），结果随 [names] / [fontSize] 变化重算。
- *
- * @param names 当前列表（已筛选）的全部名称。
- * @param fontSize 名称字号，必须与 [CardNameCapsule] 收到的 [fontSize] 一致，否则宽度基准对不上。
- * @param style 名称文字样式，必须与 [CardNameCapsule] 收到的 [style] 一致（NPC 用 `body2` 而非 `main`）。
- */
-@Composable
-fun ProvideCardMarqueeWidth(
-    names: List<String>,
-    fontSize: TextUnit = TextUnit.Unspecified,
-    style: TextStyle = MiuixTheme.textStyles.main,
-    content: @Composable () -> Unit,
-) {
-    val measurer = rememberTextMeasurer()
-    val baseStyle = style
-    val maxPx = remember(names, fontSize, baseStyle) {
-        val longest = names.maxByOrNull { it.length } ?: return@remember 0
-        measurer.measure(
-            text = AnnotatedString(longest),
-            style = baseStyle.copy(fontSize = fontSize),
-            maxLines = 1,
-            softWrap = false,
-        ).size.width
+    /** 本圈已报到的卡片。 */
+    private val doneThisLap = mutableSetOf<Any>()
+
+    /** 当前正在进行的圈号；全员报完后 +1。 */
+    private var currentLap = 0
+
+    /** 放行信号：emit(n) 表示「第 n 圈可以开始了」。replay=1 让中途加入的卡片也能立即拿到最新状态。 */
+    private val _gate = MutableSharedFlow<Int>(replay = 1)
+
+    @Suppress("unused")
+    private val gate: Flow<Int> = _gate
+
+    fun join(key: Any) {
+        participants.add(key)
     }
-    CompositionLocalProvider(LocalCardMarqueeMaxWidth provides maxPx, content = content)
+
+    fun leave(key: Any) {
+        participants.remove(key)
+        doneThisLap.remove(key)
+    }
+
+    /**
+     * 卡片跑完第 [lap] 圈（0-based）。当**所有参与者**都跑完当前圈时，
+     * 用 [scope] 起一个协程：停 [MARQUEE_PASS_PAUSE_MS] 后放行下一圈。
+     *
+     * 过期的报到（[lap] 与 [currentLap] 不符，比如中途新加入的卡片）直接忽略，不干扰计数。
+     */
+    fun lapDone(key: Any, lap: Int, scope: CoroutineScope) {
+        if (lap != currentLap) return
+        doneThisLap.add(key)
+        if (participants.isEmpty()) return
+        if (!doneThisLap.containsAll(participants)) return
+        currentLap += 1
+        doneThisLap.clear()
+        val nextLap = currentLap
+        scope.launch {
+            delay(MARQUEE_PASS_PAUSE_MS)
+            _gate.emit(nextLap)
+        }
+    }
+
+    /**
+     * 等待第 [lap] 圈放行（第 0 圈不等 —— 卡片自己静止满 [MARQUEE_IDLE_TRIGGER_MS] 后就开始）。
+     * 若放行信号已经发过（replay=1），这里会立即返回。
+     */
+    @OptIn(FlowPreview::class)
+    suspend fun awaitLap(lap: Int) {
+        if (lap <= 0) return
+        _gate.first { it >= lap }
+    }
+}
+
+/** 页级跑马灯协调器；未提供时各卡片自行其是（不会崩溃，只是不同步）。 */
+val LocalMarqueeCoordinator = compositionLocalOf { MarqueeCoordinator() }
+
+/** 提供一个页级 [MarqueeCoordinator] 给子树内的全部卡片共享。 */
+@Composable
+fun ProvideMarqueeCoordinator(content: @Composable () -> Unit) {
+    val coordinator = remember { MarqueeCoordinator() }
+    CompositionLocalProvider(LocalMarqueeCoordinator provides coordinator, content = content)
 }
 
 /** [CardNameCapsule] 内部用：量一段文本的排版宽度（单行、不换行），单位 px。 */
 internal fun measureTextWidthPx(
-    measurer: androidx.compose.ui.text.TextMeasurer,
+    measurer: TextMeasurer,
     text: String,
     style: TextStyle,
 ): Int = measurer.measure(
@@ -64,3 +106,7 @@ internal fun measureTextWidthPx(
     maxLines = 1,
     softWrap = false,
 ).size.width
+
+/** 供 [CardNameCapsule] 复用的 TextMeasurer 入口（避免在业务代码里散落 rememberTextMeasurer）。 */
+@Composable
+internal fun rememberCardTextMeasurer(): TextMeasurer = rememberTextMeasurer()

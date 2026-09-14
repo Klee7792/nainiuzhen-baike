@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +83,7 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.random.Random
 import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
@@ -166,6 +168,26 @@ private const val DIALOG_CLOSE_GRACE_MS = 280
  */
 private const val DETAIL_TOP_LINGER_MS = 360L
 
+/**
+ * 右栏空态提示文案池（分栏下「还没点开任何板块」时显示）。
+ *
+ * 冷启动随机取一条；之后**只在从子页退回空白状态时**换一条（见 [MainScreen] 里的 reroll 逻辑）。
+ * 语气刻意做成不同 NPC 的性格：有活泼的、慵懒的、害羞的、急性子的，配上颜文字，
+ * 让「什么也没有 / 点左边看看」这类提示不那么干巴。
+ */
+private val EMPTY_HINTS = listOf(
+    "这里空空如也，点左边的板块看看吧 (・ω・)ノ",
+    "什么也没有呢…先去挑个板块吧 (￣▽￣)ﾉ",
+    "啊…这里还没东西，点一下左边试试 (｡･ω･｡)",
+    "空荡荡的，像我家见底的米缸一样 (´・ω・｀)",
+    "选一个板块吧，我在这儿等你 (๑•̀ㅂ•́)و✧",
+    "这里啥都没有，别盯着我看啦 (⁄ ⁄•⁄ω⁄•⁄ ⁄)",
+    "快点选一个嘛，我快无聊死了 (╯°□°)╯",
+    "嗯…此处空无一物，要不要逛逛？ („• ᴗ •„)",
+    "先选个板块，我这就去给你翻资料 (๑˃̵ᴗ˂̵)و",
+    "空空如也～随便点点就行啦 ( ˘ ³˘)♥",
+)
+
 @Composable
 fun MainScreen() {
     val useDualPane = rememberUseDualPane()
@@ -215,10 +237,24 @@ fun MainScreen() {
         }
     }
 
+    // —— 空态文案 ——
+    // 冷启动随机取一条；之后**只在「从子页退回空白状态」时**换一条。
+    // 刻意不跟着「点板块 / 栈顶变化」刷新 —— 那是主页三大板块图示的 reroll 规则，
+    // 提示语若也每次点都变会显得聒噪（用户明确要求：只有退回空白才切）。
+    var emptyHintIndex by remember { mutableIntStateOf(Random.nextInt(EMPTY_HINTS.size)) }
+    var hadDetailBefore by remember { mutableStateOf(hasDetail) }
+    LaunchedEffect(hasDetail) {
+        if (hadDetailBefore && !hasDetail) {
+            // 从「有子页」回到空态：换一条，且保证与当前这条不同（偏移取 1..size-1）。
+            emptyHintIndex = (emptyHintIndex + (1 until EMPTY_HINTS.size).random()) % EMPTY_HINTS.size
+        }
+        hadDetailBefore = hasDetail
+    }
+
     // 分栏空态提示：只在双栏时给详情层一个占位。单栏时详情层满宽叠在列表层上，
     // 若也渲染占位会把下面的主页整个盖住，所以留空（NavEntryHost 根节点无底色 ⇒ 透明）。
-    val homePlaceholder: @Composable () -> Unit = remember(useDualPane) {
-        { if (useDualPane) DetailPaneEmptyHint() }
+    val homePlaceholder: @Composable () -> Unit = remember(useDualPane, emptyHintIndex) {
+        { if (useDualPane) DetailPaneEmptyHint(text = EMPTY_HINTS[emptyHintIndex]) }
     }
 
     CompositionLocalProvider(

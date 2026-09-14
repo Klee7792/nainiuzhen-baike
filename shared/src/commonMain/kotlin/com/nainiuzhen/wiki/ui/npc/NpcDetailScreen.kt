@@ -42,7 +42,6 @@ import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Route
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -196,7 +195,8 @@ private fun NpcDetailHeader(npc: NpcInfo) {
             modifier = Modifier
                 .size(140.dp)
                 .background(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    // 无底色（变更点 #42）：与 dialog 背景同化，去掉立绘灰底托盘（此处原本就无 .clip，保持原样）。
+                    color = Color.Transparent,
                     shape = RoundedCornerShape(16.dp),
                 ),
             contentAlignment = Alignment.Center,
@@ -320,14 +320,15 @@ private fun FavorSection(
             color = color.copy(alpha = 0.5f),
         )
     }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        ItemCardRow(
-            items = items,
-            modifier = Modifier.padding(12.dp),
-            onItemClick = onItemClick,
-            scaleContext = SpriteScaleContext.DialogFavHate,
-        )
-    }
+    // 无底色（变更点 #42）：摘掉外层 miuix Card 壳 —— 它自带 surfaceContainer 底色 + 16dp squircle，
+    // 在 dialog 内显形为一整块突兀浅底。Card 默认 insideMargin = 0.dp，摘壳后
+    // ItemCardRow 的 padding(12.dp) 照旧生效 ⇒ 布局零位移（同 NpcListScreen.NpcGridCell 的先例）。
+    ItemCardRow(
+        items = items,
+        modifier = Modifier.padding(12.dp),
+        onItemClick = onItemClick,
+        scaleContext = SpriteScaleContext.DialogFavHate,
+    )
 }
 
 /** 最爱 / 喜欢 / 讨厌区分色。 */

@@ -28,6 +28,13 @@ import kotlinx.serialization.json.jsonPrimitive
  * @param slicer 平台切片器（Android 注入）。
  * @param cache 平台缓存管理器（Android 注入）。
  */
+/**
+ * 「准备数据」阶段的总步数，口径 = 26 张 plist（items + items1..22 + equip + headwear + hats_empty）
+ * + 1 次 icon_mapping + 3 份黑名单 + 4 份业务数据（物品 / 配方 / NPC / 日程）= 34。
+ * 与 [AssetManager.loadAll] 里 `tick()` 的次数必须一致，改任一侧都要同步另一侧。
+ */
+private const val DATA_LOAD_STEP_COUNT = 34
+
 class AssetManager(
     private val slicer: SpriteSlicer,
     private val cache: SpriteCacheManager,
@@ -41,10 +48,26 @@ class AssetManager(
             explicitNulls = false
         }
 
-    /** 加载全部资源；[isDebug] 为 true 时展示黑名单物品 / 配方 / NPC，否则过滤。 */
-    suspend fun loadAll(isDebug: Boolean): LoadedData {
-        val atlas = buildAtlas()
+    /**
+     * 加载全部资源；[isDebug] 为 true 时展示黑名单物品 / 配方 / NPC，否则过滤。
+     *
+     * [onProgress] 逐「步」回调 `(done, total)`，供启动加载页显示真实百分比 —— 这一阶段
+     * （读 26 张 plist + 解析物品 / 配方 / NPC / 日程）此前完全没有进度回流，加载页会
+     * 长时间卡在 0%，故补上。步数口径见 [DATA_LOAD_STEP_COUNT]。
+     */
+    suspend fun loadAll(
+        isDebug: Boolean,
+        onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): LoadedData {
+        var done = 0
+        // 每完成一步就回调一次（回调在调用方线程，由调用方切主线程更新状态）。
+        suspend fun tick() {
+            done += 1
+            onProgress(done, DATA_LOAD_STEP_COUNT)
+        }
+        val atlas = buildAtlas { tick() }
         val iconMapping = loadIconMapping()
+        tick()
         // ⚠️ item_blacklist.txt 为【人工维护】清单，非脚本自动生成，切勿用 item_database.json
         // 全量或任何规则重新生成覆盖，否则会丢失下列手工追加项：
         //   规则并集 = name 含(作废)/(无用)/(废弃)/(测试)/(测试用) ∪ desc 含 拼接场景使用/不进背包/不需要翻译 ∪ icon=260000
@@ -55,21 +78,30 @@ class AssetManager(
         //   规则并集 = 某配方 target(产物 id) ∈ 物品黑名单(1200) ∪ 配方自身 icon==260000
         //   运行时读取 app/src/main/assets/config/ 副本（composeResources/files/ 那份是同步的死副本，也要一并改）。
         val itemBlack = loadBlacklist("config/item_blacklist.txt")
+        tick()
         val npcBlack = loadBlacklist("config/npc_blacklist.txt")
+        tick()
         val recipeBlack = loadBlacklist("config/recipe_blacklist.txt")
+        tick()
 
         val items = loadItems(atlas, iconMapping, itemBlack, isDebug)
+        tick()
         val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug)
+        tick()
         val npcs = loadNpcs(npcBlack, isDebug)
+        tick()
         val schedules = loadSchedules()
+        tick()
 
         val data = DataRepository(items, recipes, npcs, schedules, itemBlack, npcBlack, recipeBlack)
         val sprite = SpriteRepository(atlas, slicer, cache)
         return LoadedData(data, sprite)
     }
 
-    /** 构建跨图集的帧索引。 */
-    private fun buildAtlas(): SpriteAtlas {
+    /**
+     * 构建跨图集的帧索引。每解析完一张 plist 回调一次 [onSheet]（供启动进度计数）。
+     */
+    private suspend fun buildAtlas(onSheet: suspend () -> Unit): SpriteAtlas {
         val sheetNames =
             buildList {
                 add("items")
@@ -86,6 +118,7 @@ class AssetManager(
             } catch (_: Exception) {
                 // 该图集不存在则跳过
             }
+            onSheet()
         }
         return SpriteAtlas(map)
     }

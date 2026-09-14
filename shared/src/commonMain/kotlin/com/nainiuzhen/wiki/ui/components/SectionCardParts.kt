@@ -133,9 +133,10 @@ fun CardImageBox(
  * 滚过恰好 1 个单元的宽度 = 末字从左侧消失 → 下一单元的首字从右侧进入 → 回到起点
  * ```
  *
- * - **同步**：读 [LocalCardMarqueeMaxWidth]（子页面最长名称宽度，由 [ProvideCardMarqueeWidth] 提供）。
- *   短名称尾部补空格补齐到同一宽度 ⇒ 全页卡片的行程、速度、耗时**完全一致**，不再参差不齐。
- *   未提供基准（值为 0）或最长名称都没超出视口 ⇒ 不滚，全部居中静止（与旧版观感一致）。
+ * - **只有超宽才滚**：本条文字宽度 > 名称区宽度才启用；不超宽的卡片完全静止、居中，与旧版一致。
+ * - **圈同步**：各卡片文字长度不同 ⇒ 一圈耗时不同。由页级 [MarqueeCoordinator] 收口 ——
+ *   每张卡片跑完一圈报到一次，**同屏所有超宽卡片都跑完**才统一停 2 秒并放行下一圈，
+ *   避免「快的已经第二圈、慢的还在第一圈」的参差感。
  * - **对齐**：本页存在超宽名称时，全页统一改为**起始对齐**（否则滚动期间居中内容永远滚不到开头）。
  * - **节奏**：卡片进入屏幕后静止满 3 秒 → 滚第 1 圈 → 停 2 秒 → 第 2 圈 → 回位并**停止**
  *   （[MARQUEE_PASS_COUNT] = 2，不再无限循环）。
@@ -179,7 +180,9 @@ fun CardNameCapsule(
     val textWidthPx = remember(measurer, text, textStyle) {
         measureTextWidthPx(measurer, text, textStyle)
     }
-    val sharedMaxWidthPx = LocalCardMarqueeMaxWidth.current
+    val coordinator = LocalMarqueeCoordinator.current
+    // 本卡片在协调器里的身份（重组间稳定，用于「同屏卡片是否都跑完一圈」的计数）。
+    val marqueeKey = remember { Any() }
 
     // 内层滚动视口宽度（名称区可用宽度）；布局完成后才有值，用于算「一屏间隔」与启用判定。
     var viewportWidthPx by remember { mutableIntStateOf(0) }
@@ -187,19 +190,17 @@ fun CardNameCapsule(
     // —— 跑马灯规格 ——
     // 启用条件：有同步基准 + 视口已测量 + 最长名称确实超出视口（否则整页都不需要滚动）。
     // 补空格规则：短名称补到 sharedMaxWidthPx，间隔补满一屏 ⇒ 单元宽 = 最长文本宽 + 视口宽。
-    val marquee = remember(
-        sharedMaxWidthPx, textWidthPx, spaceWidthPx, viewportWidthPx, text, textStyle,
-    ) {
-        val maxW = sharedMaxWidthPx
-        if (maxW <= 0 || viewportWidthPx <= 0 || maxW <= viewportWidthPx) {
+    val marquee = remember(textWidthPx, spaceWidthPx, viewportWidthPx, text, textStyle) {
+        if (viewportWidthPx <= 0 || textWidthPx <= viewportWidthPx) {
+            // 不超宽（或视口还没测量出来）：完全不滚，与旧版一样居中静止。
             null
         } else {
-            val padCount =
-                if (textWidthPx < maxW) ceil((maxW - textWidthPx).toFloat() / spaceWidthPx).toInt() else 0
+            // 一圈 = 「文本 + 一屏间隔」。滚过这个宽度时，最后一个字刚好从左侧消失，
+            // 而重复文本的第一个字正好从右边缘进入 —— 无缝衔接，中间不留空白。
             val gapCount = ceil(viewportWidthPx.toFloat() / spaceWidthPx).toInt().coerceAtLeast(1)
-            val unit = text + " ".repeat(padCount + gapCount)
+            val unit = text + " ".repeat(gapCount)
             val unitWidth = measureTextWidthPx(measurer, unit, textStyle)
-            MarqueeSpec(displayText = unit + unit, distancePx = unitWidth.coerceAtLeast(1))
+            MarqueeSpec(displayText = unit + text, distancePx = unitWidth.coerceAtLeast(1))
         }
     }
 
@@ -221,14 +222,19 @@ fun CardNameCapsule(
 
     // 主循环：静止满 3 秒 → 恒速滚 [MARQUEE_PASS_COUNT] 圈（圈间停 2 秒）→ 回位停止。
     // key 变化（用户打断 / 进出屏幕 / 规格重算）或离开组合都会取消协程，无残留。
-    LaunchedEffect(marquee, dragRestartToken, onScreen) {
+    LaunchedEffect(marquee, dragRestartToken, onScreen, coordinator) {
         val spec = marquee ?: return@LaunchedEffect
         if (!onScreen) return@LaunchedEffect
+        // 登记为「本屏参与者」：协调器据此判断一圈是否全员跑完。
+        coordinator.join(marqueeKey)
         try {
             delay(MARQUEE_IDLE_TRIGGER_MS)
             // 用户仍在拖动 / 甩动中：放弃本轮，等下一次「进入屏幕 + 静止」再触发。
             if (scrollState.isScrollInProgress) return@LaunchedEffect
             repeat(MARQUEE_PASS_COUNT) { pass ->
+                // 第 2 圈起：等协调器放行（= 同屏所有超宽卡片都跑完上一圈 + 停 2 秒）。
+                // 各卡片文字长度不同、耗时不同，这样能保证不会参差不齐。
+                if (pass > 0) coordinator.awaitLap(pass)
                 scrollState.scrollTo(0)
                 // 兜底：实测文本宽与理论值可能有 1~2px 差，别超过可滚动余量被 clamp 卡住。
                 val distance = spec.distancePx.toFloat()
@@ -242,9 +248,11 @@ fun CardNameCapsule(
                 )
                 // 一圈走完：内容首尾相连，回到 0 在视觉上无缝衔接（下一圈的首字刚好接续）。
                 scrollState.scrollTo(0)
-                if (pass < MARQUEE_PASS_COUNT - 1) delay(MARQUEE_PASS_PAUSE_MS)
+                // 向协调器报到；由它判断是否全员跑完、何时放行下一圈（含 2 秒停顿）。
+                coordinator.lapDone(marqueeKey, pass, this)
             }
         } finally {
+            coordinator.leave(marqueeKey)
             scrollState.scrollTo(0)
         }
     }
@@ -373,7 +381,7 @@ private const val PRESS_FEEDBACK_ALPHA = 0.10f
 private const val MARQUEE_IDLE_TRIGGER_MS = 3_000L
 
 /** 自动跑马灯：两遍滚动之间的停顿时长。 */
-private const val MARQUEE_PASS_PAUSE_MS = 2_000L
+internal const val MARQUEE_PASS_PAUSE_MS = 2_000L
 
 /** 自动跑马灯：恒速滚动的速度（dp/s），适中速度。 */
 private const val MARQUEE_SPEED_DP_PER_SECOND = 35f

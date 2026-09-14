@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,7 +122,8 @@ private fun ItemHeaderSection(item: ItemInfo) {
                 .size(56.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    // 无底色（变更点 #42）：与 dialog 背景同化，去掉灰色托盘。保留 .clip 维持圆角裁剪。
+                    color = Color.Transparent,
                     shape = RoundedCornerShape(12.dp),
                 ),
             contentAlignment = Alignment.Center,
