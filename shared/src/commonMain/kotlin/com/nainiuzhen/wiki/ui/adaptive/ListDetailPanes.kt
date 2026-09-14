@@ -1,7 +1,6 @@
 package com.nainiuzhen.wiki.ui.adaptive
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +8,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -59,22 +60,29 @@ fun rememberUseDualPane(): Boolean {
  * @param list 左栏内容（列表）；入参为分配给它自身的修饰符（`fillMaxSize`）。
  * @param detail 右栏内容（详情）；入参同上。
  */
+/**
+ * 左（列表）栏宽度：窗口宽 × 0.34，夹紧到 [300.dp, 380.dp]。
+ * 顶栏限宽与双栏分栏共用本函数，保证两者算出的宽度严格一致。
+ */
+@Composable
+fun rememberListPaneWidth(): Dp {
+    val windowWidth = LocalWindowInfo.current.containerDpSize.width
+    return (windowWidth * LIST_PANE_WIDTH_FRACTION).coerceIn(LIST_PANE_MIN_WIDTH, LIST_PANE_MAX_WIDTH)
+}
+
 @Composable
 fun ListDetailPanes(
     modifier: Modifier = Modifier,
     list: @Composable (Modifier) -> Unit,
     detail: @Composable (Modifier) -> Unit,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val listPaneWidth = (maxWidth * LIST_PANE_WIDTH_FRACTION)
-            .coerceIn(LIST_PANE_MIN_WIDTH, LIST_PANE_MAX_WIDTH)
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.width(listPaneWidth).fillMaxHeight()) {
-                list(Modifier.fillMaxSize())
-            }
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                detail(Modifier.fillMaxSize())
-            }
+    val listPaneWidth = rememberListPaneWidth()
+    Row(modifier = modifier.fillMaxSize()) {
+        Box(Modifier.width(listPaneWidth).fillMaxHeight()) {
+            list(Modifier.fillMaxSize())
+        }
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            detail(Modifier.fillMaxSize())
         }
     }
 }

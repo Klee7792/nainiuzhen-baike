@@ -37,6 +37,7 @@ import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
 import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
+import com.nainiuzhen.wiki.ui.adaptive.rememberListPaneWidth
 import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
@@ -95,6 +96,9 @@ fun ItemListScreen() {
         if (query.isBlank()) base else base.filter { it.searchText.contains(query, ignoreCase = true) }
     }
 
+    val useDualPane = rememberUseDualPane()
+    val listPaneWidth = rememberListPaneWidth()
+
     AppSubPageScaffold(
         title = "物品大全",
         largeTitleCentered = true,
@@ -118,6 +122,7 @@ fun ItemListScreen() {
             }
         },
         subtitle = "共 ${filtered.size} 个物品",
+        topBarWidth = if (useDualPane) listPaneWidth else null,
         bottomContent = {
             ItemListBottomContent(
                 query = query,
@@ -126,7 +131,6 @@ fun ItemListScreen() {
         },
     ) { innerPadding ->
         val gap = 8.dp
-        val useDualPane = rememberUseDualPane()
 
         val gridContent: @Composable (Modifier) -> Unit = { gridModifier ->
             AdaptiveIconGrid(
@@ -168,10 +172,7 @@ fun ItemListScreen() {
                     ItemDetailPane(
                         item = selected,
                         onClose = { selected = null },
-                        // 右栏必须自行让出顶栏高度：Scaffold 的 content 是覆盖全屏的 Box，
-                        // 左栏靠 LazyVerticalGrid 的 contentPadding(top) 让位，右栏没有等价机制，
-                        // 不补这一句则右栏首屏内容会被（半透明模糊的）大标题顶栏压住。
-                        modifier = m.padding(top = innerPadding.calculateTopPadding()),
+                        modifier = m,
                     )
                 },
             )

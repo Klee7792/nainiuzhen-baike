@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -195,6 +197,8 @@ fun AppTopAppBar(
  * `nestedScroll(scrollBehavior.nestedScrollConnection)`，以使顶栏随内容滚动折叠。
  *
  * @param largeTitleCentered 透传给 [AppTopAppBar]：展开态大标题+计数是否水平居中（默认 false）。
+ * @param topBarWidth 顶栏宽度上限；传非 null 时顶栏只占该宽度（大屏双栏把顶栏归属左栏、不跨栏），
+ *   为 null（默认）时铺满整屏。
  * @param content 内容区 lambda，接收 [PaddingValues]（顶栏占位）。
  */
 @Composable
@@ -208,6 +212,8 @@ fun AppSubPageScaffold(
     subtitle: String = "",
     largeTitleCentered: Boolean = false,
     forceUniformBlur: Boolean = false,
+    /** 顶栏宽度上限；为 null 时铺满整屏（默认）。大屏双栏时传「左栏宽度」，避免顶栏横跨到右栏之上。 */
+    topBarWidth: Dp? = null,
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -225,7 +231,7 @@ fun AppSubPageScaffold(
                 largeTitleCentered = largeTitleCentered,
                 forceUniformBlur = forceUniformBlur,
                 bottomContent = bottomContent,
-                modifier = modifier,
+                modifier = if (topBarWidth != null) modifier.width(topBarWidth) else modifier,
             )
         },
     ) { innerPadding ->
