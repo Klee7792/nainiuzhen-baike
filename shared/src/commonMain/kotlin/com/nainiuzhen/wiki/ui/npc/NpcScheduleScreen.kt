@@ -1,10 +1,13 @@
 package com.nainiuzhen.wiki.ui.npc
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,6 +43,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -104,33 +108,43 @@ fun NpcScheduleScreen(npcId: Int) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
-                    .padding(top = 4.dp, bottom = 8.dp),
+                    .padding(top = 4.dp, bottom = 8.dp)
+                    // 4×1 ↔ 2×2 的高度补间：项目惯例 tween(300, DecelerateEasing(1.5f))。
+                    // ⚠️ 必须用具名参数：`tween` 的第 2 个位置参数是 `delayMillis: Int`（不是 easing）。
+                    .animateContentSize(tween(durationMillis = FILTER_ANIM_MS, easing = DecelerateEasing(1.5f))),
             ) {
-                RequiredFilterRow(
-                    label = "星期",
-                    options = (1..7).map { it to WEEK_LABELS[it - 1] },
-                    selected = week,
-                    onSelect = { week = it },
-                    horizontalScrollEnabled = true,
-                )
-                RequiredFilterRow(
-                    label = "天气",
-                    options = (1..5).map { it to WEATHER_LABELS[it - 1] },
-                    selected = weather,
-                    onSelect = { weather = it },
-                )
-                RequiredFilterRow(
-                    label = "季节",
-                    options = (1..4).map { it to SEASON_LABELS[it - 1] },
-                    selected = season,
-                    onSelect = { season = it },
-                )
-                RequiredFilterRow(
-                    label = "婚姻",
-                    options = listOf(0 to "未婚", 1 to "已婚"),
-                    selected = marriage,
-                    onSelect = { marriage = it },
-                )
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    // maxWidth 已是「扣掉左右各 12dp 内边距」后的可用宽度
+                    val twoColumn = maxWidth >= FILTER_TWO_COLUMN_MIN_WIDTH
+                    // 列间距用 FILTER_GROUP_GAP；行间距沿用 RequiredFilterRow 自带的 8dp 底部内边距，
+                    // 故此处不加 verticalArrangement，保证 4×1 观感与改造前完全一致（改动最小）。
+                    if (twoColumn) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it })
+                                RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                RequiredFilterRow("天气", (1..5).map { it to WEATHER_LABELS[it - 1] }, weather, { weather = it })
+                                RequiredFilterRow("季节", (1..4).map { it to SEASON_LABELS[it - 1] }, season, { season = it })
+                            }
+                        }
+                    } else {
+                        // 4×1：顺序与原实现一致（星期→天气→季节→婚姻）；仅星期组保留横向滚动
+                        Column(Modifier.fillMaxWidth()) {
+                            RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it }, horizontalScrollEnabled = true)
+                            RequiredFilterRow("天气", (1..5).map { it to WEATHER_LABELS[it - 1] }, weather, { weather = it })
+                            RequiredFilterRow("季节", (1..4).map { it to SEASON_LABELS[it - 1] }, season, { season = it })
+                            RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
+                        }
+                    }
+                }
                 HorizontalDivider(
                     modifier = Modifier.padding(top = 4.dp),
                     color = MiuixTheme.colorScheme.dividerLine,
@@ -280,4 +294,19 @@ private fun SpacerH(height: androidx.compose.ui.unit.Dp) {
 /** 标签映射。 */
 private val WEEK_LABELS = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周天")
 private val WEATHER_LABELS = listOf("晴天", "雨天", "雪天", "台风", "节日")
-private val SEASON_LABELS = listOf("春", "夏", "秋", "冬")
+private val SEASON_LABELS = listOf("春天", "夏天", "秋天", "冬天")
+
+/** 筛选区 4×1 ↔ 2×2 切换动画时长（ms）：对齐 miuix 弹窗遮罩惯例。 */
+private const val FILTER_ANIM_MS = 300
+
+/** 组间距：2×2 时两列之间的留白。 */
+private val FILTER_GROUP_GAP = 12.dp
+
+/**
+ * 2×2 阈值 = 536dp（两行内容宽，见下）+ 8dp 余量。
+ * 计算：胶囊宽 = 2字×14.sp + 24dp(水平内边距12+12) = 52dp；胶囊间距 8dp。
+ * 行1 = 星期(7×52 + 6×8 = 412) + 12 + 婚姻(2×52 + 1×8 = 112) = 536dp
+ * 行2 = 天气(5×52 + 4×8 = 292) + 12 + 季节(4×52 + 3×8 = 232) = 536dp
+ * 两行总宽恒等（7+2 = 5+4 = 9）⇒ 右边缘天然对齐；列分割点不同（行1在第7个后、行2在第5个后）为配对方式决定。
+ */
+private val FILTER_TWO_COLUMN_MIN_WIDTH = 544.dp
