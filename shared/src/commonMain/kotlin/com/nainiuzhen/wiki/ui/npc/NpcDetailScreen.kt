@@ -124,9 +124,12 @@ private fun NpcDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(640.dp)
+    // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。
+    // 显式传 largeScreen = false，使横屏与竖屏观感一致（均贴底）。
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
+        largeScreen = false,
     ) {
         Column(
             modifier = Modifier
