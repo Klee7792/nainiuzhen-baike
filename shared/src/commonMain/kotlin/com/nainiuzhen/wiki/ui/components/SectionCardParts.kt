@@ -19,8 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -160,14 +162,23 @@ fun CardNameCapsule(
 /**
  * 按下阴影 + 点击的公共修饰符。
  *
- * 返回的 [Modifier] 从外到内三层：
+ * 返回的 [Modifier]：
  * 1. `shadow`：仅当该板块「圆角」总闸开启**且**当前处于按下态时给 8dp 阴影，否则 0dp。
  *    默认态（圆角组总开关关）⇒ elevation 恒 0 ⇒ **零视觉变化**；开启后按下才出现与圆角一致的阴影轮廓。
- * 2. `clip`：把整块卡片的渲染裁成卡片形状。**必须在 `clickable` 之前**，原因见下方注释。
- * 3. `clickable`：保留原有水波纹（[LocalIndication]），并把 [onClick] 交给它。
+ * 2. 按压反馈（**只在按住时出现**，松手即消失）：
+ *    - 「圆角」总闸关：沿用 miuix [LocalIndication]（黑 10% 矩形高亮），与全 App 其它可点击件一致；
+ *    - 「圆角」总闸开：**不能**沿用 [LocalIndication] —— 它画的是一整块直角矩形
+ *      （miuix `MiuixIndication` 在 `drawContent()` 后 `drawRect(size = size)`，不带 shape，
+ *      圆角外沿会露出直角高亮），改为在 `drawWithContent` 里按
+ *      [com.nainiuzhen.wiki.utils.cardPressShadowShape] 的形状画一层黑 10% 覆盖
+ *      （数值对齐 miuix `MiuixIndication` 的 `PRESS_ALPHA_DELTA = 0.10f`）。
  *
- * 意图：让「按下的反馈形状」与「卡片圆角」一致（[com.nainiuzhen.wiki.utils.cardPressShadowShape]），
- * 又不在默认（无圆角）状态下改变任何观感。
+ * ### 为什么不能再加持久的 `.clip(shape)`（v31.1 回归教训）
+ *
+ * v31 曾把 `.clip(卡片形状)` 永久挂在 `clickable` 外层来"裁齐"miuix 的直角高亮（`37446c8`）。
+ * 但 clip 连**内容**一起裁：卡片单元 = 图标区 + 名称胶囊的整列，16dp 圆角正好切进胶囊底部
+ * —— 开「胶囊背景 + 卡片圆角（阴影同步开）」时，所有胶囊下半被永久削掉（用户实测截图）。
+ * 按压反馈必须做成"只在按住时绘制的覆盖层"，**绝不能以任何形式常驻**。
  *
  * @param section 所属板块，决定读圆角组开关。
  * @param onClick 点击回调。
@@ -181,29 +192,42 @@ fun rememberCardPressModifier(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val state = LocalAppSettings.current
+    val cornerOn = state.cardPressShadowEnabled(section)
     val shape = state.cardPressShadowShape(section)
-    return Modifier
-        .shadow(
-            elevation = if (state.cardPressShadowEnabled(section) && pressed) 8.dp else 0.dp,
-            shape = shape,
-            clip = false,
-        )
-        // ⚠️ 这个 clip 必须在 clickable **之前**（＝外层），顺序不能调换。
-        //
-        // miuix 默认的 LocalIndication 是 MiuixIndication，它在 draw() 里
-        // `drawContent()` 之后直接 `drawRect(size = size)` —— **不带 shape、覆盖整个节点矩形**
-        // （`miuix-ui/.../MiuixIndication.kt:129-135`）。而 Compose 修饰符链是外层先画、
-        // `drawContent()` 再画内层，所以 clickable 的 IndicationModifierNode 画在 drawContent **之后**。
-        // 把 clip 放在 clickable 里面 ⇒ 只裁到内层内容，裁不到外层刚画的那块矩形，
-        // 于是卡片圆角处（CardImageBox 已裁掉的透明角）会露出**直角深色高亮**。
-        //
-        // 放在外层后，clip 图层包住整个 clickable 节点（内容 + 矩形叠加）一并裁成圆角；
-        // 而 shadow 又在 clip 之外，投影照旧按 shape 画，不受影响。
-        // 默认态（圆角总开关关）shape = 四角 0.dp ⇒ 裁的是整块矩形 ⇒ 零视觉变化。
-        .clip(shape)
-        .clickable(
+    val shadowModifier = Modifier.shadow(
+        elevation = if (cornerOn && pressed) 8.dp else 0.dp,
+        shape = shape,
+        clip = false,
+    )
+    return if (cornerOn) {
+        shadowModifier
+            .drawWithContent {
+                drawContent()
+                // 瞬态按压反馈：只在按住时按卡片形状画一层黑 10%，松手消失。
+                // 不要改成 .clip(...)（见上方 KDoc 的 v31.1 回归教训）。
+                if (pressed) {
+                    drawOutline(
+                        outline = shape.createOutline(size, layoutDirection, this),
+                        color = Color.Black,
+                        alpha = PRESS_FEEDBACK_ALPHA,
+                    )
+                }
+            }
+            .clickable(
+                interactionSource = interaction,
+                // indication 置空：miuix 的直角矩形高亮由上面的形状化覆盖层代替。
+                indication = null,
+                onClick = onClick,
+            )
+    } else {
+        // 默认态（圆角总闸关）：卡片本来就是直角，miuix 的矩形高亮就是正确形状，零改动。
+        shadowModifier.clickable(
             interactionSource = interaction,
             indication = LocalIndication.current,
             onClick = onClick,
         )
+    }
 }
+
+/** 按压反馈覆盖层的透明度，对齐 miuix `MiuixIndication` 的 `PRESS_ALPHA_DELTA = 0.10f`。 */
+private const val PRESS_FEEDBACK_ALPHA = 0.10f

@@ -54,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -245,7 +246,10 @@ fun MainScreen() {
                 }
             },
             detail = { modifier ->
-                Box(modifier.zIndex(if (detailOnTop) 1f else 0f)) {
+                // clipToBounds：详情槽内容必须裁剪在本槽矩形内。miuix MiuixDefault 转场会给
+                // 被覆盖层 -0.25×width 的视差位移，而 Compose 默认不裁剪子层——「暂无内容」页
+                // 会随位移左移溢出详情槽、盖到左侧栏上（横屏黑块 bug）。裁剪后溢出部分不可见。
+                Box(modifier.zIndex(if (detailOnTop) 1f else 0f).clipToBounds()) {
                     SubPageNavHost(
                         backStack = backStack,
                         navigator = navigator,
