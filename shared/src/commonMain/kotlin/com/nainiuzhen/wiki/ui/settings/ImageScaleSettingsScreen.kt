@@ -37,9 +37,9 @@ import kotlin.math.roundToInt
  *   - 弹窗本体素材 [com.nainiuzhen.wiki.utils.AppState.dialogBodyImageScale]（默认 6，最大 8）：物品 / 配方详情头部素材。
  *   - 弹窗配方素材 [com.nainiuzhen.wiki.utils.AppState.dialogRecipeImageScale]（默认 6，最大 8）：配方原料 / 产物。
  *   - 弹窗喜恶素材 [com.nainiuzhen.wiki.utils.AppState.dialogFavHateImageScale]（默认 6，最大 8）：NPC 最爱 / 喜欢 / 讨厌。
- * - 「卡片文字」（绝对值字号，步长跟随本页「步长」，默认 8）
- *   - 物品大全卡片文字 [com.nainiuzhen.wiki.utils.AppState.itemCardTextSizeSp]（默认 8）：物品卡片名称字号，单位 sp，范围 5 ~ 11。
- *   - 配方查询卡片文字 [com.nainiuzhen.wiki.utils.AppState.recipeCardTextSizeSp]（默认 8）：配方卡片名称字号，单位 sp，范围 5 ~ 11。
+ * - 「卡片文字」（绝对值字号，步长跟随本页「步长」，默认 10）
+ *   - 物品大全卡片文字 [com.nainiuzhen.wiki.utils.AppState.itemCardTextSizeSp]（默认 10）：物品卡片名称字号，单位 sp，范围 5 ~ 11。
+ *   - 配方查询卡片文字 [com.nainiuzhen.wiki.utils.AppState.recipeCardTextSizeSp]（默认 10）：配方卡片名称字号，单位 sp，范围 5 ~ 11。
  *
  * 滑块以 0.1 为步进；拖动即时生效（经 [LocalAppSettings]/[LocalUpdateAppSettings] 落盘），
  * 对应区域素材随 [com.nainiuzhen.wiki.ui.components.SpriteScaleContext] 联动刷新。
@@ -102,7 +102,7 @@ fun ImageScaleSettingsScreen() {
                         value = appState.itemCardTextSizeSp,
                         onValueChange = { updateAppState(appState.copy(itemCardTextSizeSp = it)) },
                         title = "物品大全卡片文字",
-                        summary = "物品卡片名称字号（5 ~ 11 sp，默认 8）",
+                        summary = "物品卡片名称字号（5 ~ 11 sp，默认 10）",
                         min = 5f,
                         max = 11f,
                         step = appState.scaleStep,
@@ -112,7 +112,7 @@ fun ImageScaleSettingsScreen() {
                         value = appState.recipeCardTextSizeSp,
                         onValueChange = { updateAppState(appState.copy(recipeCardTextSizeSp = it)) },
                         title = "配方查询卡片文字",
-                        summary = "配方卡片名称字号（5 ~ 11 sp，默认 8）",
+                        summary = "配方卡片名称字号（5 ~ 11 sp，默认 10）",
                         min = 5f,
                         max = 11f,
                         step = appState.scaleStep,

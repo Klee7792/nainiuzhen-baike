@@ -45,8 +45,8 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         dialogRecipeImageScale = prefs.getScaleFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, 6f),
         dialogFavHateImageScale = prefs.getScaleFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
         scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
-        itemCardTextSizeSp = prefs.getScaleFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, 8f),
-        recipeCardTextSizeSp = prefs.getScaleFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, 8f),
+        itemCardTextSizeSp = prefs.getScaleFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, 10f),
+        recipeCardTextSizeSp = prefs.getScaleFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, 10f),
         allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, false),
         // —— v31 卡片外观设置（三组「总开关 + n 板块 + 同步」+ 四角 + 按下阴影同步）—— //
         cardBgMaster = prefs.getBoolean(KEY_CARD_BG_MASTER, false),

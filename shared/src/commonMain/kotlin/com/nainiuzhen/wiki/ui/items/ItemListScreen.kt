@@ -31,6 +31,7 @@ import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
+import com.nainiuzhen.wiki.ui.components.ProvideCardMarqueeWidth
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
@@ -118,30 +119,37 @@ fun ItemListScreen() {
         },
     ) { innerPadding ->
         val gap = 8.dp
+        // 跑马灯同步基准：当前筛选结果里最长的物品名宽度（只在 filtered 变化时重算一次）。
+        val marqueeNames = remember(filtered) { filtered.map { it.name } }
         AdaptiveIconGrid(
             hPadding = 12.dp,
             spacing = gap,
             minCard = 47.dp,
         ) { columns ->
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                state = rememberLazyGridState(),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-                contentPadding = PaddingValues(
-                    start = 12.dp,
-                    top = innerPadding.calculateTopPadding(),
-                    end = 12.dp,
-                    bottom = 12.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(gap),
-                horizontalArrangement = Arrangement.spacedBy(gap),
+            ProvideCardMarqueeWidth(
+                names = marqueeNames,
+                fontSize = appState.itemCardTextSizeSp.sp,
             ) {
-                items(filtered, key = { it.id }) { item ->
-                    ItemGridCell(item = item, onClick = { selected = item })
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    state = rememberLazyGridState(),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        top = innerPadding.calculateTopPadding(),
+                        end = 12.dp,
+                        bottom = 12.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(gap),
+                    horizontalArrangement = Arrangement.spacedBy(gap),
+                ) {
+                    items(filtered, key = { it.id }) { item ->
+                        ItemGridCell(item = item, onClick = { selected = item })
+                    }
                 }
             }
         }

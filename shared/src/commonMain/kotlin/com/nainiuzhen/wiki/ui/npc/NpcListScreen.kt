@@ -30,6 +30,7 @@ import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
+import com.nainiuzhen.wiki.ui.components.ProvideCardMarqueeWidth
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
@@ -112,30 +113,38 @@ fun NpcListScreen() {
             )
         },
     ) { innerPadding ->
+        // 跑马灯同步基准：当前筛选结果里最长的 NPC 名宽度（只在 filtered 变化时重算一次）。
+        // NPC 名称行用 body2 样式（见 NpcGridCell），基准必须同款否则宽度对不上。
+        val marqueeNames = remember(filtered) { filtered.map { it.name } }
         AdaptiveIconGrid(
             hPadding = 12.dp,
             spacing = 12.dp,
             minCard = 104.dp,
         ) { columns ->
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                state = rememberLazyGridState(),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-                contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = 12.dp,
-                    start = 12.dp,
-                    end = 12.dp,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ProvideCardMarqueeWidth(
+                names = marqueeNames,
+                style = MiuixTheme.textStyles.body2,
             ) {
-                items(filtered, key = { it.id }) { npc ->
-                    NpcGridCell(npc = npc, onClick = { selected = npc })
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    state = rememberLazyGridState(),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                    contentPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = 12.dp,
+                        start = 12.dp,
+                        end = 12.dp,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(filtered, key = { it.id }) { npc ->
+                        NpcGridCell(npc = npc, onClick = { selected = npc })
+                    }
                 }
             }
         }

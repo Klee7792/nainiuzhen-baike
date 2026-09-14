@@ -50,9 +50,9 @@ data class AppState(
     val dialogFavHateImageScale: Float = 6f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
     val scaleStep: Float = 0.1f, // 滑块步进：0.1 / 0.5 / 1（设置子页可调，#22 步长）
     // —— 卡片名称字号（素材缩放设置子页「卡片文字」组，绝对值 sp）—— //
-    // 范围 5..11 sp，默认 8 sp；步长跟随同页 scaleStep（0.1 / 0.5 / 1）。
-    val itemCardTextSizeSp: Float = 8f, // 物品大全卡片名称字号（5..11 sp，默认 8）
-    val recipeCardTextSizeSp: Float = 8f, // 配方查询卡片名称字号（5..11 sp，默认 8）
+    // 范围 5..11 sp，默认 10 sp；步长跟随同页 scaleStep（0.1 / 0.5 / 1）。
+    val itemCardTextSizeSp: Float = 10f, // 物品大全卡片名称字号（5..11 sp，默认 10）
+    val recipeCardTextSizeSp: Float = 10f, // 配方查询卡片名称字号（5..11 sp，默认 10）
     // —— v8 新增：手机横屏开关（大屏适配 §8.3）—— //
     // 默认 false = 锁竖屏；true = 允许自由旋转。仅在手机（<sw600dp）生效，大屏由系统忽略方向请求。
     val allowPhoneLandscape: Boolean = false,

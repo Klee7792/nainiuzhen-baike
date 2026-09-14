@@ -7,20 +7,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,9 +33,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -46,6 +52,7 @@ import com.nainiuzhen.wiki.utils.cardCapsuleEnabled
 import com.nainiuzhen.wiki.utils.cardPressShadowEnabled
 import com.nainiuzhen.wiki.utils.cardPressShadowShape
 import com.nainiuzhen.wiki.utils.cardShape
+import kotlin.math.ceil
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -117,21 +124,30 @@ fun CardImageBox(
  *
  * 内层始终保留既有行为：宽度 = 胶囊内宽，**文字超宽时在该层横向滚动**，胶囊本身不动。
  *
- * ### 自动跑马灯（仅超宽时启用）
+ * ### 自动跑马灯（v35：首尾相连一圈 + 同页同步）
  *
- * - 触发：文字宽度 > 可视区宽度（胶囊内宽）才启用；不超宽时行为与旧版完全一致（居中、静止）。
- * - 节奏：卡片进入屏幕后静止满 3 秒 → 以约 35dp/s 恒速从头滚到尾 → 停 2 秒 → 再滚一遍
- *   → 回位到起点并恢复居中观感 → 重新等下一个「静止满 3 秒」窗口循环。
- * - 打断：用户手指横向拖动 / 甩动立刻打断自动滚动，且必须重新静止满 3 秒才会再次触发。
- * - 实现：见 [CardNameCapsule] 体内的 `MARQUEE_*` 常量与两个 `LaunchedEffect`；
- *   未使用 `basicMarquee`（其语义与「两遍后回位」不匹配）。
+ * 与 v34 及更早「从左对齐滚到右对齐就结束」不同，v35 的**一圈**是首尾相连的完整循环：
+ *
+ * ```
+ * 内容 = 单元 × 2，单元 = 「文本 + 补空格（补到子页面最长宽度）+ 一屏间隔（补空格）」
+ * 滚过恰好 1 个单元的宽度 = 末字从左侧消失 → 下一单元的首字从右侧进入 → 回到起点
+ * ```
+ *
+ * - **同步**：读 [LocalCardMarqueeMaxWidth]（子页面最长名称宽度，由 [ProvideCardMarqueeWidth] 提供）。
+ *   短名称尾部补空格补齐到同一宽度 ⇒ 全页卡片的行程、速度、耗时**完全一致**，不再参差不齐。
+ *   未提供基准（值为 0）或最长名称都没超出视口 ⇒ 不滚，全部居中静止（与旧版观感一致）。
+ * - **对齐**：本页存在超宽名称时，全页统一改为**起始对齐**（否则滚动期间居中内容永远滚不到开头）。
+ * - **节奏**：卡片进入屏幕后静止满 3 秒 → 滚第 1 圈 → 停 2 秒 → 第 2 圈 → 回位并**停止**
+ *   （[MARQUEE_PASS_COUNT] = 2，不再无限循环）。
+ * - **只在屏幕区滚**：只有落在「状态栏与导航栏之间」可视区内的卡片才会滚；
+ *   滚出屏幕再回来会重新计数（再滚两圈），懒加载 / 屏幕外区域不消耗滚动。
+ * - **打断**：用户手指横向拖动立刻中断当前一圈，需重新静止满 3 秒才会再触发。
  *
  * @param section 所属板块，决定读「文字胶囊」开关。
  * @param text 名称文本。
  * @param modifier 外层修饰符（一般无需传，默认 `fillMaxWidth()`）。
- * @param style 文字样式；传 `null`（默认）时退回主题默认样式 `MiuixTheme.textStyles.main`，
- *   等价于直接调用 miuix `Text` 不传 `style`（miuix `Text` 的默认 `style` 正是 `LocalTextStyles.current.main`）。
- * @param fontSize 字号；传 `null`（默认）时向 `Text` 传 [TextUnit.Unspecified]，由 `Text` 从 [style] 取字号。
+ * @param style 文字样式；传 `null`（默认）时退回主题默认样式 `MiuixTheme.textStyles.main`。
+ * @param fontSize 字号；传 `null`（默认）时不覆盖 [style] 的字号。
  * @param contentPadding 外层内边距，默认与旧的物品 / 配方名称行一致（上 2、左右 8）。
  */
 @Composable
@@ -146,87 +162,104 @@ fun CardNameCapsule(
     val state = LocalAppSettings.current
     val on = state.cardCapsuleEnabled(section)
     val scrollState = rememberScrollState()
-    val density = LocalDensity.current.density
+    val density = LocalDensity.current
+    val densityValue = density.density
 
-    // —— 超宽检测 ——
-    // softWrap=false 且处于横向滚动容器（无限宽约束）内时，Text 的 hasVisualOverflow
-    // 恒为 false（无上界可比），必须拿文本布局宽度与可视区宽度自己比。
-    // 直接读滚动容器自己算好的可滚动余量（= 内容宽 − 可视宽），布局完成后才 > 0。
-    // 比自己比对 Text 布局宽度可靠：softWrap=false + 横向滚动的无限宽约束下，
-    // Text 自带的溢出标志恒为 false。用 derivedStateOf 只在数值/布尔翻转时重组。
-    val scrollRangePx by remember { derivedStateOf { scrollState.maxValue } }
-    val overflow = scrollRangePx > 0
-
-    // —— 自动跑马灯状态 ——
-    // 用户每次开始拖动（DragInteraction.Start）自增，作为主循环的「重启令牌」：
-    // 令牌变化 ⇒ 取消主循环协程（打断进行中的自动滚动 / 3 秒等待）并从头等起。
-    // 注意：程序化的 animateScrollBy 不会派发 DragInteraction（只有用户手势会），
-    // 所以自动滚动本身不会误触发令牌。
-    var dragRestartToken by remember { mutableIntStateOf(0) }
-    // 自动滚动会话是否激活：激活时内容对齐改为起始对齐 —— 超宽文本 + 居中对齐时
-    // 文本起始段在可视区外（两侧对称溢出），而滚动范围只覆盖 [0, max]，居中对齐下
-    // 永远滚不到开头，所以滚动期间必须让内容从 0 偏移起排。
-    var marqueeActive by remember { mutableStateOf(false) }
-
-    // 滚动偏移离开起点（自动跑马灯滚动中或用户拖过）⇒ 起始对齐；静止在起点 ⇒ 保持居中。
-    // 用 derivedStateOf 只在布尔翻转时通知重组，避免逐帧重组。
-    val scrolledFromStart by remember { derivedStateOf { scrollState.value > 0 } }
-    val contentAlignment = if (marqueeActive || scrolledFromStart) {
-        Alignment.CenterStart
+    // —— 文本度量：量一次空格宽（补空格用）与本条文本宽 ——
+    val measurer = rememberTextMeasurer()
+    val baseStyle = style ?: MiuixTheme.textStyles.main
+    val textStyle = if (fontSize != null && fontSize != TextUnit.Unspecified) {
+        baseStyle.copy(fontSize = fontSize)
     } else {
-        Alignment.Center
+        baseStyle
+    }
+    val spaceWidthPx = remember(measurer, textStyle) {
+        measureTextWidthPx(measurer, " ", textStyle).coerceAtLeast(1)
+    }
+    val textWidthPx = remember(measurer, text, textStyle) {
+        measureTextWidthPx(measurer, text, textStyle)
+    }
+    val sharedMaxWidthPx = LocalCardMarqueeMaxWidth.current
+
+    // 内层滚动视口宽度（名称区可用宽度）；布局完成后才有值，用于算「一屏间隔」与启用判定。
+    var viewportWidthPx by remember { mutableIntStateOf(0) }
+
+    // —— 跑马灯规格 ——
+    // 启用条件：有同步基准 + 视口已测量 + 最长名称确实超出视口（否则整页都不需要滚动）。
+    // 补空格规则：短名称补到 sharedMaxWidthPx，间隔补满一屏 ⇒ 单元宽 = 最长文本宽 + 视口宽。
+    val marquee = remember(
+        sharedMaxWidthPx, textWidthPx, spaceWidthPx, viewportWidthPx, text, textStyle,
+    ) {
+        val maxW = sharedMaxWidthPx
+        if (maxW <= 0 || viewportWidthPx <= 0 || maxW <= viewportWidthPx) {
+            null
+        } else {
+            val padCount =
+                if (textWidthPx < maxW) ceil((maxW - textWidthPx).toFloat() / spaceWidthPx).toInt() else 0
+            val gapCount = ceil(viewportWidthPx.toFloat() / spaceWidthPx).toInt().coerceAtLeast(1)
+            val unit = text + " ".repeat(padCount + gapCount)
+            val unitWidth = measureTextWidthPx(measurer, unit, textStyle)
+            MarqueeSpec(displayText = unit + unit, distancePx = unitWidth.coerceAtLeast(1))
+        }
     }
 
-    // 用户拖动监视：一旦手指开始横向拖动 / 甩动就自增令牌，打断自动跑马灯
-    // （打断后由主循环的下一个实例重新等 3 秒静止窗口）。
-    LaunchedEffect(overflow) {
-        if (!overflow) return@LaunchedEffect
+    // —— 屏幕可视区判定（状态栏 ~ 导航栏之间）——
+    val windowInfo = LocalWindowInfo.current
+    val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+    val navBarBottomPx = WindowInsets.navigationBars.getBottom(density)
+    var onScreen by remember { mutableStateOf(false) }
+
+    // —— 用户拖动打断 ——
+    // 程序化的 animateScrollBy 不会派发 DragInteraction（只有用户手势会），所以自动滚动不会自打断。
+    var dragRestartToken by remember { mutableIntStateOf(0) }
+    LaunchedEffect(marquee) {
+        if (marquee == null) return@LaunchedEffect
         scrollState.interactionSource.interactions.collect { interaction ->
             if (interaction is DragInteraction.Start) dragRestartToken++
         }
     }
 
-    // 主循环：静止满 3 秒 → 恒速滚两遍（遍间停 2 秒）→ 回位 → 重新等下一个窗口。
-    // 协程随 LaunchedEffect 的 key 变化（用户打断 / 超宽状态翻转）或离开组合自动取消，无残留。
-    LaunchedEffect(overflow, dragRestartToken) {
-        if (!overflow) return@LaunchedEffect
+    // 主循环：静止满 3 秒 → 恒速滚 [MARQUEE_PASS_COUNT] 圈（圈间停 2 秒）→ 回位停止。
+    // key 变化（用户打断 / 进出屏幕 / 规格重算）或离开组合都会取消协程，无残留。
+    LaunchedEffect(marquee, dragRestartToken, onScreen) {
+        val spec = marquee ?: return@LaunchedEffect
+        if (!onScreen) return@LaunchedEffect
         try {
-            while (true) {
-                // ① 静止满 3 秒才触发。
-                delay(MARQUEE_IDLE_TRIGGER_MS)
-                // 用户仍在拖动 / 甩动中：继续等下一个 3 秒窗口。
-                if (scrollState.isScrollInProgress) continue
-                // ② 滚动距离与时长按「最新布局结果」计算（字号缩放等布局变化后自动跟进）。
-                val distancePx = scrollRangePx.toFloat()
-                if (distancePx <= 0f) continue
-                val durationMs = (distancePx / (density * MARQUEE_SPEED_DP_PER_SECOND)) * 1000f
-                // 激活会话：复位到起点并切换为起始对齐。
-                marqueeActive = true
-                scrollState.scrollBy(-scrollState.value.toFloat())
-                // ③ 恒速从头滚到尾两遍，两遍之间停 2 秒。
-                repeat(MARQUEE_PASS_COUNT) { pass ->
-                    scrollState.animateScrollBy(
-                        value = distancePx,
-                        animationSpec = tween(
-                            durationMillis = durationMs.toInt().coerceIn(1, Int.MAX_VALUE),
-                            easing = LinearEasing,
-                        ),
-                    )
-                    if (pass < MARQUEE_PASS_COUNT - 1) delay(MARQUEE_PASS_PAUSE_MS)
-                }
-                // ④ 回位到起点并恢复居中观感，随后进入下一个 3 秒空闲窗口。
-                scrollState.scrollBy(-scrollState.value.toFloat())
-                marqueeActive = false
+            delay(MARQUEE_IDLE_TRIGGER_MS)
+            // 用户仍在拖动 / 甩动中：放弃本轮，等下一次「进入屏幕 + 静止」再触发。
+            if (scrollState.isScrollInProgress) return@LaunchedEffect
+            repeat(MARQUEE_PASS_COUNT) { pass ->
+                scrollState.scrollTo(0)
+                // 兜底：实测文本宽与理论值可能有 1~2px 差，别超过可滚动余量被 clamp 卡住。
+                val distance = spec.distancePx.toFloat()
+                    .coerceAtMost(scrollState.maxValue.toFloat().coerceAtLeast(1f))
+                val durationMs =
+                    (distance / (densityValue * MARQUEE_SPEED_DP_PER_SECOND) * 1000f)
+                        .toInt().coerceIn(1, Int.MAX_VALUE)
+                scrollState.animateScrollBy(
+                    value = distance,
+                    animationSpec = tween(durationMillis = durationMs, easing = LinearEasing),
+                )
+                // 一圈走完：内容首尾相连，回到 0 在视觉上无缝衔接（下一圈的首字刚好接续）。
+                scrollState.scrollTo(0)
+                if (pass < MARQUEE_PASS_COUNT - 1) delay(MARQUEE_PASS_PAUSE_MS)
             }
         } finally {
-            // 任何退出路径（用户打断、超宽状态翻转、离开组合）都回到静止形态。
-            marqueeActive = false
+            scrollState.scrollTo(0)
         }
     }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                val top = coordinates.positionInWindow().y
+                val bottom = top + coordinates.size.height
+                val viewTop = statusBarTopPx.toFloat()
+                val viewBottom = (windowInfo.containerSize.height - navBarBottomPx).toFloat()
+                val visible = bottom > viewTop && top < viewBottom
+                if (visible != onScreen) onScreen = visible
+            }
             .then(
                 if (on) {
                     Modifier.background(
@@ -243,13 +276,14 @@ fun CardNameCapsule(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .onSizeChanged { viewportWidthPx = it.width }
                 .horizontalScroll(scrollState),
-            contentAlignment = contentAlignment,
+            // 本页需要滚动时统一起始对齐（居中内容滚不到开头），否则保持居中。
+            contentAlignment = if (marquee != null) Alignment.CenterStart else Alignment.Center,
         ) {
             Text(
-                text = text,
-                style = style ?: MiuixTheme.textStyles.main,
-                fontSize = fontSize ?: TextUnit.Unspecified,
+                text = marquee?.displayText ?: text,
+                style = textStyle,
                 maxLines = 1,
                 softWrap = false,
                 textAlign = TextAlign.Center,
@@ -258,6 +292,9 @@ fun CardNameCapsule(
         }
     }
 }
+
+/** 跑马灯规格：[displayText] = 单元 × 2 的滚动内容；[distancePx] = 一个单元的宽度（= 完整一圈）。 */
+private data class MarqueeSpec(val displayText: String, val distancePx: Int)
 
 /**
  * 按下阴影 + 点击的公共修饰符。
