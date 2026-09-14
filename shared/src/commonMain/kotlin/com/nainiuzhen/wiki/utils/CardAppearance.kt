@@ -278,8 +278,19 @@ val CARD_TOGGLE_GROUPS: List<CardToggleGroup> = listOf(
         withMaster = { s, v -> s.copy(cardCornerMaster = v) },
         syncOf = { it.cardCornerSync },
         withSync = { s, v ->
+            // 不变式：「板块同步」为开 ⇒ 3 个板块严格共用 Item 基线，三块渲染必须一致。
+            // 渲染是**逐板块**求值（cardCornerRadiusOf → cardCornerSync4(section) / cardCornerChildOf(section, c)），
+            // 所以凡把同步打开的写操作都必须把 Sync4 与四角值一起归一化，否则界面（读 Item 基线）与实际渲染会分叉。
             if (v) {
-                s.copy(cardCornerSync = true)
+                // 打开板块同步：Sync4 与四角全部对齐到 Item 基线（Item 本身不变）。与下面 v=false 分支对称、幂等。
+                val shared4 = s.cardCornerItemSync4
+                CardCorner.entries.fold(
+                    s.copy(
+                        cardCornerSync = true,
+                        cardCornerRecipeSync4 = shared4,
+                        cardCornerNpcSync4 = shared4,
+                    ),
+                ) { acc, c -> acc.withSharedCorner(c, s.sharedCorner(c)) }
             } else {
                 // 关闭板块同步：把总开关值落到 3 个板块，并把「四角同步」统一为当前共用值
                 val mv = s.cardCornerMaster
