@@ -80,6 +80,7 @@ import com.nainiuzhen.wiki.ui.npc.NpcListScreen
 import com.nainiuzhen.wiki.ui.npc.NpcScheduleScreen
 import com.nainiuzhen.wiki.ui.recipe.RecipeListScreen
 import com.nainiuzhen.wiki.ui.settings.AboutScreen
+import com.nainiuzhen.wiki.ui.settings.CardSettingsScreen
 import com.nainiuzhen.wiki.ui.settings.ImageScaleSettingsScreen
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
 import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
@@ -245,6 +246,7 @@ private fun DetailPaneHost(
             Route.About -> AboutScreen()
             Route.License -> LicenseScreen()
             Route.ImageScaleSettings -> ImageScaleSettingsScreen()
+            Route.CardSettings -> CardSettingsScreen()
         }
     }
 }

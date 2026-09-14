@@ -45,4 +45,8 @@ sealed interface Route : NavKey {
     /** 图片放大倍率设置子页（从设置页「图片放大倍率」进入）。 */
     @Serializable
     data object ImageScaleSettings : Route
+
+    /** 卡片设置子页（从设置页「卡片设置」进入；背景 / 圆角 / 名称胶囊）。 */
+    @Serializable
+    data object CardSettings : Route
 }

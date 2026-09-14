@@ -234,6 +234,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 modifier = Modifier.padding(horizontal = 12.dp),
             ) {
                 ArrowPreference(
+                    title = "卡片设置",
+                    summary = "板块卡片的背景 / 圆角 / 名称胶囊",
+                    onClick = { navigator.openTopLevel(Route.CardSettings) },
+                )
+                ArrowPreference(
                     title = "素材缩放设置",
                     summary = "卡片 / 主页 / 弹窗素材放大倍率",
                     onClick = { navigator.openTopLevel(Route.ImageScaleSettings) },
