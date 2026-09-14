@@ -14,6 +14,8 @@
 
 package com.nainiuzhen.wiki.ui.home
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -45,8 +47,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -61,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
 import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
 import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
+import com.nainiuzhen.wiki.ui.adaptive.LocalDetailOverlay
+import com.nainiuzhen.wiki.ui.adaptive.rememberDetailOverlayState
 import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppTopAppBar
 import com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar
@@ -77,8 +84,10 @@ import com.nainiuzhen.wiki.ui.settings.ImageScaleSettingsScreen
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
 import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
 import com.nainiuzhen.wiki.utils.LocalAppSettings
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
@@ -109,6 +118,25 @@ import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
+ * 弹窗遮罩的时长常量 —— 全部对齐 miuix `DialogContentLayout` 的 `dimProgress`：
+ * 淡入 `tween(300, DecelerateEasing(1.5f))`、淡出 `tween(250, DecelerateEasing(1.5f))`。
+ * 左栏自补的这一层遮罩照抄同一套参数，两栏的明暗变化才会**同起同落**，
+ * 否则会出现「右栏已经亮回来、左栏还黑着」的割裂感。
+ */
+private const val DIALOG_DIM_IN_MS = 300
+private const val DIALOG_DIM_OUT_MS = 250
+
+/**
+ * 弹窗关闭动画的「宽限期」（毫秒）。
+ *
+ * 弹窗被关掉后，遮罩 / 卡片还要播一段收起动画（遮罩淡出 250ms）。这段时间内左栏继续拦截点击，
+ * 避免用户的下一击「穿过」动画尾巴、在一次操作里同时完成「关弹窗 + 跳转」
+ * （用户反馈的「直接就覆盖了」）。取 280ms：比淡出动画略长，收尾时两栏都已亮回来，
+ * 拦截却还没撤，多出来的那一下点击也无副作用（无事可关 ⇒ `dismissTop()` 是空操作）。
+ */
+private const val DIALOG_CLOSE_GRACE_MS = 280
+
+/**
  * 底栏宿主：2 个标签页——「主页」（3 个图鉴板块）与「设置」（完整设置页）。
  * 通过 HorizontalPager 支持左右滑动切换（不依赖底栏，子页不参与）。
  * 子页（物品 / 配方 / NPC / 日程 / 关于 / 协议 / 图片倍率）通过
@@ -133,12 +161,52 @@ fun MainScreen() {
     // 详情里点「日程」，全部经由现有页面的 navigator 调用，自动落在右栏栈上。
     val activeNavigator = if (useDualPane) paneNavigator else windowNavigator
 
+    val detailOverlay = rememberDetailOverlayState()
+    // 弹窗关闭动画期间的「宽限期」：右下角弹窗正在收起时，左栏继续拦截，避免第二下点击
+    // 落在动画尾巴上、把弹窗和跳转同时发生（用户反馈的"直接覆盖"）。
+    val dialogOpen = detailOverlay.isOpen
+    var dismissGrace by remember { mutableStateOf(false) }
+    LaunchedEffect(dialogOpen) {
+        if (dialogOpen) {
+            dismissGrace = true
+        } else {
+            delay(DIALOG_CLOSE_GRACE_MS.toLong())
+            dismissGrace = false
+        }
+    }
+    val intercepting = dialogOpen || dismissGrace
+
+    val leftPaneAlpha by animateFloatAsState(
+        targetValue = if (dialogOpen) 1f else 0f,
+        animationSpec = tween(DIALOG_CLOSE_GRACE_MS),
+        label = "leftPaneDim",
+    )
+
     CompositionLocalProvider(LocalNavigator provides activeNavigator) {
         if (useDualPane) {
-            ListDetailPanes(
-                list = { modifier -> Box(modifier) { MainPaneShell() } },
-                detail = { modifier -> DetailPaneHost(modifier, paneBackStack) },
-            )
+            CompositionLocalProvider(LocalDetailOverlay provides detailOverlay) {
+                ListDetailPanes(
+                    list = { modifier ->
+                        Box(modifier) {
+                            MainPaneShell()
+                            // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
+                            // 所以左栏得自己盖一层同色遮罩，并在弹窗期间把点击解释为「先关弹窗」。
+                            if (intercepting) {
+                                val dim = MiuixTheme.colorScheme.windowDimming
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(dim.copy(alpha = dim.alpha * leftPaneAlpha))
+                                        .pointerInput(Unit) {
+                                            detectTapGestures { detailOverlay.dismissTop() }
+                                        },
+                                )
+                            }
+                        }
+                    },
+                    detail = { modifier -> DetailPaneHost(modifier, paneBackStack) },
+                )
+            }
             // 右栏有子页时，系统返回键先退右栏；右栏回到空态后本处理器 enabled=false
             // 自动让位给 NavDisplay 的路由返回（仲裁规则：最后组合且启用者优先）。
             DualPaneBackHandler(enabled = paneBackStack.size > 1) { paneNavigator.pop() }

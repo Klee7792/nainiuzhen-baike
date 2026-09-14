@@ -14,6 +14,7 @@ import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.CheckboxLocation
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import com.nainiuzhen.wiki.ui.components.rememberDialogMaxHeight
+import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
 
 /**
  * 选项数量较少（< 10 项）时的筛选弹窗：每行「标题靠左、控件靠右」，与设置页「色彩模式」等
@@ -51,6 +52,8 @@ fun FilterOptionsDialog(
     maxHeight: Dp = 480.dp,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(maxHeight)
+    // 登记到左栏拦截层（分栏时才有）：弹窗开着时点左栏 = 先关弹窗，而不是被跳转盖掉。
+    RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
     // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。
     // 显式传 largeScreen = false，使横屏与竖屏观感一致（均贴底）。
     OverlayDialog(

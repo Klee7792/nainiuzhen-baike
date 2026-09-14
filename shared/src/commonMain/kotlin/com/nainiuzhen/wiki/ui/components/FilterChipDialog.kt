@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -44,6 +45,8 @@ fun FilterChipDialog(
     onSelectedChange: (Set<String>) -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(FILTER_DIALOG_MAX_HEIGHT)
+    // 登记到左栏拦截层（分栏时才有）：弹窗开着时点左栏 = 先关弹窗，而不是被跳转盖掉。
+    RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
     // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。
     // 显式传 largeScreen = false，使横屏与竖屏观感一致（均贴底）。
     OverlayDialog(

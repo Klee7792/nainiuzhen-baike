@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 /**
@@ -44,6 +45,8 @@ fun BasicDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(maxHeight)
+    // 登记给左栏拦截层：分栏时左栏没被 miuix 遮罩覆盖，需靠它把「点左栏」变成「先关弹窗」。
+    RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
 
     // ⚠️ 大屏「主页-子页分栏」下**不要**给本弹窗加任何水平偏移。
     // miuix 的 `OverlayDialog` 默认 `renderInRootScaffold = true`，会把弹窗（含遮罩）渲染进

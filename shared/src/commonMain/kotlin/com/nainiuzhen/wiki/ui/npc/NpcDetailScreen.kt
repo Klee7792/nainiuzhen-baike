@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.repository.DataRepository
+import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
 import com.nainiuzhen.wiki.ui.components.ItemCardRow
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -124,6 +125,8 @@ private fun NpcDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(640.dp)
+    // 登记给左栏拦截层：分栏时左栏没被 miuix 遮罩覆盖，需靠它把「点左栏」变成「先关弹窗」。
+    RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
     // ⚠️ 大屏「主页-子页分栏」下**不要**给本弹窗加任何水平偏移。
     // miuix `OverlayDialog` 默认 `renderInRootScaffold = true`，会把弹窗（含遮罩）渲染进
     // **最近的 miuix `Scaffold`**；分栏时子页跑在右栏、自带 `AppSubPageScaffold`，
