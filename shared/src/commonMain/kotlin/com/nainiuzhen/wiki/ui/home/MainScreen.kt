@@ -43,6 +43,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,10 +58,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
+import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
+import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
+import com.nainiuzhen.wiki.ui.adaptive.LocalDialogHorizontalOffset
+import com.nainiuzhen.wiki.ui.adaptive.rememberListPaneWidth
+import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppTopAppBar
 import com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar
 import com.nainiuzhen.wiki.ui.components.rememberAppBlurBackdrop
+import com.nainiuzhen.wiki.ui.items.ItemListScreen
+import com.nainiuzhen.wiki.ui.nav.LocalNavigator
+import com.nainiuzhen.wiki.ui.nav.Navigator
+import com.nainiuzhen.wiki.ui.nav.Route
+import com.nainiuzhen.wiki.ui.npc.NpcListScreen
+import com.nainiuzhen.wiki.ui.npc.NpcScheduleScreen
+import com.nainiuzhen.wiki.ui.recipe.RecipeListScreen
+import com.nainiuzhen.wiki.ui.settings.AboutScreen
+import com.nainiuzhen.wiki.ui.settings.ImageScaleSettingsScreen
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
+import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -89,15 +106,91 @@ import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.nav.core.NavBackStack
+import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * 底栏宿主：2 个标签页——「主页」（3 个图鉴板块）与「设置」（完整设置页）。
  * 通过 HorizontalPager 支持左右滑动切换（不依赖底栏，子页不参与）。
- * 子页（物品 / 配方 / NPC / 日程 / 关于）通过 [com.nainiuzhen.wiki.ui.nav.Navigator.push] 全屏覆盖在本宿主之上。
+ * 子页（物品 / 配方 / NPC / 日程 / 关于 / 协议 / 图片倍率）通过
+ * [com.nainiuzhen.wiki.ui.nav.Navigator.push] 展示——**手机单栏时全屏覆盖，
+ * 大屏分栏时落在右侧栏内**（see [MainScreen]）。
  */
 @Composable
 fun MainScreen() {
+    val useDualPane = rememberUseDualPane()
+    val windowNavigator = LocalNavigator.current
+
+    // 右栏自己的一套返回栈：栈底恒为 [Route.Main]（=「尚未打开任何子页」→ 右栏空态）。
+    // 刻意让它与窗口栈**语义完全一致**，于是：
+    //   · `Navigator.push`  = 右栏打开一个子页；
+    //   · `Navigator.pop`   = 退回上一层（栈底保留 ⇒ 退无可退时自动回到空态）。
+    // 结果就是各业务页面里现成的 `navigator.push(...)` / `navigator.pop()` 一行都不用改。
+    // `rememberNavBackStack` 自带 saver，旋转 / 配置变更后右栏内容不丢。
+    val paneBackStack = rememberNavBackStack<Route>(Route.Main)
+    val paneNavigator = remember(paneBackStack) { Navigator(paneBackStack) }
+
+    // 分栏时把 [LocalNavigator] 换成「右栏自己的」：左栏点板块、右栏内点返回箭头、
+    // 详情里点「日程」，全部经由现有页面的 navigator 调用，自动落在右栏栈上。
+    val activeNavigator = if (useDualPane) paneNavigator else windowNavigator
+
+    CompositionLocalProvider(LocalNavigator provides activeNavigator) {
+        if (useDualPane) {
+            ListDetailPanes(
+                list = { modifier -> Box(modifier) { MainPaneShell() } },
+                detail = { modifier -> DetailPaneHost(modifier, paneBackStack) },
+            )
+            // 右栏有子页时，系统返回键先退右栏；右栏回到空态后本处理器 enabled=false
+            // 自动让位给 NavDisplay 的路由返回（仲裁规则：最后组合且启用者优先）。
+            DualPaneBackHandler(enabled = paneBackStack.size > 1) { paneNavigator.pop() }
+        } else {
+            MainPaneShell()
+        }
+    }
+}
+
+/**
+ * 右栏：按右栏返回栈栈顶渲染对应子页；栈顶为 [Route.Main]（= 没打开任何子页）时显示空态。
+ *
+ * 这里渲染的都是**原本为整屏设计的子页**，它们各自带 `AppSubPageScaffold` 顶栏，
+ * 因此右栏天然有独立顶栏、随自身内容滚动折叠，与左栏顶栏互不干扰。
+ * 各子页顶栏的返回箭头调用的 `navigator.pop()` 会弹右栏栈（[LocalNavigator] 已在此换成
+ * 右栏实例），无需为分栏额外写返回逻辑。
+ *
+ * @param modifier 由 [ListDetailPanes] 分配的右栏修饰符（`fillMaxSize`）。
+ * @param backStack 右栏自己的返回栈。
+ */
+@Composable
+private fun DetailPaneHost(
+    modifier: Modifier,
+    backStack: NavBackStack,
+) {
+    // 弹窗卡片水平偏移 = 左栏宽 ÷ 2：窗口中线 → 右栏中线，使「详情弹窗」以右栏为基准左右居中。
+    // 只作用于卡片，遮罩仍盖满整窗口（miuix 把二者拆成两个节点）。
+    val dialogOffsetX = rememberListPaneWidth() / 2
+    CompositionLocalProvider(LocalDialogHorizontalOffset provides dialogOffsetX) {
+        Box(modifier) {
+            when (val route = backStack.lastOrNull()) {
+                null, Route.Main -> DetailPaneEmptyHint()
+                Route.ItemList -> ItemListScreen()
+                Route.RecipeList -> RecipeListScreen()
+                Route.NpcList -> NpcListScreen()
+                is Route.NpcSchedule -> NpcScheduleScreen(npcId = route.npcId)
+                Route.About -> AboutScreen()
+                Route.License -> LicenseScreen()
+                Route.ImageScaleSettings -> ImageScaleSettingsScreen()
+            }
+        }
+    }
+}
+
+/**
+ * 单栏主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
+ * 手机铺满整屏；大屏分栏时作为**左栏**（宽度由 [ListDetailPanes] 决定）。
+ */
+@Composable
+private fun MainPaneShell() {
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
     val appState = LocalAppSettings.current

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.repository.DataRepository
+import com.nainiuzhen.wiki.ui.adaptive.LocalDialogHorizontalOffset
 import com.nainiuzhen.wiki.ui.components.ItemCardRow
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -124,12 +126,17 @@ private fun NpcDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(640.dp)
+    // 大屏「主页-子页分栏」下：右栏会 provide 非 0 偏移，把弹窗卡片居中到右栏中线；
+    // 手机单栏时该值为 0.dp，等同原行为。offset 只作用于卡片，遮罩仍盖满窗口
+    // （miuix 遮罩与卡片是两个节点，见 DialogContentLayout.kt:218-227 与 :243）。
+    val dialogOffsetX = LocalDialogHorizontalOffset.current
     // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。
     // 显式传 largeScreen = false，使横屏与竖屏观感一致（均贴底）。
     OverlayDialog(
         show = show,
         onDismissRequest = onDismissRequest,
         largeScreen = false,
+        modifier = Modifier.offset(x = dialogOffsetX),
     ) {
         Column(
             modifier = Modifier
