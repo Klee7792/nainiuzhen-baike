@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.searchText
+import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.SpriteImage
@@ -122,25 +123,31 @@ fun ItemListScreen() {
         },
     ) { innerPadding ->
         val gap = 8.dp
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(6),
-            state = rememberLazyGridState(),
-            modifier = Modifier
-                .fillMaxHeight()
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                top = innerPadding.calculateTopPadding(),
-                end = 12.dp,
-                bottom = 12.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            horizontalArrangement = Arrangement.spacedBy(gap),
-        ) {
-            items(filtered, key = { it.id }) { item ->
-                ItemGridCell(item = item, onClick = { selected = item })
+        AdaptiveIconGrid(
+            hPadding = 12.dp,
+            spacing = gap,
+            minCard = 47.dp,
+        ) { columns ->
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                state = rememberLazyGridState(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                contentPadding = PaddingValues(
+                    start = 12.dp,
+                    top = innerPadding.calculateTopPadding(),
+                    end = 12.dp,
+                    bottom = 12.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                items(filtered, key = { it.id }) { item ->
+                    ItemGridCell(item = item, onClick = { selected = item })
+                }
             }
         }
         ItemDetailScreen(item = selected, onDismissRequest = { selected = null })

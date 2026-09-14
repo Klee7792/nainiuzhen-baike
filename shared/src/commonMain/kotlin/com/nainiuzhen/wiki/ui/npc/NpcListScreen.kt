@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.model.searchText
+import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -117,25 +118,31 @@ fun NpcListScreen() {
             )
         },
     ) { innerPadding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            state = rememberLazyGridState(),
-            modifier = Modifier
-                .fillMaxHeight()
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding(),
-                bottom = 12.dp,
-                start = 12.dp,
-                end = 12.dp,
-            ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(filtered, key = { it.id }) { npc ->
-                NpcGridCell(npc = npc, onClick = { selected = npc })
+        AdaptiveIconGrid(
+            hPadding = 12.dp,
+            spacing = 12.dp,
+            minCard = 104.dp,
+        ) { columns ->
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                state = rememberLazyGridState(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = 12.dp,
+                    start = 12.dp,
+                    end = 12.dp,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(filtered, key = { it.id }) { npc ->
+                    NpcGridCell(npc = npc, onClick = { selected = npc })
+                }
             }
         }
         NpcDetailScreen(npc = selected, onDismissRequest = { selected = null })
