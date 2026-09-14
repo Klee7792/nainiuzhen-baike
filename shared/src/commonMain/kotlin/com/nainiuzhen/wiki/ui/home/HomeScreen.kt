@@ -124,7 +124,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 }
                             }
                         },
-                        onClick = { navigator.push(Route.ItemList) },
+                        onClick = { navigator.openTopLevel(Route.ItemList) },
                     )
                 }
                 Card(
@@ -153,7 +153,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 }
                             }
                         },
-                        onClick = { navigator.push(Route.RecipeList) },
+                        onClick = { navigator.openTopLevel(Route.RecipeList) },
                     )
                 }
                 Card(
@@ -183,7 +183,7 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
                                 }
                             }
                         },
-                        onClick = { navigator.push(Route.NpcList) },
+                        onClick = { navigator.openTopLevel(Route.NpcList) },
                     )
                 }
             }

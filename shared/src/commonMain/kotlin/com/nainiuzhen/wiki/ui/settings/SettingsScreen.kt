@@ -236,7 +236,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 ArrowPreference(
                     title = "素材缩放设置",
                     summary = "卡片 / 主页 / 弹窗素材放大倍率",
-                    onClick = { navigator.push(Route.ImageScaleSettings) },
+                    onClick = { navigator.openTopLevel(Route.ImageScaleSettings) },
                 )
                 ArrowPreference(
                     title = "清理缓存",
@@ -253,7 +253,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 ArrowPreference(
                     title = "关于",
                     summary = "奶牛镇百科 · 图鉴查询",
-                    onClick = { navigator.push(Route.About) },
+                    onClick = { navigator.openTopLevel(Route.About) },
                 )
             }
         }
