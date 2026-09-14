@@ -61,8 +61,6 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
 import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
 import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
-import com.nainiuzhen.wiki.ui.adaptive.LocalDialogHorizontalOffset
-import com.nainiuzhen.wiki.ui.adaptive.rememberListPaneWidth
 import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppTopAppBar
 import com.nainiuzhen.wiki.ui.components.liquid.IosLiquidGlassNavigationBar
@@ -166,21 +164,19 @@ private fun DetailPaneHost(
     modifier: Modifier,
     backStack: NavBackStack,
 ) {
-    // 弹窗卡片水平偏移 = 左栏宽 ÷ 2：窗口中线 → 右栏中线，使「详情弹窗」以右栏为基准左右居中。
-    // 只作用于卡片，遮罩仍盖满整窗口（miuix 把二者拆成两个节点）。
-    val dialogOffsetX = rememberListPaneWidth() / 2
-    CompositionLocalProvider(LocalDialogHorizontalOffset provides dialogOffsetX) {
-        Box(modifier) {
-            when (val route = backStack.lastOrNull()) {
-                null, Route.Main -> DetailPaneEmptyHint()
-                Route.ItemList -> ItemListScreen()
-                Route.RecipeList -> RecipeListScreen()
-                Route.NpcList -> NpcListScreen()
-                is Route.NpcSchedule -> NpcScheduleScreen(npcId = route.npcId)
-                Route.About -> AboutScreen()
-                Route.License -> LicenseScreen()
-                Route.ImageScaleSettings -> ImageScaleSettingsScreen()
-            }
+    // 不需要为弹窗做任何"以右栏为基准居中"的处理：子页自带 AppSubPageScaffold（miuix Scaffold），
+    // 而 OverlayDialog 默认 renderInRootScaffold = true ⇒ 弹窗与遮罩会渲染进这个 Scaffold，
+    // 天然以右栏为基准居中、遮罩也只盖右栏。实测卡片中心 x=1518px = 右栏中心，左栏亮度不变。
+    Box(modifier) {
+        when (val route = backStack.lastOrNull()) {
+            null, Route.Main -> DetailPaneEmptyHint()
+            Route.ItemList -> ItemListScreen()
+            Route.RecipeList -> RecipeListScreen()
+            Route.NpcList -> NpcListScreen()
+            is Route.NpcSchedule -> NpcScheduleScreen(npcId = route.npcId)
+            Route.About -> AboutScreen()
+            Route.License -> LicenseScreen()
+            Route.ImageScaleSettings -> ImageScaleSettingsScreen()
         }
     }
 }

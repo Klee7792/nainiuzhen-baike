@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.nainiuzhen.wiki.ui.adaptive.LocalDialogHorizontalOffset
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 /**
@@ -46,10 +44,14 @@ fun BasicDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(maxHeight)
-    // 大屏「主页-子页分栏」下：右栏会 provide 非 0 偏移，把弹窗卡片居中到右栏中线；
-    // 手机单栏时该值为 0.dp，等同原行为。注意 offset 只作用于卡片，遮罩仍盖满窗口
-    // （miuix 把遮罩与卡片分成两个节点，见 DialogContentLayout.kt:218-227 与 :243）。
-    val dialogOffsetX = LocalDialogHorizontalOffset.current
+
+    // ⚠️ 大屏「主页-子页分栏」下**不要**给本弹窗加任何水平偏移。
+    // miuix 的 `OverlayDialog` 默认 `renderInRootScaffold = true`，会把弹窗（含遮罩）渲染进
+    // **最近的 miuix `Scaffold`**。分栏时子页跑在右栏、自带 `AppSubPageScaffold`，
+    // 于是弹窗天然「以右栏为基准左右居中、遮罩只盖右栏」，无需任何额外代码。
+    // 实测（模拟器横屏 1105×726dp，右栏 770..2266px）：卡片中心 x=1518px，恰等于右栏中心；
+    // 左栏背景亮度 247 不变，右栏被压到 172~178 ⇒ 遮罩确实只在右栏。
+    // 曾经加过 offset 想"手动居中"，结果把卡片推向右栏右侧、超出屏幕。
 
     // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。
     // 显式传 largeScreen = false，使横屏与竖屏观感一致（均贴底）。
@@ -57,7 +59,6 @@ fun BasicDetailDialog(
         show = show,
         onDismissRequest = onDismissRequest,
         largeScreen = false,
-        modifier = Modifier.offset(x = dialogOffsetX),
     ) {
         Column(
             modifier = modifier

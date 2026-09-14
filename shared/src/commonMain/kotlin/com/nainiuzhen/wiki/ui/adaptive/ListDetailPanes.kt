@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -61,19 +60,6 @@ fun rememberUseDualPane(): Boolean {
  * @param list 左栏内容（列表）；入参为分配给它自身的修饰符（`fillMaxSize`）。
  * @param detail 右栏内容（详情）；入参同上。
  */
-/**
- * 大屏「主页-子页分栏」下，弹窗卡片需要水平偏移的量。
- *
- * 右栏会 provide 为「左栏宽 ÷ 2」，把 [top.yukonga.miuix.kmp.overlay.OverlayDialog] 卡片的
- * 视觉中心从「窗口中线」挪到「右栏中线」；手机单栏时保持 [0.dp]（等同原行为）。
- *
- * **为什么 offset 只挪卡片、不挪遮罩**：miuix `DialogContentLayout.kt` 里遮罩是
- * `:218-227` 独立的 `fillMaxSize` Box，而传进来的 `modifier` 只挂在 `:243` 的
- * `contentModifier`（即卡片本体）上。所以 `OverlayDialog(modifier = Modifier.offset(x = …))`
- * 恰好是「卡片居中到右栏、遮罩仍盖满窗口」——正是分栏下想要的观感。
- */
-val LocalDialogHorizontalOffset = compositionLocalOf { 0.dp }
-
 /**
  * 左（列表）栏宽度：窗口宽 × 0.34，夹紧到 [300.dp, 380.dp]。
  * 顶栏限宽与双栏分栏共用本函数，保证两者算出的宽度严格一致。
