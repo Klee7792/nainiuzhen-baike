@@ -1,10 +1,6 @@
 package com.nainiuzhen.wiki.ui.recipe
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -13,11 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,26 +22,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import com.nainiuzhen.wiki.data.model.RecipeInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.CardImageBox
+import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
+import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
+import com.nainiuzhen.wiki.utils.CardSection
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -164,24 +158,19 @@ fun RecipeListScreen() {
     }
 }
 
-/** 单个配方方块：图标区（浅灰底 surfaceContainer、仅上方圆角、正方形严格 4× 原图、xy 居中）+ 下半名称区（透明、蓝色满宽胶囊，文字超宽在胶囊内滚动）。整体为 v20 风格方形卡片，按压水波纹为方形。 */
+/** 单个配方方块：素材区（[CardImageBox]）+ 名称区（[CardNameCapsule]）。背景 / 圆角 / 胶囊 / 按下阴影随「卡片外观设置」求值；素材仍严格 4× 原图、xy 居中。 */
 @Composable
 private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .then(rememberCardPressModifier(CardSection.Recipe, onClick)),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 图标区：浅灰底（surfaceContainer，略灰于页面白底）+ 仅上方圆角；图片裁到同一圆角（恢复 #21 灰底，#26 误删）。
-        val topShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .background(color = MiuixTheme.colorScheme.surfaceContainer, shape = topShape)
-                .clip(topShape),
-            contentAlignment = Alignment.Center,
+        // 图标区：素材容器（背景色 / 圆角随「卡片外观设置」求值）。
+        CardImageBox(
+            section = CardSection.Recipe,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         ) {
             SpriteImage(
                 frameKey = recipe.iconFrameKey,
@@ -191,32 +180,11 @@ private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
                 scaleContext = SpriteScaleContext.Card,
             )
         }
-        // 名称区：透明（跟随内容区灰底）、无圆角；胶囊宽度=卡片宽（固定），文字超宽在胶囊内部滚动。
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = MiuixTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(percent = 50),
-                )
-                .padding(top = 2.dp, start = 8.dp, end = 8.dp),
-        ) {
-            // 内层滚动视口：宽度=胶囊内宽，文字超宽只在这里滚动，胶囊本身不动。
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = recipe.name,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    softWrap = false,
-                    textAlign = TextAlign.Center,
-                    color = MiuixTheme.colorScheme.onPrimary,
-                )
-            }
-        }
+        // 名称区：可选蓝胶囊 + 单行文字（超宽在胶囊内横向滚动）。
+        CardNameCapsule(
+            section = CardSection.Recipe,
+            text = recipe.name,
+            fontSize = 11.sp,
+        )
     }
 }
