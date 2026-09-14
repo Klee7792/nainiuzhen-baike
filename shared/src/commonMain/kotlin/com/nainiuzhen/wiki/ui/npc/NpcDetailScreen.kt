@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.repository.DataRepository
+import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
+import com.nainiuzhen.wiki.ui.components.DetailPaneScaffold
 import com.nainiuzhen.wiki.ui.components.ItemCardRow
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -66,7 +68,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
     var nestedItem by remember { mutableStateOf<ItemInfo?>(null) }
-    val navigator = LocalNavigator.current
 
     NpcDetailDialog(
         show = npc != null,
@@ -74,25 +75,7 @@ fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
         header = { npc?.let { NpcDetailHeader(npc = it) } },
         buttons = {
             if (npc != null) {
-                // 两个按钮各 weight(1f)，由 Row 均分剩余空间，保证日程/关闭严格等宽
-                // （weight 是 RowScope 成员扩展，在此 lambda 内无需 import androidx.compose.foundation.layout.weight）。
-                TextButton(
-                    text = "日程",
-                    enabled = npc.maxStar > 0,
-                    onClick = {
-                        if (npc.maxStar > 0) {
-                            navigator.push(Route.NpcSchedule(npc.id))
-                            onDismissRequest()
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    text = "关闭",
-                    onClick = onDismissRequest,
-                    modifier = Modifier.weight(1f),
-                )
+                NpcDetailButtons(npc = npc, onClose = onDismissRequest)
             }
         },
     ) {
@@ -101,6 +84,73 @@ fun NpcDetailScreen(npc: NpcInfo?, onDismissRequest: () -> Unit) {
 
     // 最爱 / 喜欢 / 讨厌卡片穿透出的物品详情（叠加在 NPC 对话框之上）
     ItemDetailScreen(item = nestedItem, onDismissRequest = { nestedItem = null })
+}
+
+/**
+ * 右栏「NPC 详情」面板（大屏双栏：左侧列表 + 右侧详情）。
+ *
+ * 未选中（`npc == null`）时显示 [DetailPaneEmptyHint]；否则用 [DetailPaneScaffold] 承载
+ * 固定顶栏（[NpcDetailHeader]）+ 可滚动正文（[NpcDetailBody]）+「日程 / 关闭」按钮行。
+ * 结尾保留偏好卡片穿透出的物品详情弹窗（叠加在右栏面板之上）。
+ *
+ * @param npc 当前选中的 NPC；为 null 时右栏显示空态。
+ * @param onClose 关闭 / 清空选中回调。
+ * @param modifier 外层修饰。
+ */
+@Composable
+fun NpcDetailPane(
+    npc: NpcInfo?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var nestedItem by remember { mutableStateOf<ItemInfo?>(null) }
+    if (npc == null) {
+        DetailPaneEmptyHint(modifier = modifier)
+    } else {
+        DetailPaneScaffold(
+            modifier = modifier,
+            header = { NpcDetailHeader(npc = npc) },
+            buttons = { NpcDetailButtons(npc = npc, onClose = onClose) },
+        ) {
+            NpcDetailBody(npc = npc, onItemClick = { nestedItem = it })
+        }
+    }
+
+    // 最爱 / 喜欢 / 讨厌卡片穿透出的物品详情（叠加在右栏面板之上）
+    ItemDetailScreen(item = nestedItem, onDismissRequest = { nestedItem = null })
+}
+
+/**
+ * NPC 详情的按钮行：「日程」+「关闭」两个按钮各 `weight(1f)`，由 Row 均分剩余空间、严格等宽。
+ * 弹窗版（[NpcDetailScreen]）与双栏 pane 版（[NpcDetailPane]）共用，避免两处定义漂移。
+ *
+ * 「日程」`enabled = npc.maxStar > 0`，点击后先 push 日程路由再 [onClose]；逻辑与改造前一致。
+ *
+ * @param npc 当前 NPC。
+ * @param onClose 关闭 / 清空选中回调。
+ */
+@Composable
+private fun RowScope.NpcDetailButtons(npc: NpcInfo, onClose: () -> Unit) {
+    val navigator = LocalNavigator.current
+    // 两个按钮各 weight(1f)，由 Row 均分剩余空间，保证日程/关闭严格等宽
+    // （weight 是 RowScope 成员扩展，在此 lambda 内无需 import androidx.compose.foundation.layout.weight）。
+    TextButton(
+        text = "日程",
+        enabled = npc.maxStar > 0,
+        onClick = {
+            if (npc.maxStar > 0) {
+                navigator.push(Route.NpcSchedule(npc.id))
+                onClose()
+            }
+        },
+        colors = ButtonDefaults.textButtonColorsPrimary(),
+        modifier = Modifier.weight(1f),
+    )
+    TextButton(
+        text = "关闭",
+        onClick = onClose,
+        modifier = Modifier.weight(1f),
+    )
 }
 
 /**

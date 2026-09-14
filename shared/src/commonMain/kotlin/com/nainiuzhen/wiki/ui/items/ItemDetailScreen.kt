@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.StarPricePolicy
 import com.nainiuzhen.wiki.data.StarTier
 import com.nainiuzhen.wiki.data.model.ItemInfo
+import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
 import com.nainiuzhen.wiki.ui.components.BasicDetailDialog
+import com.nainiuzhen.wiki.ui.components.DetailPaneScaffold
 import com.nainiuzhen.wiki.ui.components.RichText
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
@@ -61,16 +63,53 @@ fun ItemDetailScreen(item: ItemInfo?, onDismissRequest: () -> Unit) {
     BasicDetailDialog(
         show = item != null,
         onDismissRequest = onDismissRequest,
-        buttons = {
-            TextButton(
-                text = "关闭",
-                onClick = onDismissRequest,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
+        buttons = { ItemCloseButton(onClose = onDismissRequest) },
     ) {
         item?.let { ItemDetailBody(item = it) }
     }
+}
+
+/**
+ * 右栏「物品详情」面板（大屏双栏：左侧列表 + 右侧详情）。
+ *
+ * 未选中（`item == null`）时显示 [DetailPaneEmptyHint]；否则用 [DetailPaneScaffold] 承载
+ * 与弹窗版一致的正文（复用同文件 [ItemDetailBody]）与「关闭」按钮。
+ *
+ * @param item 当前选中的物品；为 null 时右栏显示空态。
+ * @param onClose 关闭 / 清空选中回调。
+ * @param modifier 外层修饰。
+ */
+@Composable
+fun ItemDetailPane(
+    item: ItemInfo?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (item == null) {
+        DetailPaneEmptyHint(modifier = modifier)
+    } else {
+        DetailPaneScaffold(
+            modifier = modifier,
+            buttons = { ItemCloseButton(onClose = onClose) },
+        ) {
+            ItemDetailBody(item = item)
+        }
+    }
+}
+
+/**
+ * 物品详情的「关闭」按钮：满宽。
+ * 弹窗版（[ItemDetailScreen]）与双栏 pane 版（[ItemDetailPane]）共用，避免两处定义漂移。
+ *
+ * @param onClose 关闭回调。
+ */
+@Composable
+private fun ItemCloseButton(onClose: () -> Unit) {
+    TextButton(
+        text = "关闭",
+        onClick = onClose,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

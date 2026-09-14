@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
+import com.nainiuzhen.wiki.ui.adaptive.DualPaneBackHandler
+import com.nainiuzhen.wiki.ui.adaptive.ListDetailPanes
+import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
@@ -118,34 +121,61 @@ fun NpcListScreen() {
             )
         },
     ) { innerPadding ->
-        AdaptiveIconGrid(
-            hPadding = 12.dp,
-            spacing = 12.dp,
-            minCard = 104.dp,
-        ) { columns ->
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                state = rememberLazyGridState(),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
-                contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = 12.dp,
-                    start = 12.dp,
-                    end = 12.dp,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(filtered, key = { it.id }) { npc ->
-                    NpcGridCell(npc = npc, onClick = { selected = npc })
+        val useDualPane = rememberUseDualPane()
+
+        val gridContent: @Composable (Modifier) -> Unit = { gridModifier ->
+            AdaptiveIconGrid(
+                hPadding = 12.dp,
+                spacing = 12.dp,
+                minCard = 104.dp,
+                modifier = gridModifier,
+            ) { columns ->
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    state = rememberLazyGridState(),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .then(if (appState.scrollEndHaptic) Modifier.scrollEndHaptic() else Modifier),
+                    contentPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = 12.dp,
+                        start = 12.dp,
+                        end = 12.dp,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(filtered, key = { it.id }) { npc ->
+                        NpcGridCell(npc = npc, onClick = { selected = npc })
+                    }
                 }
             }
         }
-        NpcDetailScreen(npc = selected, onDismissRequest = { selected = null })
+
+        if (useDualPane) {
+            // 双栏：右栏有选中项时，返回键清空右栏而不是退出列表页。
+            DualPaneBackHandler(enabled = selected != null) { selected = null }
+            ListDetailPanes(
+                list = { m -> gridContent(m) },
+                detail = { m ->
+                    NpcDetailPane(
+                        npc = selected,
+                        onClose = { selected = null },
+                        // 右栏必须自行让出顶栏高度：Scaffold 的 content 是覆盖全屏的 Box，
+                        // 左栏靠 LazyVerticalGrid 的 contentPadding(top) 让位，右栏没有等价机制，
+                        // 不补这一句则右栏首屏内容被（半透明模糊的）大标题顶栏压住。
+                        modifier = m.padding(top = innerPadding.calculateTopPadding()),
+                    )
+                },
+            )
+        } else {
+            // 单栏：与改造前行为完全一致（网格铺满 + 详情弹窗）。
+            gridContent(Modifier.fillMaxSize())
+            NpcDetailScreen(npc = selected, onDismissRequest = { selected = null })
+        }
+
         FilterChipDialog(
             show = showFilter,
             onDismissRequest = { showFilter = false },

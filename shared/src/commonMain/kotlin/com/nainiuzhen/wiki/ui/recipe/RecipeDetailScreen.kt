@@ -23,7 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.RecipeInfo
+import com.nainiuzhen.wiki.ui.adaptive.DetailPaneEmptyHint
 import com.nainiuzhen.wiki.ui.components.BasicDetailDialog
+import com.nainiuzhen.wiki.ui.components.DetailPaneScaffold
 import com.nainiuzhen.wiki.ui.components.FadeEdges
 import com.nainiuzhen.wiki.ui.components.ItemMiniCard
 import com.nainiuzhen.wiki.ui.components.RichText
@@ -68,18 +70,59 @@ fun RecipeDetailScreen(recipe: RecipeInfo?, onDismissRequest: () -> Unit) {
     BasicDetailDialog(
         show = recipe != null,
         onDismissRequest = onDismissRequest,
-        buttons = {
-        TextButton(
-            text = "关闭",
-            onClick = onDismissRequest,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        },
+        buttons = { RecipeCloseButton(onClose = onDismissRequest) },
     ) {
         recipe?.let { RecipeDetailBody(recipe = it, onItemClick = { nestedItem = it }) }
     }
     // 原料 / 产物卡片穿透出的物品详情（叠加在配方对话框之上）
     ItemDetailScreen(item = nestedItem, onDismissRequest = { nestedItem = null })
+}
+
+/**
+ * 右栏「配方详情」面板（大屏双栏：左侧列表 + 右侧详情）。
+ *
+ * 未选中（`recipe == null`）时显示 [DetailPaneEmptyHint]；否则用 [DetailPaneScaffold] 承载
+ * 与弹窗版一致的正文（复用同文件 [RecipeDetailBody]）与「关闭」按钮。
+ * 结尾保留原料 / 产物穿透出的物品详情弹窗（叠加在右栏面板之上），行为与弹窗版一致。
+ *
+ * @param recipe 当前选中的配方；为 null 时右栏显示空态。
+ * @param onClose 关闭 / 清空选中回调。
+ * @param modifier 外层修饰。
+ */
+@Composable
+fun RecipeDetailPane(
+    recipe: RecipeInfo?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var nestedItem by remember { mutableStateOf<ItemInfo?>(null) }
+    if (recipe == null) {
+        DetailPaneEmptyHint(modifier = modifier)
+    } else {
+        DetailPaneScaffold(
+            modifier = modifier,
+            buttons = { RecipeCloseButton(onClose = onClose) },
+        ) {
+            RecipeDetailBody(recipe = recipe, onItemClick = { nestedItem = it })
+        }
+    }
+    // 原料 / 产物卡片穿透出的物品详情（叠加在右栏面板之上）
+    ItemDetailScreen(item = nestedItem, onDismissRequest = { nestedItem = null })
+}
+
+/**
+ * 配方详情的「关闭」按钮：满宽。
+ * 弹窗版（[RecipeDetailScreen]）与双栏 pane 版（[RecipeDetailPane]）共用，避免两处定义漂移。
+ *
+ * @param onClose 关闭回调。
+ */
+@Composable
+private fun RecipeCloseButton(onClose: () -> Unit) {
+    TextButton(
+        text = "关闭",
+        onClick = onClose,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
