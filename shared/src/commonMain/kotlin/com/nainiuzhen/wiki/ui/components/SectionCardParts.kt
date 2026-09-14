@@ -384,7 +384,7 @@ private const val MARQUEE_IDLE_TRIGGER_MS = 3_000L
 internal const val MARQUEE_PASS_PAUSE_MS = 2_000L
 
 /** 自动跑马灯：恒速滚动的速度（dp/s），适中速度。 */
-private const val MARQUEE_SPEED_DP_PER_SECOND = 35f
+private const val MARQUEE_SPEED_DP_PER_SECOND = 26f
 
 /** 自动跑马灯：每个触发窗口内滚动遍数（滚一遍 → 停 2 秒 → 再滚一遍）。 */
 private const val MARQUEE_PASS_COUNT = 2

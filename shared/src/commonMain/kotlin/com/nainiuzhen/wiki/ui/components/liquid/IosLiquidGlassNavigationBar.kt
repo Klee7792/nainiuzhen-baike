@@ -139,7 +139,7 @@ private const val GRAVITY_ANGLE_STEP_RAD = (3.0 * PI / 180.0).toFloat()
  * 单个底栏选项的宽度。底栏本体宽度 = 选项数 × 该值 + 左右各 4dp 内边距，
  * 随选项数变化、不再撑满宿主宽度（对齐 miuix 悬浮底栏 / KernelSU 的观感）。
  */
-private val IOS_TAB_WIDTH = 64.dp
+private val IOS_TAB_WIDTH = 76.dp
 
 /**
  * In-screen-plane gravity direction angle (radians, quantized to 3° steps).
@@ -238,6 +238,25 @@ fun IosLiquidGlassNavigationBar(
         }
     }
 
+    // 选项之间的水平内边距（与下方 Row 的 .padding(4.dp) 保持一致）：
+    // 选中指示器的左缘应对齐到「4dp + index × 单选项宽」，否则指示器会整体左偏一截。
+    val startPadPx = with(density) { 4.dp.toPx() }
+
+    // 选中指示器水平位移：基础 = 4dp 起始内边距 + 进度 × 单选项宽；
+    // 用 coerceIn 夹在 [首选项左缘, 末选项左缘] 之间，拖动/橡皮筋越界时指示器永不跑出底栏
+    //（修复「选中项目超出底栏」）。RTL 保持原公式不动，避免引入未经验证的镜像偏差。
+    fun pillTranslationX(value: Float, offset: Float): Float {
+        val progressOffset = value * tabWidthPx
+        return if (isLtr) {
+            (startPadPx + progressOffset + offset).coerceIn(
+                startPadPx,
+                startPadPx + (tabsCount - 1) * tabWidthPx,
+            )
+        } else {
+            -progressOffset + offset
+        }
+    }
+
     var currentIndex by remember { mutableIntStateOf(selectedIndex) }
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
 
@@ -317,9 +336,9 @@ fun IosLiquidGlassNavigationBar(
             position = { layerSize, _ ->
                 Offset(
                     x = if (isLtr) {
-                        (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
+                        startPadPx + (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
                     } else {
-                        layerSize.width - (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
+                        layerSize.width - startPadPx - (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
                     },
                     y = layerSize.height / 2f,
                 )
@@ -405,7 +424,7 @@ fun IosLiquidGlassNavigationBar(
     ) {
         Box(
             modifier = Modifier
-                .padding(bottom = bottomPaddingValue, start = 24.dp, end = 24.dp),
+                .padding(bottom = bottomPaddingValue, start = 28.dp, end = 28.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
             CompositionLocalProvider(LocalContentColor provides tabContentColor) {
@@ -510,15 +529,12 @@ fun IosLiquidGlassNavigationBar(
             if (tabWidthPx > 0f) {
                 val tabWidthDp = with(density) { tabWidthPx.toDp() }
                 if (isBlurActive && combinedBackdrop != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .graphicsLayer {
-                                val singleTabWidth = tabWidthPx
-                                val progressOffset = dampedDrag.value * singleTabWidth
-                                translationX = if (isLtr) progressOffset + panelOffset else -progressOffset + panelOffset
-                            }
-                            .drawBackdrop(
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = pillTranslationX(dampedDrag.value, panelOffset)
+                        }
+                        .drawBackdrop(
                                 backdrop = combinedBackdrop,
                                 shape = { pillShape },
                                 effects = {
@@ -558,14 +574,12 @@ fun IosLiquidGlassNavigationBar(
                             .width(tabWidthDp),
                     )
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .graphicsLayer {
-                                val progressOffset = dampedDrag.value * tabWidthPx
-                                translationX = if (isLtr) progressOffset + panelOffset else -progressOffset + panelOffset
-                            }
-                            .clip(pillShape)
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = pillTranslationX(dampedDrag.value, panelOffset)
+                        }
+                        .clip(pillShape)
                             .background(accentColor.copy(alpha = 0.15f), pillShape)
                             .height(56.dp)
                             .width(tabWidthDp),
