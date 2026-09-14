@@ -46,6 +46,38 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         dialogFavHateImageScale = prefs.getScaleFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
         scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
         allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, false),
+        // —— v31 卡片外观设置（三组「总开关 + n 板块 + 同步」+ 四角 + 按下阴影同步）—— //
+        cardBgMaster = prefs.getBoolean(KEY_CARD_BG_MASTER, false),
+        cardBgSync = prefs.getBoolean(KEY_CARD_BG_SYNC, true),
+        cardBgItem = prefs.getBoolean(KEY_CARD_BG_ITEM, false),
+        cardBgRecipe = prefs.getBoolean(KEY_CARD_BG_RECIPE, false),
+        cardBgNpc = prefs.getBoolean(KEY_CARD_BG_NPC, false),
+        cardCornerMaster = prefs.getBoolean(KEY_CARD_CORNER_MASTER, false),
+        cardCornerSync = prefs.getBoolean(KEY_CARD_CORNER_SYNC, true),
+        cardCornerItem = prefs.getBoolean(KEY_CARD_CORNER_ITEM, false),
+        cardCornerRecipe = prefs.getBoolean(KEY_CARD_CORNER_RECIPE, false),
+        cardCornerNpc = prefs.getBoolean(KEY_CARD_CORNER_NPC, false),
+        cardCornerItemTL = prefs.getBoolean(KEY_CARD_CORNER_ITEM_TL, false),
+        cardCornerItemTR = prefs.getBoolean(KEY_CARD_CORNER_ITEM_TR, false),
+        cardCornerItemBL = prefs.getBoolean(KEY_CARD_CORNER_ITEM_BL, false),
+        cardCornerItemBR = prefs.getBoolean(KEY_CARD_CORNER_ITEM_BR, false),
+        cardCornerItemSync4 = prefs.getBoolean(KEY_CARD_CORNER_ITEM_SYNC4, true),
+        cardCornerRecipeTL = prefs.getBoolean(KEY_CARD_CORNER_RECIPE_TL, false),
+        cardCornerRecipeTR = prefs.getBoolean(KEY_CARD_CORNER_RECIPE_TR, false),
+        cardCornerRecipeBL = prefs.getBoolean(KEY_CARD_CORNER_RECIPE_BL, false),
+        cardCornerRecipeBR = prefs.getBoolean(KEY_CARD_CORNER_RECIPE_BR, false),
+        cardCornerRecipeSync4 = prefs.getBoolean(KEY_CARD_CORNER_RECIPE_SYNC4, true),
+        cardCornerNpcTL = prefs.getBoolean(KEY_CARD_CORNER_NPC_TL, false),
+        cardCornerNpcTR = prefs.getBoolean(KEY_CARD_CORNER_NPC_TR, false),
+        cardCornerNpcBL = prefs.getBoolean(KEY_CARD_CORNER_NPC_BL, false),
+        cardCornerNpcBR = prefs.getBoolean(KEY_CARD_CORNER_NPC_BR, false),
+        cardCornerNpcSync4 = prefs.getBoolean(KEY_CARD_CORNER_NPC_SYNC4, true),
+        cardPressShadowSync = prefs.getBoolean(KEY_CARD_PRESS_SHADOW_SYNC, true),
+        cardCapsuleMaster = prefs.getBoolean(KEY_CARD_CAPSULE_MASTER, false),
+        cardCapsuleSync = prefs.getBoolean(KEY_CARD_CAPSULE_SYNC, true),
+        cardCapsuleItem = prefs.getBoolean(KEY_CARD_CAPSULE_ITEM, false),
+        cardCapsuleRecipe = prefs.getBoolean(KEY_CARD_CAPSULE_RECIPE, false),
+        cardCapsuleNpc = prefs.getBoolean(KEY_CARD_CAPSULE_NPC, false),
     )
 
     override fun save(state: AppState) {
@@ -80,6 +112,38 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, state.dialogFavHateImageScale)
             putFloat(KEY_SCALE_STEP, state.scaleStep)
             putBoolean(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
+            // —— v31 卡片外观设置 —— //
+            putBoolean(KEY_CARD_BG_MASTER, state.cardBgMaster)
+            putBoolean(KEY_CARD_BG_SYNC, state.cardBgSync)
+            putBoolean(KEY_CARD_BG_ITEM, state.cardBgItem)
+            putBoolean(KEY_CARD_BG_RECIPE, state.cardBgRecipe)
+            putBoolean(KEY_CARD_BG_NPC, state.cardBgNpc)
+            putBoolean(KEY_CARD_CORNER_MASTER, state.cardCornerMaster)
+            putBoolean(KEY_CARD_CORNER_SYNC, state.cardCornerSync)
+            putBoolean(KEY_CARD_CORNER_ITEM, state.cardCornerItem)
+            putBoolean(KEY_CARD_CORNER_RECIPE, state.cardCornerRecipe)
+            putBoolean(KEY_CARD_CORNER_NPC, state.cardCornerNpc)
+            putBoolean(KEY_CARD_CORNER_ITEM_TL, state.cardCornerItemTL)
+            putBoolean(KEY_CARD_CORNER_ITEM_TR, state.cardCornerItemTR)
+            putBoolean(KEY_CARD_CORNER_ITEM_BL, state.cardCornerItemBL)
+            putBoolean(KEY_CARD_CORNER_ITEM_BR, state.cardCornerItemBR)
+            putBoolean(KEY_CARD_CORNER_ITEM_SYNC4, state.cardCornerItemSync4)
+            putBoolean(KEY_CARD_CORNER_RECIPE_TL, state.cardCornerRecipeTL)
+            putBoolean(KEY_CARD_CORNER_RECIPE_TR, state.cardCornerRecipeTR)
+            putBoolean(KEY_CARD_CORNER_RECIPE_BL, state.cardCornerRecipeBL)
+            putBoolean(KEY_CARD_CORNER_RECIPE_BR, state.cardCornerRecipeBR)
+            putBoolean(KEY_CARD_CORNER_RECIPE_SYNC4, state.cardCornerRecipeSync4)
+            putBoolean(KEY_CARD_CORNER_NPC_TL, state.cardCornerNpcTL)
+            putBoolean(KEY_CARD_CORNER_NPC_TR, state.cardCornerNpcTR)
+            putBoolean(KEY_CARD_CORNER_NPC_BL, state.cardCornerNpcBL)
+            putBoolean(KEY_CARD_CORNER_NPC_BR, state.cardCornerNpcBR)
+            putBoolean(KEY_CARD_CORNER_NPC_SYNC4, state.cardCornerNpcSync4)
+            putBoolean(KEY_CARD_PRESS_SHADOW_SYNC, state.cardPressShadowSync)
+            putBoolean(KEY_CARD_CAPSULE_MASTER, state.cardCapsuleMaster)
+            putBoolean(KEY_CARD_CAPSULE_SYNC, state.cardCapsuleSync)
+            putBoolean(KEY_CARD_CAPSULE_ITEM, state.cardCapsuleItem)
+            putBoolean(KEY_CARD_CAPSULE_RECIPE, state.cardCapsuleRecipe)
+            putBoolean(KEY_CARD_CAPSULE_NPC, state.cardCapsuleNpc)
             apply()
         }
     }
@@ -115,6 +179,38 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_DIALOG_FAV_HATE_IMAGE_SCALE = "dialogFavHateImageScale"
         const val KEY_SCALE_STEP = "scaleStep"
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
+        // —— v31 卡片外观设置 —— //
+        const val KEY_CARD_BG_MASTER = "cardBgMaster"
+        const val KEY_CARD_BG_SYNC = "cardBgSync"
+        const val KEY_CARD_BG_ITEM = "cardBgItem"
+        const val KEY_CARD_BG_RECIPE = "cardBgRecipe"
+        const val KEY_CARD_BG_NPC = "cardBgNpc"
+        const val KEY_CARD_CORNER_MASTER = "cardCornerMaster"
+        const val KEY_CARD_CORNER_SYNC = "cardCornerSync"
+        const val KEY_CARD_CORNER_ITEM = "cardCornerItem"
+        const val KEY_CARD_CORNER_RECIPE = "cardCornerRecipe"
+        const val KEY_CARD_CORNER_NPC = "cardCornerNpc"
+        const val KEY_CARD_CORNER_ITEM_TL = "cardCornerItemTL"
+        const val KEY_CARD_CORNER_ITEM_TR = "cardCornerItemTR"
+        const val KEY_CARD_CORNER_ITEM_BL = "cardCornerItemBL"
+        const val KEY_CARD_CORNER_ITEM_BR = "cardCornerItemBR"
+        const val KEY_CARD_CORNER_ITEM_SYNC4 = "cardCornerItemSync4"
+        const val KEY_CARD_CORNER_RECIPE_TL = "cardCornerRecipeTL"
+        const val KEY_CARD_CORNER_RECIPE_TR = "cardCornerRecipeTR"
+        const val KEY_CARD_CORNER_RECIPE_BL = "cardCornerRecipeBL"
+        const val KEY_CARD_CORNER_RECIPE_BR = "cardCornerRecipeBR"
+        const val KEY_CARD_CORNER_RECIPE_SYNC4 = "cardCornerRecipeSync4"
+        const val KEY_CARD_CORNER_NPC_TL = "cardCornerNpcTL"
+        const val KEY_CARD_CORNER_NPC_TR = "cardCornerNpcTR"
+        const val KEY_CARD_CORNER_NPC_BL = "cardCornerNpcBL"
+        const val KEY_CARD_CORNER_NPC_BR = "cardCornerNpcBR"
+        const val KEY_CARD_CORNER_NPC_SYNC4 = "cardCornerNpcSync4"
+        const val KEY_CARD_PRESS_SHADOW_SYNC = "cardPressShadowSync"
+        const val KEY_CARD_CAPSULE_MASTER = "cardCapsuleMaster"
+        const val KEY_CARD_CAPSULE_SYNC = "cardCapsuleSync"
+        const val KEY_CARD_CAPSULE_ITEM = "cardCapsuleItem"
+        const val KEY_CARD_CAPSULE_RECIPE = "cardCapsuleRecipe"
+        const val KEY_CARD_CAPSULE_NPC = "cardCapsuleNpc"
     }
 }
 

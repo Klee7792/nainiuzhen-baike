@@ -52,6 +52,48 @@ data class AppState(
     // —— v8 新增：手机横屏开关（大屏适配 §8.3）—— //
     // 默认 false = 锁竖屏；true = 允许自由旋转。仅在手机（<sw600dp）生效，大屏由系统忽略方向请求。
     val allowPhoneLandscape: Boolean = false,
+    // —— v9 新增：卡片外观设置（v31，设置子页 CardSettingsScreen）—— //
+    // 三组「总开关 + n 板块 + 同步」，求值口径见 utils/CardAppearance.kt：
+    //     effective = 总开关 && (同步 || 板块自己的值)
+    // 三组总开关**默认全关** ? 默认态 = 无底色 / 直角 / 无胶囊。
+    // 同步开关默认全开（但总开关关时跟随隐藏，不显示）。
+    //
+    // 卡片背景
+    val cardBgMaster: Boolean = false,
+    val cardBgSync: Boolean = true,
+    val cardBgItem: Boolean = false,
+    val cardBgRecipe: Boolean = false,
+    val cardBgNpc: Boolean = false,
+    // 卡片圆角（板块之下还有「四角 + 四角同步」一层）
+    val cardCornerMaster: Boolean = false,
+    val cardCornerSync: Boolean = true,
+    val cardCornerItem: Boolean = false,
+    val cardCornerRecipe: Boolean = false,
+    val cardCornerNpc: Boolean = false,
+    val cardCornerItemTL: Boolean = false,
+    val cardCornerItemTR: Boolean = false,
+    val cardCornerItemBL: Boolean = false,
+    val cardCornerItemBR: Boolean = false,
+    val cardCornerItemSync4: Boolean = true,
+    val cardCornerRecipeTL: Boolean = false,
+    val cardCornerRecipeTR: Boolean = false,
+    val cardCornerRecipeBL: Boolean = false,
+    val cardCornerRecipeBR: Boolean = false,
+    val cardCornerRecipeSync4: Boolean = true,
+    val cardCornerNpcTL: Boolean = false,
+    val cardCornerNpcTR: Boolean = false,
+    val cardCornerNpcBL: Boolean = false,
+    val cardCornerNpcBR: Boolean = false,
+    val cardCornerNpcSync4: Boolean = true,
+    // 按下阴影的圆角是否跟卡片圆角同步（默认开）。关 ? 按下阴影一律直角。
+    // 与「同步」同级，排在圆角组最后一行的下一行。
+    val cardPressShadowSync: Boolean = true,
+    // 文字胶囊（名称那行的蓝底）
+    val cardCapsuleMaster: Boolean = false,
+    val cardCapsuleSync: Boolean = true,
+    val cardCapsuleItem: Boolean = false,
+    val cardCapsuleRecipe: Boolean = false,
+    val cardCapsuleNpc: Boolean = false,
 )
 
 /** 运行时应用版本信息：由 Android 端经 [BuildConfig.VERSION_NAME] / [BuildConfig.VERSION_CODE] 注入，
