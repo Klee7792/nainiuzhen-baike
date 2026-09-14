@@ -43,10 +43,16 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  *
  * v6 变更（变更点 #34）：
  * - 三板块图标全部随机取一张，且「只要离开主页（子页 / 设置页 / 后台），回来都会重新随机刷新」。
- *   通过 `seed` 计数器 + 两个触发源实现：① 返回栈顶变回 [Route.Main]（从子页返回）；
- *   ② Activity ON_RESUME（从后台返回）。设置页以底栏 Tab 切换呈现，切换回主页时
- *   [HomeContent] 重新进入组合，`remember(seed)` 自然重新随机。
+ *   通过 `seed` 计数器 + 两个触发源实现：① 返回栈**栈顶发生变化**；② Activity ON_RESUME
+ *   （从后台返回）。设置页以底栏 Tab 切换呈现，切换回主页时 [HomeContent] 重新进入组合，
+ *   `remember(seed)` 自然重新随机。
  * - 三张卡片图标左对齐一致：物品 / 配方图示尺寸对齐 NPC 立绘（64.dp 等效），标题左对齐。
+ *
+ * v31 修正（分栏下的随机图）：大屏分栏时主页常驻左栏、始终可见，切板块走
+ * [com.nainiuzhen.wiki.ui.nav.Navigator.openTopLevel]（清栈到底再入栈），
+ * 栈顶从 `ItemList` 直接跳到 `RecipeList`、不经过 `Route.Main`；
+ * 旧逻辑只认 `Route.Main` 触发 reroll，导致分栏切板块时左栏随机图一直不变。
+ * 现改为「栈顶一变就 reroll」，与单栏的「返回即刷新」语义统一。
  */
 @Composable
 fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
@@ -72,12 +78,18 @@ fun HomeContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior) {
         derivedStateOf { homeListState.canScrollForward || homeListState.canScrollBackward }
     }
 
-    // 触发①：返回栈顶变回主页（从子页 / 关于返回）。NavBackStack 是 SnapshotStateList，
+    // 触发①：返回栈顶**发生变化**就重新随机。NavBackStack 是 SnapshotStateList，
     // 读取 lastOrNull() 使本组合订阅其变化。
+    //
+    // · 单栏（手机）：进子页 → 栈顶 ItemList（reroll，但主页已被盖住看不见）；
+    //   返回 → 栈顶回 Main → 再 reroll，用户看到的正是「回来换了新图」。
+    // · 分栏（大屏横屏）：主页**常驻左栏且始终可见**，点板块走 `openTopLevel`
+    //   （先清栈到底再入栈），栈顶从 `ItemList` 直接跳到 `RecipeList`，
+    //   **不会**经过 `Route.Main`。所以这里不能只认 `Route.Main`，
+    //   否则分栏下切板块时，左栏那三张随机图永远不刷新。
+    //   改成「栈顶一变就 reroll」后，两种布局的语义统一。
     val topRoute = navigator.backStack.lastOrNull()
-    LaunchedEffect(topRoute) {
-        if (topRoute is Route.Main) reroll()
-    }
+    LaunchedEffect(topRoute) { reroll() }
     // 触发②：从后台返回前台（ON_RESUME）重新随机。
     OnResumeEffect { reroll() }
 
