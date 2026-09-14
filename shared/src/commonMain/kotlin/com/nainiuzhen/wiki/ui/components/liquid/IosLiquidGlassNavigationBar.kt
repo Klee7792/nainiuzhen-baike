@@ -136,6 +136,12 @@ private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f // |g_xy| > 0.1, ≈ 6° tilt
 private const val GRAVITY_ANGLE_STEP_RAD = (3.0 * PI / 180.0).toFloat()
 
 /**
+ * 单个底栏选项的宽度。底栏本体宽度 = 选项数 × 该值 + 左右各 4dp 内边距，
+ * 随选项数变化、不再撑满宿主宽度（对齐 miuix 悬浮底栏 / KernelSU 的观感）。
+ */
+private val IOS_TAB_WIDTH = 64.dp
+
+/**
  * In-screen-plane gravity direction angle (radians, quantized to 3° steps).
  *
  * Returned as [State] so the read can be deferred to the draw phase: the sensor writes tilt
@@ -361,7 +367,9 @@ fun IosLiquidGlassNavigationBar(
                         }
                     }
                     .focusable()
-                    .weight(1f)
+                    // 固定宽（而非 weight）：让整条底栏按「选项数 × 单选项宽」收缩，
+                    // 与 miuix 悬浮底栏一致，不再撑满主页宽度（KernelSU 风格）。
+                    .width(IOS_TAB_WIDTH)
                     .fillMaxHeight()
                     .graphicsLayer {
                         val s = tabScale()
@@ -390,11 +398,14 @@ fun IosLiquidGlassNavigationBar(
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    // 外层仍占满宽度以便水平居中，底栏本体（下面的 Box）按内容宽度收缩。
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(
             modifier = Modifier
-                .padding(bottom = bottomPaddingValue, start = 24.dp, end = 24.dp)
-                .fillMaxWidth(),
+                .padding(bottom = bottomPaddingValue, start = 24.dp, end = 24.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
             CompositionLocalProvider(LocalContentColor provides tabContentColor) {

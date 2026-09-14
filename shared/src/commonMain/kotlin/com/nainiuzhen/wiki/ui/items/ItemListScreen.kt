@@ -208,7 +208,7 @@ private fun ItemGridCell(item: ItemInfo, onClick: () -> Unit) {
         CardNameCapsule(
             section = CardSection.Item,
             text = item.name,
-            fontSize = (11f * appState.itemCardTextScale).sp,
+            fontSize = appState.itemCardTextSizeSp.sp,
         )
     }
 }

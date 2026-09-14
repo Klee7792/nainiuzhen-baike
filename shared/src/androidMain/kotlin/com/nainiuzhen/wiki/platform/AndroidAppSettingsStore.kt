@@ -45,8 +45,8 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         dialogRecipeImageScale = prefs.getScaleFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, 6f),
         dialogFavHateImageScale = prefs.getScaleFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
         scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
-        itemCardTextScale = prefs.getScaleFloat(KEY_ITEM_CARD_TEXT_SCALE, 1f),
-        recipeCardTextScale = prefs.getScaleFloat(KEY_RECIPE_CARD_TEXT_SCALE, 1f),
+        itemCardTextSizeSp = prefs.getScaleFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, 8f),
+        recipeCardTextSizeSp = prefs.getScaleFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, 8f),
         allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, false),
         // —— v31 卡片外观设置（三组「总开关 + n 板块 + 同步」+ 四角 + 按下阴影同步）—— //
         cardBgMaster = prefs.getBoolean(KEY_CARD_BG_MASTER, false),
@@ -113,8 +113,8 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putFloat(KEY_DIALOG_RECIPE_IMAGE_SCALE, state.dialogRecipeImageScale)
             putFloat(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, state.dialogFavHateImageScale)
             putFloat(KEY_SCALE_STEP, state.scaleStep)
-            putFloat(KEY_ITEM_CARD_TEXT_SCALE, state.itemCardTextScale)
-            putFloat(KEY_RECIPE_CARD_TEXT_SCALE, state.recipeCardTextScale)
+            putFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, state.itemCardTextSizeSp)
+            putFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, state.recipeCardTextSizeSp)
             putBoolean(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
             // —— v31 卡片外观设置 —— //
             putBoolean(KEY_CARD_BG_MASTER, state.cardBgMaster)
@@ -182,8 +182,8 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_DIALOG_RECIPE_IMAGE_SCALE = "dialogRecipeImageScale"
         const val KEY_DIALOG_FAV_HATE_IMAGE_SCALE = "dialogFavHateImageScale"
         const val KEY_SCALE_STEP = "scaleStep"
-        const val KEY_ITEM_CARD_TEXT_SCALE = "itemCardTextScale"
-        const val KEY_RECIPE_CARD_TEXT_SCALE = "recipeCardTextScale"
+        const val KEY_ITEM_CARD_TEXT_SIZE_SP = "itemCardTextSizeSp"
+        const val KEY_RECIPE_CARD_TEXT_SIZE_SP = "recipeCardTextSizeSp"
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"

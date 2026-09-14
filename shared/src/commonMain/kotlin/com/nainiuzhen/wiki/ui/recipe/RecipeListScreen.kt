@@ -186,7 +186,7 @@ private fun RecipeGridCell(recipe: RecipeInfo, onClick: () -> Unit) {
         CardNameCapsule(
             section = CardSection.Recipe,
             text = recipe.name,
-            fontSize = (11f * appState.recipeCardTextScale).sp,
+            fontSize = appState.recipeCardTextSizeSp.sp,
         )
     }
 }

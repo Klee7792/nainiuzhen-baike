@@ -4,32 +4,32 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
- * È«¾ÖÓ¦ÓÃÉèÖÃ×´Ì¬¡£ÓÉ [com.nainiuzhen.wiki.App] ³ÖÓĞ²¢Í¨¹ı CompositionLocal ÏÂ·¢£»
- * ÉèÖÃÒ³£¨[com.nainiuzhen.wiki.ui.settings.SettingsScreen]£©Í¨¹ı
- * [LocalUpdateAppSettings] ĞŞ¸Ä£¬²¢¾­ÓÉ [com.nainiuzhen.wiki.utils.AppSettingsStore] ÂäÅÌ¡£
+ * å…¨å±€åº”ç”¨è®¾ç½®çŠ¶æ€ã€‚ç”± [com.nainiuzhen.wiki.App] æŒæœ‰å¹¶é€šè¿‡ CompositionLocal ä¸‹å‘ï¼›
+ * è®¾ç½®é¡µï¼ˆ[com.nainiuzhen.wiki.ui.settings.SettingsScreen]ï¼‰é€šè¿‡
+ * [LocalUpdateAppSettings] ä¿®æ”¹ï¼Œå¹¶ç»ç”± [com.nainiuzhen.wiki.utils.AppSettingsStore] è½ç›˜ã€‚
  *
- * v5 ±ä¸ü£¨Ïà¶ÔÓÚ v4£©£º
- * - ÒÆ³ı `isDark`£¬ĞÂÔö `colorMode`£¨0=ÏµÍ³/Auto¡¢1=ÉîÉ«¡¢2=Ç³É«£©Óë `monet`£¨Monet È¡É«¿ª¹Ø£©£¬
- *   Á½Õß×éºÏ³É 6 Ì×Ö÷Ìâ£¨Ç° 3 Ì× Monet ¹Ø¡¢ºó 3 Ì× Monet ¿ª£©¡£
- * - ĞÂÔö 14 ¸ö¿ª¹Ø£¨#3£©£¬È«²¿ÔÚ´Ë¼¯ÖĞÉùÃ÷²¢ÓÉ [AndroidAppSettingsStore] ³Ö¾Ã»¯¶ÁĞ´¡£
+ * v5 å˜æ›´ï¼ˆç›¸å¯¹äº v4ï¼‰ï¼š
+ * - ç§»é™¤ `isDark`ï¼Œæ–°å¢ `colorMode`ï¼ˆ0=ç³»ç»Ÿ/Autoã€1=æ·±è‰²ã€2=æµ…è‰²ï¼‰ä¸ `monet`ï¼ˆMonet å–è‰²å¼€å…³ï¼‰ï¼Œ
+ *   ä¸¤è€…ç»„åˆæˆ 6 å¥—ä¸»é¢˜ï¼ˆå‰ 3 å¥— Monet å…³ã€å 3 å¥— Monet å¼€ï¼‰ã€‚
+ * - æ–°å¢ 14 ä¸ªå¼€å…³ï¼ˆ#3ï¼‰ï¼Œå…¨éƒ¨åœ¨æ­¤é›†ä¸­å£°æ˜å¹¶ç”± [AndroidAppSettingsStore] æŒä¹…åŒ–è¯»å†™ã€‚
  */
 data class AppState(
-    // ¡ª¡ª Ö÷Ö÷Ìâ£¨È¡´ú¾É isDark£©¡ª¡ª //
-    val colorMode: Int = 0, // 0=ÏµÍ³(Auto) 1=ÉîÉ« 2=Ç³É«
-    val monet: Boolean = false, // Monet È¡É«¿ª¹Ø£¨Óë colorMode ×éºÏ³É 6 Ì×£©
-    // ¡ª¡ª v4 ÑØÓÃ ¡ª¡ª //
+    // â€”â€” ä¸»ä¸»é¢˜ï¼ˆå–ä»£æ—§ isDarkï¼‰â€”â€” //
+    val colorMode: Int = 0, // 0=ç³»ç»Ÿ(Auto) 1=æ·±è‰² 2=æµ…è‰²
+    val monet: Boolean = false, // Monet å–è‰²å¼€å…³ï¼ˆä¸ colorMode ç»„åˆæˆ 6 å¥—ï¼‰
+    // â€”â€” v4 æ²¿ç”¨ â€”â€” //
     val enableBlur: Boolean = true,
     val enableSquircle: Boolean = true,
-    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=Modal£¨git#4£¬ÎŞ AOSP£©
+    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=Modalï¼ˆgit#4ï¼Œæ—  AOSPï¼‰
     val enableSwipeBack: Boolean = true,
-    // ¡ª¡ª v5 ĞÂÔö 14 ¿ª¹Ø£¨#3£¬È«²¿ÕæÕı½ÓĞø£©¡ª¡ª //
+    // â€”â€” v5 æ–°å¢ 14 å¼€å…³ï¼ˆ#3ï¼Œå…¨éƒ¨çœŸæ­£æ¥ç»­ï¼‰â€”â€” //
     val enableCornerClip: Boolean = true, // Enable Corner Clip
     val scrollEndHaptic: Boolean = true, // Enable Scroll End Haptic
     val pageUserScroll: Boolean = true, // Enable Page User Scroll
     val showTopAppBar: Boolean = true, // Show TopAppBar
     val topAppBarBlurStyle: Int = 0, // TopAppBar Blur Style (0=Gaussian 1=Progressive)
     val showNavigationBar: Boolean = true, // Show NavigationBar
-    val showNavigationBadge: Boolean = false, // Show Navigation Badge£¨Ä¬ÈÏ¹Ø±Õ£¬±ÜÃâÕÚ×¡µ×À¸ icon£©
+    val showNavigationBadge: Boolean = false, // Show Navigation Badgeï¼ˆé»˜è®¤å…³é—­ï¼Œé¿å…é®ä½åº•æ  iconï¼‰
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
     val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
@@ -38,37 +38,37 @@ data class AppState(
     val floatingActionButtonPosition: Int = 0, // FAB Position (0=End 1=Start 2=Center)
     val enableDim: Boolean = false, // Enable Dim
     val blockInputDuringTransition: Boolean = true, // Block Input During Transition
-    // ¡ª¡ª v6 ĞÂÔö ¡ª¡ª //
+    // â€”â€” v6 æ–°å¢ â€”â€” //
     val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
-    // ¡ª¡ª v7 ĞÂÔö£ºËØ²ÄËõ·Å±¶ÂÊ£¨ÉèÖÃ×ÓÒ³¿Éµ÷£¬#22£©¡ª¡ª //
-    // È«²¿Îª Float£¬»¬¿éÒÔ 0.1 Îª²½½ø£»À¨ºÅÄÚÎª¡¸×î´óÖµ¡¹£¨¼û ImageScaleSettingsScreen µÄ valueRange£©¡£
-    val cardImageScale: Float = 5f, // ¿¨Æ¬ËØ²Ä£ºÎïÆ·/Åä·½¿¨Æ¬ÄÚÍ¼Æ¬£¨×î´ó 8£©
-    val homeImageScale: Float = 8f, // Ö÷Ò³×ó²àËØ²Ä£ºÖ÷Ò³ÎïÆ·/Åä·½Èë¿Ú¿¨Æ¬Í¼£¨×î´ó 10£©
-    val dialogBodyImageScale: Float = 6f, // µ¯´°±¾ÌåËØ²Ä£ºÎïÆ·/Åä·½ÏêÇéÍ·²¿ËØ²Ä£¨×î´ó 8£©
-    val dialogRecipeImageScale: Float = 6f, // µ¯´°Åä·½ËØ²Ä£ºÅä·½Ô­ÁÏ/²úÎï£¨×î´ó 8£©
-    val dialogFavHateImageScale: Float = 6f, // µ¯´°Ï²¶ñËØ²Ä£ºNPC ×î°®/Ï²»¶/ÌÖÑá£¨×î´ó 8£©
-    val scaleStep: Float = 0.1f, // »¬¿é²½½ø£º0.1 / 0.5 / 1£¨ÉèÖÃ×ÓÒ³¿Éµ÷£¬#22 ²½³¤£©
-    // ¡ª¡ª ¿¨Æ¬ÎÄ×Ö±¶ÂÊ£¨ËØ²ÄËõ·ÅÉèÖÃ×ÓÒ³¡¸¿¨Æ¬ÎÄ×Ö¡¹×é£¬Ö»ÄÜµ÷Ğ¡£©¡ª¡ª //
-    // 1.0 = ¿¨Æ¬Ãû³Æµ±Ç°×ÖºÅ£¨ÎïÆ·/Åä·½µ÷ÓÃµãµÄ 11.sp£©£»ÏÂÏŞ 0.5¡£
-    val itemCardTextScale: Float = 1.0f, // ÎïÆ·´óÈ«¿¨Æ¬ÎÄ×Ö±¶ÂÊ£¨×îĞ¡ 0.5£©
-    val recipeCardTextScale: Float = 1.0f, // Åä·½²éÑ¯¿¨Æ¬ÎÄ×Ö±¶ÂÊ£¨×îĞ¡ 0.5£©
-    // ¡ª¡ª v8 ĞÂÔö£ºÊÖ»úºáÆÁ¿ª¹Ø£¨´óÆÁÊÊÅä ¡ì8.3£©¡ª¡ª //
-    // Ä¬ÈÏ false = ËøÊúÆÁ£»true = ÔÊĞí×ÔÓÉĞı×ª¡£½öÔÚÊÖ»ú£¨<sw600dp£©ÉúĞ§£¬´óÆÁÓÉÏµÍ³ºöÂÔ·½ÏòÇëÇó¡£
+    // â€”â€” v7 æ–°å¢ï¼šç´ æç¼©æ”¾å€ç‡ï¼ˆè®¾ç½®å­é¡µå¯è°ƒï¼Œ#22ï¼‰â€”â€” //
+    // å…¨éƒ¨ä¸º Floatï¼Œæ»‘å—ä»¥ 0.1 ä¸ºæ­¥è¿›ï¼›æ‹¬å·å†…ä¸ºã€Œæœ€å¤§å€¼ã€ï¼ˆè§ ImageScaleSettingsScreen çš„ valueRangeï¼‰ã€‚
+    val cardImageScale: Float = 5f, // å¡ç‰‡ç´ æï¼šç‰©å“/é…æ–¹å¡ç‰‡å†…å›¾ç‰‡ï¼ˆæœ€å¤§ 8ï¼‰
+    val homeImageScale: Float = 8f, // ä¸»é¡µå·¦ä¾§ç´ æï¼šä¸»é¡µç‰©å“/é…æ–¹å…¥å£å¡ç‰‡å›¾ï¼ˆæœ€å¤§ 10ï¼‰
+    val dialogBodyImageScale: Float = 6f, // å¼¹çª—æœ¬ä½“ç´ æï¼šç‰©å“/é…æ–¹è¯¦æƒ…å¤´éƒ¨ç´ æï¼ˆæœ€å¤§ 8ï¼‰
+    val dialogRecipeImageScale: Float = 6f, // å¼¹çª—é…æ–¹ç´ æï¼šé…æ–¹åŸæ–™/äº§ç‰©ï¼ˆæœ€å¤§ 8ï¼‰
+    val dialogFavHateImageScale: Float = 6f, // å¼¹çª—å–œæ¶ç´ æï¼šNPC æœ€çˆ±/å–œæ¬¢/è®¨åŒï¼ˆæœ€å¤§ 8ï¼‰
+    val scaleStep: Float = 0.1f, // æ»‘å—æ­¥è¿›ï¼š0.1 / 0.5 / 1ï¼ˆè®¾ç½®å­é¡µå¯è°ƒï¼Œ#22 æ­¥é•¿ï¼‰
+    // â€”â€” å¡ç‰‡åç§°å­—å·ï¼ˆç´ æç¼©æ”¾è®¾ç½®å­é¡µã€Œå¡ç‰‡æ–‡å­—ã€ç»„ï¼Œç»å¯¹å€¼ spï¼‰â€”â€” //
+    // èŒƒå›´ 5..11 spï¼Œé»˜è®¤ 8 spï¼›æ­¥é•¿è·ŸéšåŒé¡µ scaleStepï¼ˆ0.1 / 0.5 / 1ï¼‰ã€‚
+    val itemCardTextSizeSp: Float = 8f, // ç‰©å“å¤§å…¨å¡ç‰‡åç§°å­—å·ï¼ˆ5..11 spï¼Œé»˜è®¤ 8ï¼‰
+    val recipeCardTextSizeSp: Float = 8f, // é…æ–¹æŸ¥è¯¢å¡ç‰‡åç§°å­—å·ï¼ˆ5..11 spï¼Œé»˜è®¤ 8ï¼‰
+    // â€”â€” v8 æ–°å¢ï¼šæ‰‹æœºæ¨ªå±å¼€å…³ï¼ˆå¤§å±é€‚é… Â§8.3ï¼‰â€”â€” //
+    // é»˜è®¤ false = é”ç«–å±ï¼›true = å…è®¸è‡ªç”±æ—‹è½¬ã€‚ä»…åœ¨æ‰‹æœºï¼ˆ<sw600dpï¼‰ç”Ÿæ•ˆï¼Œå¤§å±ç”±ç³»ç»Ÿå¿½ç•¥æ–¹å‘è¯·æ±‚ã€‚
     val allowPhoneLandscape: Boolean = false,
-    // ¡ª¡ª v9 ĞÂÔö£º¿¨Æ¬Íâ¹ÛÉèÖÃ£¨v31£¬ÉèÖÃ×ÓÒ³ CardSettingsScreen£©¡ª¡ª //
-    // Èı×é¡¸×Ü¿ª¹Ø + n °å¿é + Í¬²½¡¹£¬ÇóÖµ¿Ú¾¶¼û utils/CardAppearance.kt£º
-    //     effective = ×Ü¿ª¹Ø && (Í¬²½ || °å¿é×Ô¼ºµÄÖµ)
-    // Èı×é×Ü¿ª¹Ø**Ä¬ÈÏÈ«¹Ø** ? Ä¬ÈÏÌ¬ = ÎŞµ×É« / Ö±½Ç / ÎŞ½ºÄÒ¡£
-    // Í¬²½¿ª¹ØÄ¬ÈÏÈ«¿ª£¨µ«×Ü¿ª¹Ø¹ØÊ±¸úËæÒş²Ø£¬²»ÏÔÊ¾£©¡£
+    // â€”â€” v9 æ–°å¢ï¼šå¡ç‰‡å¤–è§‚è®¾ç½®ï¼ˆv31ï¼Œè®¾ç½®å­é¡µ CardSettingsScreenï¼‰â€”â€” //
+    // ä¸‰ç»„ã€Œæ€»å¼€å…³ + n æ¿å— + åŒæ­¥ã€ï¼Œæ±‚å€¼å£å¾„è§ utils/CardAppearance.ktï¼š
+    //     effective = æ€»å¼€å…³ && (åŒæ­¥ || æ¿å—è‡ªå·±çš„å€¼)
+    // ä¸‰ç»„æ€»å¼€å…³**é»˜è®¤å…¨å…³** â‡’ é»˜è®¤æ€ = æ— åº•è‰² / ç›´è§’ / æ— èƒ¶å›Šã€‚
+    // åŒæ­¥å¼€å…³é»˜è®¤å…¨å¼€ï¼ˆä½†æ€»å¼€å…³å…³æ—¶è·Ÿéšéšè—ï¼Œä¸æ˜¾ç¤ºï¼‰ã€‚
     //
-    // ¿¨Æ¬±³¾°
+    // å¡ç‰‡èƒŒæ™¯
     val cardBgMaster: Boolean = false,
     val cardBgSync: Boolean = true,
     val cardBgItem: Boolean = false,
     val cardBgRecipe: Boolean = false,
     val cardBgNpc: Boolean = false,
-    // ¿¨Æ¬Ô²½Ç£¨°å¿éÖ®ÏÂ»¹ÓĞ¡¸ËÄ½Ç + ËÄ½ÇÍ¬²½¡¹Ò»²ã£©
+    // å¡ç‰‡åœ†è§’ï¼ˆæ¿å—ä¹‹ä¸‹è¿˜æœ‰ã€Œå››è§’ + å››è§’åŒæ­¥ã€ä¸€å±‚ï¼‰
     val cardCornerMaster: Boolean = false,
     val cardCornerSync: Boolean = true,
     val cardCornerItem: Boolean = false,
@@ -89,10 +89,10 @@ data class AppState(
     val cardCornerNpcBL: Boolean = false,
     val cardCornerNpcBR: Boolean = false,
     val cardCornerNpcSync4: Boolean = true,
-    // °´ÏÂÒõÓ°µÄÔ²½ÇÊÇ·ñ¸ú¿¨Æ¬Ô²½ÇÍ¬²½£¨Ä¬ÈÏ¿ª£©¡£¹Ø ? °´ÏÂÒõÓ°Ò»ÂÉÖ±½Ç¡£
-    // Óë¡¸Í¬²½¡¹Í¬¼¶£¬ÅÅÔÚÔ²½Ç×é×îºóÒ»ĞĞµÄÏÂÒ»ĞĞ¡£
+    // æŒ‰ä¸‹é˜´å½±çš„åœ†è§’æ˜¯å¦è·Ÿå¡ç‰‡åœ†è§’åŒæ­¥ï¼ˆé»˜è®¤å¼€ï¼‰ã€‚å…³ ? æŒ‰ä¸‹é˜´å½±ä¸€å¾‹ç›´è§’ã€‚
+    // ä¸ã€ŒåŒæ­¥ã€åŒçº§ï¼Œæ’åœ¨åœ†è§’ç»„æœ€åä¸€è¡Œçš„ä¸‹ä¸€è¡Œã€‚
     val cardPressShadowSync: Boolean = true,
-    // ÎÄ×Ö½ºÄÒ£¨Ãû³ÆÄÇĞĞµÄÀ¶µ×£©
+    // æ–‡å­—èƒ¶å›Šï¼ˆåç§°é‚£è¡Œçš„è“åº•ï¼‰
     val cardCapsuleMaster: Boolean = false,
     val cardCapsuleSync: Boolean = true,
     val cardCapsuleItem: Boolean = false,
@@ -100,11 +100,11 @@ data class AppState(
     val cardCapsuleNpc: Boolean = false,
 )
 
-/** ÔËĞĞÊ±Ó¦ÓÃ°æ±¾ĞÅÏ¢£ºÓÉ Android ¶Ë¾­ [BuildConfig.VERSION_NAME] / [BuildConfig.VERSION_CODE] ×¢Èë£¬
- * ±£Ö¤ÉèÖÃÒ³ / ¹ØÓÚÒ³ÏÔÊ¾µÄ°æ±¾Óë¹¹½¨²úÎïÍêÈ«Ò»ÖÂ£¨²»ÔÙÒÀÀµ±àÒëÆÚ³£Á¿µÄÊÖ¶¯Í¬²½£¬#26£©¡£ */
+/** è¿è¡Œæ—¶åº”ç”¨ç‰ˆæœ¬ä¿¡æ¯ï¼šç”± Android ç«¯ç» [BuildConfig.VERSION_NAME] / [BuildConfig.VERSION_CODE] æ³¨å…¥ï¼Œ
+ * ä¿è¯è®¾ç½®é¡µ / å…³äºé¡µæ˜¾ç¤ºçš„ç‰ˆæœ¬ä¸æ„å»ºäº§ç‰©å®Œå…¨ä¸€è‡´ï¼ˆä¸å†ä¾èµ–ç¼–è¯‘æœŸå¸¸é‡çš„æ‰‹åŠ¨åŒæ­¥ï¼Œ#26ï¼‰ã€‚ */
 data class AppVersion(val name: String, val code: Int)
 
-/** Ó¦ÓÃ°æ±¾ CompositionLocal£ºAndroid ¶Ë´Ó BuildConfig ×¢ÈëÕæÊµÖµ£¬commonMain Ìá¹©Ä¬ÈÏÖµ¶µµ×¡£ */
+/** åº”ç”¨ç‰ˆæœ¬ CompositionLocalï¼šAndroid ç«¯ä» BuildConfig æ³¨å…¥çœŸå®å€¼ï¼ŒcommonMain æä¾›é»˜è®¤å€¼å…œåº•ã€‚ */
 val LocalAppVersion = compositionLocalOf { AppVersion("1.2.5", 25) }
 
 val LocalAppSettings = compositionLocalOf { AppState() }
