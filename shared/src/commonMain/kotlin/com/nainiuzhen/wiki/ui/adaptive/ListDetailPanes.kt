@@ -2,6 +2,7 @@ package com.nainiuzhen.wiki.ui.adaptive
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -162,7 +163,12 @@ fun ListDetailPanes(
 }
 
 /**
- * 右栏空态：居中提示文案。用于「主页-子页分栏」下左栏还没点开任何板块时的占位。
+ * 右栏空态：铺主题页面底色 + 居中提示文案。用于「主页-子页分栏」下左栏还没点开任何板块时的占位。
+ *
+ * ⚠️ 必须自己铺一层 [MiuixTheme.colorScheme.background]：详情层（`NavDisplay`）的每个 entry
+ * 根节点都不带底色，空态若也透明，透出来的就是 **Activity 主题的 windowBackground**
+ * （`Theme.Encyclopedia` 是浅色 Material 主题 ⇒ `#FAFAFA`）。于是深色模式下会出现
+ * 「左栏深色、右栏一大块近白」的割裂感（真机实测均值：左区≈28，右区 250 且 std 0.15）。
  *
  * 文字颜色沿用工程内既有的次级说明文字色 [MiuixTheme.colorScheme.onSurfaceVariantSummary]
  * （与物品 / 配方 / NPC 详情页的次要文字保持一致）。
@@ -175,7 +181,10 @@ fun DetailPaneEmptyHint(
     modifier: Modifier = Modifier,
     text: String = "暂无内容",
 ) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier.fillMaxSize().background(MiuixTheme.colorScheme.background),
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
             text = text,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
