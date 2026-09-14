@@ -1,10 +1,6 @@
 package com.nainiuzhen.wiki.ui.npc
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,8 +12,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,26 +19,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.CardImageBox
+import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
+import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
+import com.nainiuzhen.wiki.utils.CardSection
 import com.nainiuzhen.wiki.utils.LocalAppSettings
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -164,58 +158,42 @@ private fun npcGroupLabel(sex: Int): String = when (sex) {
     else -> "其他"
 }
 
-/** 单个 NPC 卡片：立绘（正常比例，居中裁剪）+ 名称（单行，超出横向滚动）。 */
+/**
+ * 单个 NPC 卡片：结构与 [com.nainiuzhen.wiki.ui.items.ItemGridCell] /
+ * [com.nainiuzhen.wiki.ui.recipe.RecipeGridCell] **完全一致** ——
+ * 「[CardImageBox]（立绘区）→ [CardNameCapsule]（名称区）」两段，外面只套一个 Column。
+ *
+ * v31 修正：原先外层多套了一个 miuix `Card` 并写死 `.clip(RoundedCornerShape(16.dp))`。
+ * miuix `Card` 默认会自己画一层 `surfaceContainer` 底色 + 16dp squircle 圆角，
+ * 结果「卡片背景」「卡片圆角」两个开关对 NPC 板块被整层盖住、点了没有任何效果
+ * （实测：全关 vs 背景开，像素统计与边缘剖面完全一致）。
+ * 去掉这层壳后三个板块共用同一套求值逻辑；网格列数 / 卡片尺寸仍按 NPC 自己的参数走。
+ */
 @Composable
 private fun NpcGridCell(npc: NpcInfo, onClick: () -> Unit) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
+            .then(rememberCardPressModifier(CardSection.Npc, onClick)),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        // 立绘区：素材容器（背景色 / 圆角随「卡片外观设置」求值）；立绘保持正常比例居中裁剪。
+        CardImageBox(
+            section = CardSection.Npc,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                NpcPortraitImage(
-                    npcId = npc.id,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MiuixTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(percent = 50),
-                    )
-                    .padding(vertical = 6.dp, horizontal = 14.dp),
-            ) {
-                // 内层滚动视口：宽度=胶囊内宽，文字超宽只在这里滚动，胶囊本身不动。
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = npc.name,
-                        style = MiuixTheme.textStyles.body2,
-                        maxLines = 1,
-                        softWrap = false,
-                        textAlign = TextAlign.Center,
-                        color = MiuixTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+            NpcPortraitImage(
+                npcId = npc.id,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
         }
+        // 名称区：可选蓝胶囊 + 单行文字（超宽在胶囊内横向滚动）。
+        CardNameCapsule(
+            section = CardSection.Npc,
+            text = npc.name,
+            style = MiuixTheme.textStyles.body2,
+            contentPadding = PaddingValues(vertical = 6.dp, horizontal = 14.dp),
+        )
     }
 }
