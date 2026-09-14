@@ -12,8 +12,13 @@ import androidx.compose.runtime.Composable
  * 首次进入组合（App 启动）执行一次；[allowLandscape] 变化（用户切换开关）时**立即**再执行一次。
  *
  * **仅 Android 端有实现**（`setRequestedOrientation` 为平台 API）；非 Android 端为空实现。
- * Android 16/17 起，在 `≥sw600dp` 的大屏上系统会忽略该方向请求 → 开关在大屏自动失效，
- * 无需在业务侧特判（详见设计文档 §3.2 / §8.2）。
+ *
+ * **「大屏自动失效」由业务侧显式判定，不依赖系统**：大屏设备（`smallestScreenWidthDp ≥ 600`，
+ * 即 Android 判定 `sw600dp` 的那个值）恒请求 `UNSPECIFIED`，不锁方向。
+ *
+ * > ⚠️ 不要改回「靠系统忽略方向请求」的写法。实测（MuMu 模拟器 sw=726dp）系统**并未**忽略
+ * > `SCREEN_ORIENTATION_PORTRAIT`，应用被硬锁竖屏，连强制旋转都无效 —— 大屏横屏布局因此完全无法触达。
+ * > 详见设计文档 §8.2。
  */
 @Composable
 expect fun ApplyPhoneOrientation(allowLandscape: Boolean)
