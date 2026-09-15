@@ -13,6 +13,7 @@ import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
+import com.nainiuzhen.wiki.utils.formatDecimal
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -179,7 +180,7 @@ fun ImageScaleSettingsScreen() {
 }
 
 private val STEP_VALUES = listOf(0.1f, 0.5f, 1f)
-private val STEP_OPTIONS = STEP_VALUES.map { DropdownItem(text = "%.1f".format(it)) }
+private val STEP_OPTIONS = STEP_VALUES.map { DropdownItem(text = formatDecimal(it.toDouble(), 1)) }
 
 /** 根据当前步长 Float 取其在 STEP_VALUES 中的下标（带容差，避免 0.1f 浮点漂移）。 */
 private fun stepIndex(step: Float): Int {
@@ -214,6 +215,6 @@ private fun ScaleSlider(
         summary = summary,
         valueRange = min..max,
         steps = steps,
-        valueText = "%.1f".format(value) + suffix,
+        valueText = formatDecimal(value.toDouble(), 1) + suffix,
     )
 }

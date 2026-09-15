@@ -50,6 +50,7 @@ import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.appStartElapsedMs
+import com.nainiuzhen.wiki.utils.formatDecimal
 import com.nainiuzhen.wiki.utils.showToast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -183,7 +184,7 @@ private fun AppRoot(
             val ms = startupElapsedMs
             if (ms > 0) {
                 delay(300)
-                showToast("启动耗时 ${"%.2f".format(ms / 1000f)} 秒")
+                showToast("启动耗时 ${formatDecimal(ms / 1000.0, 2)} 秒")
             }
         }
         // 这里不再持有返回栈 / 导航器：全应用**唯一**的返回栈由 MainScreen 持有，
