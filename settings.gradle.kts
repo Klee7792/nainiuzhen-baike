@@ -32,8 +32,9 @@ dependencyResolutionManagement {
     }
 }
 
-// 复合构建：按坐标 top.yukonga.miuix.kmp:miuix-* 引用本地 miuix 模块
-includeBuild("D:/1Project/nainiuzhen-wiki/miuix")
+// 复合构建：按坐标 top.yukonga.miuix.kmp:miuix-* 引用仓库内的 miuix 源码
+// （2026-09-15：miuix 已 vendor 进本仓库 `miuix/`，用相对路径 ⇒ 克隆到任何机器/路径都能编）
+includeBuild("miuix")
 
 include(":shared")
 include(":app")
