@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.utils.LocalAppSettings
-import kotlinx.coroutines.Dispatchers
+import com.nainiuzhen.wiki.utils.IoDispatcher
 import kotlinx.coroutines.withContext
 
 /**
@@ -73,7 +73,7 @@ fun SpriteImage(
 ) {
     val sprite = LocalSpriteRepository.current
     val bitmap by produceState<ImageBitmap?>(initialValue = null, sprite, frameKey) {
-        value = withContext(Dispatchers.IO) { sprite.getImage(frameKey) }
+        value = withContext(IoDispatcher) { sprite.getImage(frameKey) }
     }
     // 倍率：scaleContext 优先（从设置取），否则回退到显式 pixelScale。
     val appSettings = LocalAppSettings.current
@@ -130,7 +130,7 @@ fun NpcPortraitImage(
 ) {
     val sprite = LocalSpriteRepository.current
     val bitmap by produceState<ImageBitmap?>(initialValue = null, sprite, npcId) {
-        value = withContext(Dispatchers.IO) { sprite.getNpcImage(npcId) }
+        value = withContext(IoDispatcher) { sprite.getNpcImage(npcId) }
     }
     val show = bitmap ?: remember(sprite) { sprite.placeholder() }
     Image(bitmap = show, contentDescription = "NPC $npcId", modifier = modifier, contentScale = contentScale)
@@ -145,7 +145,7 @@ fun StarImage(
 ) {
     val sprite = LocalSpriteRepository.current
     val bitmap by produceState<ImageBitmap?>(initialValue = null, sprite, level) {
-        value = withContext(Dispatchers.IO) { sprite.getStarImage(level) }
+        value = withContext(IoDispatcher) { sprite.getStarImage(level) }
     }
     val show = bitmap ?: remember(sprite) { sprite.placeholder() }
     Image(bitmap = show, contentDescription = null, modifier = modifier, contentScale = contentScale)

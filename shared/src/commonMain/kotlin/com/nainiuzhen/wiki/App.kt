@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.data.AssetManager
 import com.nainiuzhen.wiki.data.source.AssetLoader
+import com.nainiuzhen.wiki.utils.IoDispatcher
 import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
 import com.nainiuzhen.wiki.utils.ApplyPhoneOrientation
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
@@ -143,7 +144,7 @@ private fun AppRoot(
             runCatching { cache.clear() }
             // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
             // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
-            val data = withContext(Dispatchers.IO) {
+            val data = withContext(IoDispatcher) {
                 AssetManager(slicer, cache).loadAll(isDebug) { done, total ->
                     withContext(Dispatchers.Main) {
                         loadPhase = 0
@@ -154,7 +155,7 @@ private fun AppRoot(
             }
             // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
             // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
-            withContext(Dispatchers.IO) {
+            withContext(IoDispatcher) {
                 data.sprite.preloadAllSprites { done, total ->
                     withContext(Dispatchers.Main) {
                         loadPhase = 1
@@ -221,7 +222,7 @@ private fun LoadingScreen(
     // logo：加载页尚未 provide LocalSpriteRepository，故直接用 AssetLoader + slicer
     // 从 assets 根解码应用图标（ic_launcher.png，与 AboutScreen 同源），失败时回退占位方块。
     val logo by produceState<ImageBitmap?>(initialValue = null, slicer) {
-        value = withContext(Dispatchers.IO) {
+        value = withContext(IoDispatcher) {
             try {
                 slicer.decode(AssetLoader.loadBytes("ic_launcher.png"))
             } catch (_: Exception) {

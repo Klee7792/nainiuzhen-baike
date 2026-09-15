@@ -64,7 +64,7 @@ import com.nainiuzhen.wiki.ui.settings.about.ColorBlendToken
 import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
-import kotlinx.coroutines.Dispatchers
+import com.nainiuzhen.wiki.utils.IoDispatcher
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -258,7 +258,7 @@ private fun AboutContent(
 
     val spriteRepo = LocalSpriteRepository.current
     val logoBitmap by produceState<ImageBitmap?>(initialValue = null, spriteRepo) {
-        value = withContext(Dispatchers.IO) { spriteRepo.getAssetImage("ic_launcher.png") }
+        value = withContext(IoDispatcher) { spriteRepo.getAssetImage("ic_launcher.png") }
     }
 
     BgEffectBackground(

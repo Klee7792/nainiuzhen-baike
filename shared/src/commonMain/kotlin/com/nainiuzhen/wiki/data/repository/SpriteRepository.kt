@@ -38,7 +38,7 @@ class SpriteRepository(
     /** `assets/` 根 PNG 内存表：路径 → 位图。 */
     private val assetMemory = mutableMapOf<String, ImageBitmap>()
 
-    /** 保护上述内存表的互斥锁（取图在 Dispatchers.IO 多线程并发执行，禁 java.util.concurrent）。 */
+    /** 保护上述内存表的互斥锁（取图在 IoDispatcher 多线程并发执行，禁 java.util.concurrent）。 */
     private val mutex = Mutex()
 
     /** 取切片图（帧名不含 `.png`）。内存命中直接返回；未命中懒切片，结果只进内存、不落盘。 */
