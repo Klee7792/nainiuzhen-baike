@@ -20,6 +20,18 @@ kotlin {
         minSdk = 24
     }
 
+    // iOS 目标（2026-09-15 iOS 化）：与 miuix example 同构。
+    // - 仅真机架构（arm64）+ Apple Silicon 模拟器；CI 出包只用 IosArm64。
+    // - isStatic = true：静态框架直接链进主二进制，.app 内无额外 dylib（TrollStore 侧载友好）。
+    // - smallBinary：裁剪 K/N 二进制体积。
+    listOf(iosArm64(), iosSimulatorArm64()).forEach {
+        it.binaries.framework {
+            baseName = "shared"
+            isStatic = true
+            binaryOption("smallBinary", "true")
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             api("top.yukonga.miuix.kmp:miuix-ui:0.9.4")
