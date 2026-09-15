@@ -8,6 +8,7 @@ import com.nainiuzhen.wiki.platform.IosSpriteSlicer
 import com.nainiuzhen.wiki.utils.AppVersion
 import com.nainiuzhen.wiki.utils.AppLog
 import com.nainiuzhen.wiki.utils.IosStartupTime
+import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.setUnhandledExceptionHook
 import platform.Foundation.NSBundle
 import platform.UIKit.UIViewController
@@ -18,6 +19,7 @@ import platform.UIKit.UIViewController
  */
 private var crashHookInstalled = false
 
+@OptIn(ExperimentalNativeApi::class)
 private fun installCrashHook() {
     if (crashHookInstalled) return
     crashHookInstalled = true
