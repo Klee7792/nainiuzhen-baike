@@ -11,11 +11,10 @@ import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.EncodedImageFormat
-import org.jetbrains.skia.FilterMipmap
-import org.jetbrains.skia.FilterMode
+import org.jetbrains.skia.FilterQuality
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
-import org.jetbrains.skia.MipmapMode
+import org.jetbrains.skia.Paint
 import org.jetbrains.skia.Rect
 
 /**
@@ -83,11 +82,12 @@ class IosSpriteSlicer : SpriteSlicer {
     private fun extractRegion(sheet: Image, left: Int, top: Int, w: Int, h: Int): Bitmap {
         val out = newBitmap(w, h)
         val canvas = Canvas(out)
+        val paint = Paint().apply { filterQuality = FilterQuality.NEAREST }
         canvas.drawImageRect(
             sheet,
             Rect.makeXYWH(left.toFloat(), top.toFloat(), w.toFloat(), h.toFloat()),
             Rect.makeXYWH(0f, 0f, w.toFloat(), h.toFloat()),
-            FilterMipmap(FilterMode.NEAREST, MipmapMode.NONE),
+            paint,
         )
         return out
     }
@@ -123,16 +123,20 @@ class IosSpriteSlicer : SpriteSlicer {
 
     override fun decode(bytes: ByteArray): ImageBitmap {
         val sheet = decodeSheet(bytes) ?: return placeholder()
-        val bmp = sheet.peekPixels() ?: run {
+        try {
+            // 整图 1:1 贴到等尺寸位图（等价 peekPixels，但只用本文件已验证的 API）。
+            val bmp = newBitmap(sheet.width, sheet.height)
+            Canvas(bmp).drawImage(sheet, 0f, 0f)
+            return bmp.asComposeImageBitmap()
+        } finally {
             sheet.close()
-            return placeholder()
         }
-        return bmp.asComposeImageBitmap()
     }
 
     override fun encode(bitmap: ImageBitmap): ByteArray =
         Image.makeFromBitmap(bitmap.asSkiaBitmap())
             .encodeToData(EncodedImageFormat.PNG)
+            .let { requireNotNull(it) { "encodeToData 失败" } }
             .bytes
 
     override fun placeholder(): ImageBitmap {

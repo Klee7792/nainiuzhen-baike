@@ -38,6 +38,6 @@ actual fun appStartElapsedMs(): Long {
 @OptIn(ExperimentalForeignApi::class)
 private fun monotonicMs(): Long = memScoped {
     val ts = alloc<timespec>()
-    clock_gettime(CLOCK_MONOTONIC, ts.ptr)
+    clock_gettime(CLOCK_MONOTONIC.toUInt(), ts.ptr)
     ts.tv_sec * 1000L + ts.tv_nsec / 1_000_000L
 }

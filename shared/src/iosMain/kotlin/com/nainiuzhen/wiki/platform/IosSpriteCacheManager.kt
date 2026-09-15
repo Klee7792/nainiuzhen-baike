@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.nainiuzhen.wiki.platform
 
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
@@ -9,6 +11,8 @@ import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSNumber
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
+import platform.Foundation.create
+import platform.Foundation.writeToFile
 
 /**
  * 基于 `NSCachesDirectory` 的切片缓存管理器（iOS）。

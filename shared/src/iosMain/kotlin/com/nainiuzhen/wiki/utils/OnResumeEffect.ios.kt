@@ -2,10 +2,12 @@ package com.nainiuzhen.wiki.utils
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
 import platform.UIKit.UIApplication
+import platform.UIKit.didBecomeActiveNotification
 
 /**
  * iOS 实现：监听 `UIApplication.didBecomeActiveNotification` 触发 [onResume]
@@ -18,7 +20,7 @@ actual fun OnResumeEffect(onResume: () -> Unit) {
         val center = NSNotificationCenter.defaultCenter
         val observer = center.addObserverForName(
             name = UIApplication.didBecomeActiveNotification,
-            obj = null,
+            `object` = null,
             queue = NSOperationQueue.mainQueue,
         ) { _ ->
             latestOnResume()

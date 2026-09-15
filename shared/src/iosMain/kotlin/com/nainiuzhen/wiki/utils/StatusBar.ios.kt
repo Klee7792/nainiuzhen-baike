@@ -3,11 +3,11 @@ package com.nainiuzhen.wiki.utils
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import platform.UIKit.UIApplication
-import platform.UIKit.UIStatusBarStyle.UIStatusBarStyleDarkContent
-import platform.UIKit.UIStatusBarStyle.UIStatusBarStyleLightContent
+import platform.UIKit.UIStatusBarStyleDarkContent
+import platform.UIKit.UIStatusBarStyleLightContent
 
 /**
- * iOS 实现：经 `UIApplication.setStatusBarStyle` 切状态栏图标深浅。
+ * iOS 实现：经 `UIApplication.statusBarStyle` 切状态栏图标深浅。
  *
  * [light] 语义与 Android 端一致 = 「背景是浅色」→ 配深色图标（DarkContent）。
  * 需要 Info.plist 设 `UIViewControllerBasedStatusBarAppearance = NO`，否则调用不生效。
@@ -18,9 +18,8 @@ import platform.UIKit.UIStatusBarStyle.UIStatusBarStyleLightContent
 actual fun SetStatusBarLightIcons(light: Boolean) {
     DisposableEffect(light) {
         @Suppress("DEPRECATION")
-        UIApplication.sharedApplication.setStatusBarStyle(
+        UIApplication.sharedApplication.statusBarStyle =
             if (light) UIStatusBarStyleDarkContent else UIStatusBarStyleLightContent
-        )
         onDispose { }
     }
 }
