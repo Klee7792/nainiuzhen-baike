@@ -22,6 +22,9 @@ object AppContextHolder {
 }
 
 internal actual fun readAssetBytes(path: String): ByteArray {
+    // 优先从 assets.pack（NZPK v2 纯内存解码）取；包缺失或无此条目时回退原生 assets
+    //（本地 debug 构建未注入 pack、ic_launcher.png 等非打包资源走此路径，行为不变）。
+    PackDecoder.get(path)?.let { return it }
     val assetManager = AppContextHolder.current.assets
     return assetManager.open(path).use { it.readBytes() }
 }
