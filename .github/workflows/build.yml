@@ -1,0 +1,157 @@
+name: Multi-Platform Build
+
+# 手动触发：在 Actions 页面勾选想编的平台即可自由组合
+on:
+  workflow_dispatch:
+    inputs:
+      android:
+        description: "Android（APK）"
+        type: boolean
+        default: true
+      ios:
+        description: "iOS（未签名 ipa · 需先实装 iosMain）"
+        type: boolean
+        default: false
+      windows:
+        description: "Windows（需先实装桌面端 jvmMain）"
+        type: boolean
+        default: false
+      macos:
+        description: "macOS（需先实装桌面端 jvmMain）"
+        type: boolean
+        default: false
+      linux:
+        description: "Linux（需先实装桌面端 jvmMain）"
+        type: boolean
+        default: false
+      build_type:
+        description: "构建类型（Android 用）"
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
+
+concurrency:
+  group: build-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  # ───────────────────────── Android ─────────────────────────
+  android:
+    name: Android APK
+    if: ${{ inputs.android }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # 仓库没有 wrapper，直接装指定版本 Gradle
+      - name: Set up Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.1"
+
+      # 素材走私有仓库 assets.pack；没配置/还没发布时跳过并告警（APK 可编译但列表为空）
+      - name: Fetch game assets pack (optional)
+        env:
+          ASSETS_PAT: ${{ secrets.ASSETS_PAT }}
+        run: |
+          if [ -z "${ASSETS_PAT}" ]; then
+            echo "::warning::未配置 Secret ASSETS_PAT，跳过素材拉取（产出的 APK 没有游戏数据，列表为空）"
+            exit 0
+          fi
+          url="$(curl -fsSL -H "Authorization: Bearer ${ASSETS_PAT}" \
+            https://api.github.com/repos/Klee7792/nainiuzhen-assets/releases/latest \
+            | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep 'assets\.pack' | head -1 || true)"
+          if [ -z "${url}" ]; then
+            echo "::warning::nainiuzhen-assets 尚未发布 assets.pack，跳过"
+            exit 0
+          fi
+          curl -fsSL -H "Authorization: Bearer ${ASSETS_PAT}" \
+            -o "${RUNNER_TEMP}/assets.pack" "${url}"
+          echo "assets.pack 已下载：$(du -h "${RUNNER_TEMP}/assets.pack" | cut -f1)"
+          echo "::notice::解码注入逻辑待 assets.pack 流水线实装后在此接入"
+
+      - name: Build
+        run: >-
+          gradle :app:assemble${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}
+          --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nainiuzhen-baike-android-${{ inputs.build_type }}
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+  # ───────────────────────── iOS（占位） ─────────────────────────
+  ios:
+    name: iOS ipa
+    if: ${{ inputs.ios }}
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Target check
+        run: |
+          if [ ! -d shared/src/iosMain ]; then
+            echo "::error::iOS 目标尚未实装（shared/src/iosMain 不存在）。完成 KMP iOS 化后再勾选此项。"
+            exit 1
+          fi
+
+      # TODO: 实装 iosMain 后启用
+      # - uses: actions/setup-java@v4 (temurin 21)
+      # - gradle :shared:linkReleaseFrameworkIosArm64 / IosSimulatorArm64
+      # - xcodebuild 打包未签名 ipa → actions/upload-artifact
+
+  # ─────────────────── 桌面端（占位，共用检查） ───────────────────
+  desktop-windows:
+    name: Windows exe
+    if: ${{ inputs.windows }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Target check
+        shell: bash
+        run: |
+          if [ ! -d shared/src/jvmMain ]; then
+            echo "::error::桌面端（Compose Desktop / shared/src/jvmMain）尚未实装。"
+            exit 1
+          fi
+      # TODO: gradle packageExe（installMSI/packageDistributionForCurrentTests）→ 上传
+
+  desktop-macos:
+    name: macOS dmg
+    if: ${{ inputs.macos }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Target check
+        run: |
+          if [ ! -d shared/src/jvmMain ]; then
+            echo "::error::桌面端（Compose Desktop / shared/src/jvmMain）尚未实装。"
+            exit 1
+          fi
+      # TODO: gradle packageDmg → 上传
+
+  desktop-linux:
+    name: Linux deb/AppImage
+    if: ${{ inputs.linux }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Target check
+        run: |
+          if [ ! -d shared/src/jvmMain ]; then
+            echo "::error::桌面端（Compose Desktop / shared/src/jvmMain）尚未实装。"
+            exit 1
+          fi
+      # TODO: gradle packageDeb packageAppImage → 上传

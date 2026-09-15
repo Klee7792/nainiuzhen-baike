@@ -42,3 +42,19 @@ Thumbs.db
 
 # Game asset copies (dead data) — assets come from nainiuzhen-assets
 shared/src/commonMain/composeResources/files/
+
+# Game assets are intentionally NOT in this repo — they are distributed
+# privately via nainiuzhen-assets (assets.pack). See docs/REPO_ASSETS_CI_PLAN.md
+app/src/main/assets/config/
+app/src/main/assets/res/
+
+# miuix is vendored into miuix/ — do NOT re-add ignore rules for it
+miuix/.gradle/
+
+# Build / run logs
+*.log
+builds/adb_*.txt
+builds/logcat_*.txt
+builds/dumpsys*.txt
+builds/nz_dump.xml
+
