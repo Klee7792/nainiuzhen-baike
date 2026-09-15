@@ -20,7 +20,7 @@ data class AppState(
     // —— v4 沿用 —— //
     val enableBlur: Boolean = true,
     val enableSquircle: Boolean = true,
-    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=Modal（git#4，无 AOSP）
+    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=AOSP(CrossActivity，移植自 miuix example)
     val enableSwipeBack: Boolean = true,
     // —— v5 新增 14 开关（#3，全部真正接续）—— //
     val enableCornerClip: Boolean = true, // Enable Corner Clip

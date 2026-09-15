@@ -133,7 +133,8 @@ fun BlurredBar(
  * @param scrollBehavior 滚动行为。
  * @param largeTitle 非 null 时使用 [TopAppBar]（初始显示左侧大标题，滚动后切换居中标题）；
  *   为 null 时使用 [SmallTopAppBar]。
- * @param largeTitleCentered 仅对大标题模式生效：展开态将大标题与副标题整体水平居中（默认 false，居左）。
+ * @param largeTitleCentered 【暂不生效】旧 miuix 的 TopAppBar.largeTitleCentered 已在 1206 版移除且无等价参数
+ *   （新大标题硬编码左对齐）。参数与各调用点的 `= true` 暂保留，便于后续定方案时零调用方改动地重新接线。
  */
 @Composable
 fun AppTopAppBar(
@@ -158,14 +159,15 @@ fun AppTopAppBar(
     ) {
         val barColor = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface
         // 副标题（如列表计数「共 XX 个」）直接转发给 miuix 原生 subtitle 参数：
-        // - 展开时作为大标题的第二行；largeTitleCentered=true 时整体水平居中（契合「Y 轴居中、左右对称」）；
-        // - 收起时由 miuix 原生 smallSubtitle 居中显示（本就居中，无需额外处理）；
+        // - 展开时作为大标题的第二行；收起时由 miuix 原生 smallSubtitle 居中显示（本就居中，无需额外处理）；
         // - 搜索框等仍走 bottomContent，位于副标题之下。
+        // ⚠️ 旧 miuix 的 largeTitleCentered 参数已被新版（1206）移除，新 TopAppBar 硬编码大标题左对齐、
+        //    无对齐/居中等价参数（已核对 miuix-ui TopAppBar.kt 全量签名与 demo 用法）。为保编译先移除该实参，
+        //    展开态大标题暂时从「水平居中」变为「居左」——视觉变化已知、未静默处理，待主理人定方案。
         if (largeTitle != null) {
             TopAppBar(
                 title = title,
                 largeTitle = largeTitle,
-                largeTitleCentered = largeTitleCentered,
                 subtitle = subtitle,
                 scrollBehavior = scrollBehavior,
                 color = barColor,
@@ -196,7 +198,7 @@ fun AppTopAppBar(
  * 调用方需自行创建并持有 [scrollBehavior]，并把它同时传给本脚手架与内部可滚动容器的
  * `nestedScroll(scrollBehavior.nestedScrollConnection)`，以使顶栏随内容滚动折叠。
  *
- * @param largeTitleCentered 透传给 [AppTopAppBar]：展开态大标题+计数是否水平居中（默认 false）。
+ * @param largeTitleCentered 【暂不生效】透传 [AppTopAppBar]（见其 KDoc：新 miuix 已移除该能力）。
  * @param topBarWidth 顶栏宽度上限；传非 null 时顶栏只占该宽度（大屏双栏把顶栏归属左栏、不跨栏），
  *   为 null（默认）时铺满整屏。
  * @param content 内容区 lambda，接收 [PaddingValues]（顶栏占位）。

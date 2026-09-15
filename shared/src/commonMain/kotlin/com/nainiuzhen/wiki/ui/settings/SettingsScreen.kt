@@ -104,16 +104,29 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     title = "过渡动画",
                     onSelectedIndexChange = { updateAppState(appState.copy(navTransitionStyle = it)) },
                 )
-                SwitchPreference(
-                    title = "启用滑动返回",
-                    checked = appState.enableSwipeBack,
-                    onCheckedChange = { updateAppState(appState.copy(enableSwipeBack = it)) },
-                )
+                // 顺序对齐 miuix demo SettingsPage：过渡动画 → 圆角裁剪 → 压暗 → 阻止输入 → 滑动返回。
                 SwitchPreference(
                     title = "启用圆角裁剪",
                     summary = "转场时顶部圆角裁剪",
                     checked = appState.enableCornerClip,
                     onCheckedChange = { updateAppState(appState.copy(enableCornerClip = it)) },
+                )
+                SwitchPreference(
+                    title = "启用压暗",
+                    summary = "转场时压暗后方页面",
+                    checked = appState.enableDim,
+                    onCheckedChange = { updateAppState(appState.copy(enableDim = it)) },
+                )
+                SwitchPreference(
+                    title = "转场期间阻止输入",
+                    summary = "转场动画期间阻止触摸输入",
+                    checked = appState.blockInputDuringTransition,
+                    onCheckedChange = { updateAppState(appState.copy(blockInputDuringTransition = it)) },
+                )
+                SwitchPreference(
+                    title = "启用滑动返回",
+                    checked = appState.enableSwipeBack,
+                    onCheckedChange = { updateAppState(appState.copy(enableSwipeBack = it)) },
                 )
             }
 
