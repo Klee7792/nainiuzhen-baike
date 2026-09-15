@@ -16,6 +16,7 @@ import com.nainiuzhen.wiki.data.repository.SpriteRepository
 import com.nainiuzhen.wiki.data.source.AssetLoader
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
 import com.nainiuzhen.wiki.sprite.PlistParser
+import com.nainiuzhen.wiki.utils.AppLog
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -84,13 +85,17 @@ class AssetManager(
         val recipeBlack = loadBlacklist("config/recipe_blacklist.txt")
         tick()
 
-        val items = loadItems(atlas, iconMapping, itemBlack, isDebug)
+        // 四份业务数据逐项留痕：**成功也要记**（条目数 0 = 素材没真正加载出来，
+        // 却不会抛异常，是最难查的一类故障）。
+        val items = loadItems(atlas, iconMapping, itemBlack, isDebug).logCount("物品")
         tick()
-        val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug)
+        val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug).logCount("配方")
         tick()
-        val npcs = loadNpcs(npcBlack, isDebug)
+        val npcs = loadNpcs(npcBlack, isDebug).logCount("NPC")
         tick()
         val schedules = loadSchedules()
+        AppLog.i("日程载入 ${schedules.size} 个 NPC")
+        if (schedules.isEmpty()) AppLog.w("日程数据为空")
         tick()
 
         val data = DataRepository(items, recipes, npcs, schedules, itemBlack, npcBlack, recipeBlack)
@@ -111,29 +116,46 @@ class AssetManager(
                 add("hats_empty")
             }
         val map = mutableMapOf<String, SpriteAtlasFrame>()
+        var emptySheets = 0
         for (sheet in sheetNames) {
             try {
                 val plist = AssetLoader.loadText("res/$sheet.plist")
-                PlistParser.parse(plist, sheet).forEach { (k, v) -> map[k] = v }
-            } catch (_: Exception) {
-                // 该图集不存在则跳过
+                val parsed = PlistParser.parse(plist, sheet)
+                parsed.forEach { (k, v) -> map[k] = v }
+                if (parsed.isEmpty()) {
+                    emptySheets += 1
+                    AppLog.w("图集 $sheet 解析结果为空（plist 为空或格式不符）")
+                }
+            } catch (t: Throwable) {
+                // 该图集不存在 / 读取失败则跳过 —— 但必须留痕：
+                // 「全部跳过」会让图集索引为 0，表现为整页空白且无任何报错。
+                AppLog.e("图集加载失败: res/$sheet.plist", t)
             }
             onSheet()
         }
+        AppLog.i("图集索引构建完成：${map.size} 帧 / 空图集 $emptySheets 张")
+        if (map.isEmpty()) AppLog.e("图集索引为 0（全部 plist 缺失或解析失败）")
         return SpriteAtlas(map)
     }
 
     private fun loadIconMapping(): Map<Int, String> =
         try {
-            val text = AssetLoader.loadText("config/icon_mapping.json")
-            json.decodeFromString<Map<String, JsonElement>>(text)
-                .mapNotNull { (k, v) ->
-                    val id = k.toIntOrNull() ?: return@mapNotNull null
-                    // 值可能是数字（如 40000107）或带后缀的字符串（如 "40000107_time"），统一取字符串内容。
-                    id to v.jsonPrimitive.content
+            AssetLoader.loadText("config/icon_mapping.json")
+                .let { text ->
+                    json.decodeFromString<Map<String, JsonElement>>(text)
+                        .mapNotNull { (k, v) ->
+                            val id = k.toIntOrNull() ?: return@mapNotNull null
+                            // 值可能是数字（如 40000107）或带后缀的字符串（如 "40000107_time"），统一取字符串内容。
+                            id to v.jsonPrimitive.content
+                        }
+                        .toMap()
                 }
-                .toMap()
-        } catch (_: Exception) {
+                .also { mapping ->
+                    AppLog.i("icon_mapping 载入 ${mapping.size} 条")
+                    if (mapping.isEmpty()) AppLog.w("icon_mapping 为空（文件缺失或格式不符）")
+                }
+        } catch (t: Throwable) {
+            AppLog.e("icon_mapping 加载失败: config/icon_mapping.json", t)
             emptyMap()
         }
 
@@ -157,7 +179,12 @@ class AssetManager(
                 .lineSequence()
                 .mapNotNull { it.trim().toIntOrNull() }
                 .toSet()
-        } catch (_: Exception) {
+                .also { set ->
+                    AppLog.i("黑名单 $name = ${set.size} 条")
+                    if (set.isEmpty()) AppLog.w("黑名单 $name 为空（文件缺失或内容异常）")
+                }
+        } catch (t: Throwable) {
+            AppLog.e("黑名单加载失败: $name", t)
             emptySet()
         }
 
@@ -316,6 +343,16 @@ class AssetManager(
             }
         }
         return result
+    }
+
+    /**
+     * 把「加载结果条目数」写进诊断日志：成功也记，为 0 时升级为警告。
+     * 保持返回类型不变（[C]），调用方可直接串在加载表达式后面。
+     */
+    private fun <T> List<T>.logCount(label: String): List<T> {
+        AppLog.i("$label 载入 $size 条")
+        if (isEmpty()) AppLog.w("$label 数据为 0 条（素材未加载或被黑名单全部过滤）")
+        return this
     }
 
     /** 加载结果聚合。 */

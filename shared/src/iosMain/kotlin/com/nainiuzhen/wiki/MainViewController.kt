@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki
 
 import androidx.compose.ui.window.ComposeUIViewController
+import com.nainiuzhen.wiki.platform.bundleAssetBytes
 import com.nainiuzhen.wiki.platform.IosAppSettingsStore
 import com.nainiuzhen.wiki.platform.IosSpriteCacheManager
 import com.nainiuzhen.wiki.platform.IosSpriteSlicer
@@ -36,13 +37,17 @@ private fun installCrashHook() {
  */
 fun MainViewController(): UIViewController {
     installCrashHook()
-    AppLog.i("MainViewController 入口")
-    // 进程级启动打点：必须在构建 Compose 根之前（见 IosStartupTime 注释）。
+    // 先打点再打日志：日志里的时间戳依赖它（见 IosStartupTime 注释）。
     IosStartupTime.mark()
+    AppLog.i("MainViewController 入口")
+    AppLog.i("bundle 路径：${NSBundle.mainBundle.bundlePath}")
+    // 预检素材包是否真的进了 bundle（只读一次；失败也会在加载阶段再记一条）
+    val packSize = runCatching { bundleAssetBytes("assets.pack").size }.getOrNull()
+    AppLog.i("assets.pack 预检：${packSize?.let { "$it 字节" } ?: "缺失"}")
     val versionName = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString")
-        as? String ?: "1.3.8"
+        as? String ?: "1.0.0"
     val versionCode = (NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleVersion")
-        as? String)?.toIntOrNull() ?: 38
+        as? String)?.toIntOrNull() ?: 1
     return ComposeUIViewController {
         App(
             slicer = IosSpriteSlicer(),

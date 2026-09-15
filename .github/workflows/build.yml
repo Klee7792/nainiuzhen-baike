@@ -185,11 +185,14 @@ jobs:
 
       - name: Package unsigned .ipa
         run: |
-          app="iosApp/build/Build/Products/Release-iphoneos/iosApp.app"
-          if [ ! -d "$app" ]; then
-            echo "::error::未找到 $app，构建产物异常"
+          # 产物名 = PRODUCT_NAME = nainiuzhenbaike（见 project.pbxproj）；用通配兜底，
+          # 万一改名未同步也不会静默打出错误名字的包。
+          app=$(ls -d iosApp/build/Build/Products/Release-iphoneos/*.app 2>/dev/null | head -1)
+          if [ -z "$app" ]; then
+            echo "::error::未找到 Release-iphoneos 下的 .app，构建产物异常"
             exit 1
           fi
+          echo "::notice::打包产物：$(basename "$app")"
           mkdir -p iosApp/build/Payload
           cp -R "$app" iosApp/build/Payload/
           cd iosApp/build

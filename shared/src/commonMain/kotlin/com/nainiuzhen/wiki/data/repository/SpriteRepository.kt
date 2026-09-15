@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import com.nainiuzhen.wiki.data.model.SpriteAtlas
 import com.nainiuzhen.wiki.data.source.AssetLoader
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
+import com.nainiuzhen.wiki.utils.AppLog
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -70,6 +71,12 @@ class SpriteRepository(
     /** 占位图（透明 1x1）。供 [SpriteImage] 等组件在异步取图完成前显示。 */
     fun placeholder(): ImageBitmap = slicer.placeholder()
 
+    /** 图集总帧数（诊断用：0 = plist 未加载）。 */
+    val atlasFrameCount: Int get() = atlas.frameKeys.size
+
+    /** 已切片进内存的帧数（诊断用：远小于 [atlasFrameCount] = 图集切片大面积失败）。 */
+    val loadedSpriteCount: Int get() = spriteMemory.size
+
     /** 取星级图（1=白 / 2=金 / 其它=紫）。内存命中直接返回。 */
     suspend fun getStarImage(level: Int): ImageBitmap {
         mutex.withLock { starMemory[level] }?.let { return it }
@@ -105,25 +112,41 @@ class SpriteRepository(
      *
      * @param onProgress 进度回调，`done` / `total` 为已处理帧数与总帧数；
      *     每处理完一张图集回调一次，在调用协程的调度线程上执行。
+     *
+     * @return 切片失败的图集张数（0 = 全部成功）。整张图集失败时其帧会回退占位图，
+     *     界面表现为「空白但没崩」——必须写诊断日志，否则无从判断素材是否真的加载成功。
      */
-    suspend fun preloadAllSprites(onProgress: suspend (done: Int, total: Int) -> Unit) {
+    suspend fun preloadAllSprites(onProgress: suspend (done: Int, total: Int) -> Unit): Int {
         // 按图集分组：同一 sheet 的全部帧共用一次解码。
         val bySheet = atlas.frameKeys
             .mapNotNull { key -> atlas.getFrame(key)?.let { key to it } }
             .groupBy({ it.second.sheetName }, { it.first to it.second })
         val total = bySheet.values.sumOf { it.size }
         var done = 0
+        var failedSheets = 0
         for ((sheet, frames) in bySheet) {
             val sliced = try {
                 slicer.sliceBatch(AssetLoader.loadBytes("res/$sheet.png"), frames.toMap())
-            } catch (_: Exception) {
+            } catch (t: Throwable) {
                 // 整张图集缺失 / 解码失败：全部帧回退占位图，保证内存表与进度计数完整。
+                failedSheets += 1
+                AppLog.e("图集切片失败: res/$sheet.png（${frames.size} 帧回退占位图）", t)
                 frames.associate { it.first to slicer.placeholder() }
             }
             mutex.withLock { spriteMemory.putAll(sliced) }
             done += frames.size
             onProgress(done, total)
         }
+        if (total == 0) {
+            AppLog.e("素材切片跳过：图集帧数为 0（plist 未加载成功）")
+        } else {
+            AppLog.i(
+                "素材切片完成：图集成功 ${bySheet.size - failedSheets}/${bySheet.size}，" +
+                    "帧 $total，内存表 ${spriteMemory.size}"
+            )
+        }
+        if (failedSheets > 0) AppLog.w("有 $failedSheets 张图集切片失败（对应图标会显示为空白）")
+        return failedSheets
     }
 
     /** 清空缓存（设置页「清理缓存」调用）：清内存切片表 + 删除磁盘旧残留。 */

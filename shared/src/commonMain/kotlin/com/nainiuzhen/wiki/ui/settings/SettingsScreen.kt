@@ -257,6 +257,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     summary = "${appVersion.name} (${appVersion.code})",
                 )
                 ArrowPreference(
+                    title = "诊断日志",
+                    summary = "数据加载概况与运行日志（排障用）",
+                    onClick = { navigator.openTopLevel(Route.Diagnostics) },
+                )
+                ArrowPreference(
                     title = "关于",
                     summary = "奶牛镇百科 · 图鉴查询",
                     onClick = { navigator.openTopLevel(Route.About) },

@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki.data.source
 
 import com.nainiuzhen.wiki.platform.bundleAssetBytes
+import com.nainiuzhen.wiki.utils.AppLog
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.addressOf
@@ -21,8 +22,12 @@ import platform.zlib.uncompress
  *   zlib 包装格式解压，与 tools/pack_assets.py 的 zlib.compress 对应。
  */
 internal actual fun loadPackBytes(): ByteArray? = try {
-    bundleAssetBytes("assets.pack")
-} catch (_: Exception) {
+    bundleAssetBytes("assets.pack").also { bytes ->
+        AppLog.i("bundle 内 assets.pack 读入 ${bytes.size} 字节")
+    }
+} catch (t: Throwable) {
+    // 区分「包根本没打进 bundle」与「读到了但失败」：两者表现都是空数据，必须留痕。
+    AppLog.e("assets.pack 读取失败（app bundle 根）", t)
     null
 }
 

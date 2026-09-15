@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -149,6 +151,7 @@ private fun AppRoot(
             // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
             // iOS 首版排障：加载全流程兜底。异常写诊断日志并上屏，避免「加载失败 → 黑屏」无从下手。
             try {
+                AppLog.i("开始加载数据：isDebug=$isDebug")
                 val data = withContext(IoDispatcher) {
                     AssetManager(slicer, cache).loadAll(isDebug) { done, total ->
                         withContext(Dispatchers.Main) {
@@ -160,7 +163,7 @@ private fun AppRoot(
                 }
                 // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
                 // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
-                withContext(IoDispatcher) {
+                val failedSheets = withContext(IoDispatcher) {
                     data.sprite.preloadAllSprites { done, total ->
                         withContext(Dispatchers.Main) {
                             loadPhase = 1
@@ -172,7 +175,27 @@ private fun AppRoot(
                 cachedLoadedData = data
                 // 计时点：数据 + 切片都就绪（= 首屏内容齐备）。
                 startupElapsedMs = appStartElapsedMs()
-                AppLog.i("加载完成：耗时 ${startupElapsedMs}ms")
+                AppLog.i(
+                    "加载完成：耗时 ${startupElapsedMs}ms | 物品 ${data.data.items.size} / " +
+                        "配方 ${data.data.recipes.size} / NPC ${data.data.npcs.size} / " +
+                        "帧 ${data.sprite.atlasFrameCount}（已切片 ${data.sprite.loadedSpriteCount}）/ " +
+                        "失败图集 $failedSheets"
+                )
+                // 「没报错但也没加载出来」的兜底：数据与图集任一为空都要当成失败处理，
+                // 否则会静默进入主界面显示一片空白（iOS 首版黑屏的真凶候选）。
+                val emptyReason = when {
+                    data.data.items.isEmpty() -> "物品数据为 0 条"
+                    data.sprite.atlasFrameCount == 0 -> "图集帧数为 0"
+                    data.sprite.loadedSpriteCount == 0 -> "全部图集切片失败（图标全空）"
+                    else -> null
+                }
+                if (emptyReason != null) {
+                    AppLog.e("数据加载结果异常：$emptyReason → 视为启动失败")
+                    loadError = "数据未加载成功：$emptyReason"
+                    // 空数据不进进程级缓存：否则后台回前台会直接复用空数据、跳过重试，
+                    // 又变回「黑屏且无报错」。
+                    cachedLoadedData = null
+                }
             } catch (t: Throwable) {
                 AppLog.e("启动加载失败", t)
                 loadError = "$t"
@@ -194,6 +217,7 @@ private fun AppRoot(
         // 进入主页后弹一次冷启动耗时（X.XX 秒）。延迟 300ms 让主页首帧先出来，
         // 避免 toast 抢在界面绘制之前。只在冷启动（真的加载过）时弹。
         LaunchedEffect(Unit) {
+            AppLog.i("进入主界面（MainScreen 首帧）")
             val ms = startupElapsedMs
             if (ms > 0) {
                 delay(300)
@@ -220,6 +244,9 @@ private fun AppRoot(
  */
 @Composable
 private fun StartupErrorScreen(message: String) {
+    // 日志快照：取此刻的内存缓冲（最近若干行），随错误一起上屏 —— 无 Mac 时
+    // 直接截屏即可，无需连电脑导出 Documents/app_log.txt。
+    val log = remember { AppLog.readLog() }
     MiuixTheme {
         Box(
             modifier = Modifier
@@ -227,11 +254,32 @@ private fun StartupErrorScreen(message: String) {
                 .background(MiuixTheme.colorScheme.background)
                 .padding(20.dp),
         ) {
-            Text(
-                text = "启动失败（完整堆栈见诊断日志）\n\n$message",
-                color = MiuixTheme.colorScheme.onBackground,
-                fontSize = 12.sp,
-            )
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "启动失败（完整日志见下方 / Documents/app_log.txt）",
+                    color = MiuixTheme.colorScheme.onBackground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = message,
+                    color = MiuixTheme.colorScheme.onBackground,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "—— 诊断日志（最近 ${log.lineSequence().count()} 行）——",
+                    color = MiuixTheme.colorScheme.onBackground,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = log.ifBlank { "（无）" },
+                    color = MiuixTheme.colorScheme.onBackground,
+                    fontSize = 10.sp,
+                )
+            }
         }
     }
 }

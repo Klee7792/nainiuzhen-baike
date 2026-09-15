@@ -66,6 +66,12 @@ object PackDecoder {
     /** 已解码条目缓存（上限即全包 raw 总量 ≈ 9MB，进程退出即释放）。 */
     private val cache = HashMap<String, ByteArray>()
 
+    /** 包内缺失、已回退平台资源的路径（去重，仅用于限制日志条数）。 */
+    private val missedPaths = HashSet<String>()
+
+    /** 缺失条目最多记录的条数。 */
+    private const val MAX_MISS_LOG = 20
+
     /** 包内条目数（诊断用；未加载/缺失时为 0）。 */
     val entryCount: Int get() = entriesByName.size
 
@@ -79,7 +85,15 @@ object PackDecoder {
         return runBlocking {
             mutex.withLock {
                 cache[path]?.let { return@withLock it }
-                val entry = entriesByName[path] ?: return@withLock null
+                val entry = entriesByName[path]
+                if (entry == null) {
+                    // 包内无此条目 → 回退平台资源。逐个去重记录（上限 [MAX_MISS_LOG] 条，
+                    // 避免资源整体缺失时刷出上百行）。
+                    if (missedPaths.add(path) && missedPaths.size <= MAX_MISS_LOG) {
+                        AppLog.w("assets.pack 无条目 → 回退平台资源: $path")
+                    }
+                    return@withLock null
+                }
                 val bytes = try {
                     decode(packBytes!!, entry)
                 } catch (t: Throwable) {
@@ -109,6 +123,7 @@ object PackDecoder {
                         entriesByName = parse(bytes)
                         packBytes = bytes
                         AppLog.i("assets.pack 已加载：${bytes.size} 字节 / ${entriesByName.size} 条目")
+                        if (entriesByName.isEmpty()) AppLog.e("assets.pack 条目解析为 0（包结构异常）")
                     } catch (t: Throwable) {
                         // 解析失败不硬崩：记录后回退，便于取出日志定位
                         AppLog.e("assets.pack 解析失败 → 回退平台资源", t)
