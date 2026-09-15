@@ -49,6 +49,10 @@ app/src/main/assets/config/
 app/src/main/assets/res/
 # CI 把 assets.pack 拉到此处再构建，本地如有残留也绝不入库
 app/src/main/assets/assets.pack
+# iOS 同源：CI 拉到 iosApp/iosApp/assets.pack 经 Resources phase 打入 bundle
+iosApp/iosApp/assets.pack
+# iOS 未签名产物
+*.ipa
 
 # miuix is vendored into miuix/ — do NOT re-add ignore rules for it
 miuix/.gradle/
