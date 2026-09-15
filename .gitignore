@@ -39,3 +39,6 @@ Thumbs.db
 *.apk
 *.aab
 *.ap_
+
+# Game asset copies (dead data) — assets come from nainiuzhen-assets
+shared/src/commonMain/composeResources/files/
