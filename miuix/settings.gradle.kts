@@ -3,11 +3,11 @@
 
 @file:Suppress("UnstableApiUsage")
 
-rootProject.name = "compose-miuix-ui"
-
 // 阿里云镜像仅本地启用（国内加速）；CI（GitHub Actions 自动设 CI=true）访问 aliyun 会
 // 超时导致依赖解析整链失败（连 mavenCentral 都被连带禁用），故 CI 上直连官方源。
-val isCi = System.getenv("CI") != null
+// ⚠️ pluginManagement 块编译为独立方法先执行，看不到脚本顶层 val，故块内直接调 System.getenv。
+
+rootProject.name = "compose-miuix-ui"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
@@ -15,7 +15,7 @@ pluginManagement {
     includeBuild("build-plugins")
     repositories {
         // 阿里云镜像（国内加速，命中失败自动回退官方源）；CI 上跳过
-        if (!isCi) {
+        if (System.getenv("CI") == null) {
             maven("https://maven.aliyun.com/repository/google") {
                 content {
                     includeGroupAndSubgroups("androidx")
@@ -40,7 +40,7 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
-        if (!isCi) {
+        if (System.getenv("CI") == null) {
             maven("https://maven.aliyun.com/repository/google") {
                 content {
                     includeGroupAndSubgroups("androidx")
