@@ -33,6 +33,14 @@ kotlin {
     }
 
     sourceSets {
+        // gradle.properties 关闭了默认层级模板（androidLibrary 插件要求），iOS 中间层源集需手工接线：
+        // commonMain → iosMain → iosArm64Main / iosSimulatorArm64Main。
+        // androidMain 由 AGP KMP 插件自行接线，无需处理。
+        val iosMain = findByName("iosMain") ?: create("iosMain")
+        iosMain.dependsOn(getByName("commonMain"))
+        getByName("iosArm64Main").dependsOn(iosMain)
+        getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+
         commonMain.dependencies {
             api("top.yukonga.miuix.kmp:miuix-ui:0.9.4")
             api("top.yukonga.miuix.kmp:miuix-preference:0.9.4")
