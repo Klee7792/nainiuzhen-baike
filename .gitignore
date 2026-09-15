@@ -58,3 +58,6 @@ builds/logcat_*.txt
 builds/dumpsys*.txt
 builds/nz_dump.xml
 
+*.done
+build_v*_log.txt
+/res/
