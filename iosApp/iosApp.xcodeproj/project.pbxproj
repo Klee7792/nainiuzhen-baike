@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -98,7 +98,6 @@
 				Base,
 			);
 			mainGroup = 7A1000020000000000000024;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 7A1000030000000000000024 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -302,7 +301,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.nainiuzhen.wiki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -331,7 +330,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.nainiuzhen.wiki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
