@@ -31,7 +31,7 @@ import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
-import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
+import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
@@ -174,16 +174,18 @@ private fun npcGroupLabel(sex: Int): String = when (sex) {
  */
 @Composable
 private fun NpcGridCell(npc: NpcInfo, onClick: () -> Unit) {
+    // card = 整卡可点击；image = 按下反馈（阴影 + 覆盖）只作用于素材区，文字区不受影响。
+    val press = rememberCardPressModifiers(CardSection.Npc, onClick)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(rememberCardPressModifier(CardSection.Npc, onClick)),
+            .then(press.card),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // 立绘区：素材容器（背景色 / 圆角随「卡片外观设置」求值）；立绘保持正常比例居中裁剪。
         CardImageBox(
             section = CardSection.Npc,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f).then(press.image),
         ) {
             NpcPortraitImage(
                 npcId = npc.id,

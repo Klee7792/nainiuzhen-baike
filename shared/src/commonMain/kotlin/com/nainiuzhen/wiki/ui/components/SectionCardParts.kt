@@ -69,7 +69,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  *
  * - [CardImageBox]：素材容器（读「卡片背景」「卡片圆角」两组开关）。
  * - [CardNameCapsule]：名称行（读「文字胶囊」开关）。
- * - [rememberCardPressModifier]：按下阴影 + 点击（读「卡片圆角」总闸，默认零视觉变化）。
+ * - [rememberCardPressModifiers]：整卡可点击 + 素材区按下反馈（读「卡片圆角」总闸，默认零视觉变化）。
  *
  * 三者在内部各自通过 [LocalAppSettings] 拿到当前 [AppState]，调用点只需传 [CardSection]，
  * 无需把设置状态层层往下传。开关的求值口径见 `utils/CardAppearance.kt`。
@@ -304,19 +304,32 @@ fun CardNameCapsule(
 /** 跑马灯规格：[displayText] = 单元 × 2 的滚动内容；[distancePx] = 一个单元的宽度（= 完整一圈）。 */
 private data class MarqueeSpec(val displayText: String, val distancePx: Int)
 
+/** 整卡可点击 + 素材区按下反馈两个修饰符的集合。 */
+class CardPressModifiers(val card: Modifier, val image: Modifier)
+
 /**
- * 按下阴影 + 点击的公共修饰符。
+ * 整卡可点击 + 按下反馈的公共修饰符集合（v37 修复：按下视觉只覆盖素材区）。
  *
- * 返回的 [Modifier]：
- * 1. `shadow`：仅当该板块「圆角」总闸开启**且**当前处于按下态时给 8dp 阴影，否则 0dp。
- *    默认态（圆角组总开关关）⇒ elevation 恒 0 ⇒ **零视觉变化**；开启后按下才出现与圆角一致的阴影轮廓。
- * 2. 按压反馈（**只在按住时出现**，松手即消失）：
- *    - 「圆角」总闸关：沿用 miuix [LocalIndication]（黑 10% 矩形高亮），与全 App 其它可点击件一致；
- *    - 「圆角」总闸开：**不能**沿用 [LocalIndication] —— 它画的是一整块直角矩形
- *      （miuix `MiuixIndication` 在 `drawContent()` 后 `drawRect(size = size)`，不带 shape，
- *      圆角外沿会露出直角高亮），改为在 `drawWithContent` 里按
+ * 返回 [CardPressModifiers]：
+ * - [CardPressModifiers.card]：**纯点击**（无任何按下视觉），挂整卡（Column）上。
+ *   - 「圆角」总闸开：`indication = null` —— miuix 直角矩形高亮由 image 侧的形状化覆盖层代替；
+ *   - 「圆角」总闸关：沿用 miuix [LocalIndication]（黑 10% 矩形高亮），与全 App 其它可点击件一致。
+ * - [CardPressModifiers.image]：**按下视觉**（8dp 阴影 + 瞬态按压覆盖），只挂素材容器上，
+ *   文字区完全不受影响。仅当该板块「圆角」总闸开启时非空：
+ *   1. `shadow`：按下态给 8dp、松手 0dp，贴合素材容器形状；
+ *   2. 按压覆盖（**只在按住时出现**，松手即消失）：**不能**沿用 [LocalIndication] —— 它画的是
+ *      一整块直角矩形（miuix `MiuixIndication` 在 `drawContent()` 后 `drawRect(size = size)`，
+ *      不带 shape，圆角外沿会露出直角高亮），改为在 `drawWithContent` 里按
  *      [com.nainiuzhen.wiki.utils.cardPressShadowShape] 的形状画一层黑 10% 覆盖
  *      （数值对齐 miuix `MiuixIndication` 的 `PRESS_ALPHA_DELTA = 0.10f`）。
+ *
+ * ### 调用顺序为什么是这样（image 修饰符为何接在调用方 modifier 之后）
+ *
+ * 调用方传入的 modifier（`fillMaxWidth().aspectRatio(1f).then(press.image)`）先于
+ * [CardImageBox] 内部的 `.background(shape).clip(shape)`：
+ * - `drawWithContent` 里先 `drawContent()`（背景 + 裁剪 + 素材全部画完）再叠黑 10% 覆盖
+ *   ⇒ 覆盖完整盖住背景与素材；
+ * - `shadow` 排在 background 之前 ⇒ 阴影垫在素材方块后面、贴合素材形状。
  *
  * ### 为什么不能再加持久的 `.clip(shape)`（v31.1 回归教训）
  *
@@ -327,28 +340,44 @@ private data class MarqueeSpec(val displayText: String, val distancePx: Int)
  *
  * @param section 所属板块，决定读圆角组开关。
  * @param onClick 点击回调。
- * @return 已接好按下阴影与点击的修饰符，调用点用 `.then(...)` 接上即可。
+ * @return [CardPressModifiers]：`card` 挂整卡、`image` 挂素材容器。
  */
 @Composable
-fun rememberCardPressModifier(
+fun rememberCardPressModifiers(
     section: CardSection,
     onClick: () -> Unit,
-): Modifier {
+): CardPressModifiers {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val state = LocalAppSettings.current
     val cornerOn = state.cardPressShadowEnabled(section)
     val shape = state.cardPressShadowShape(section)
-    val shadowModifier = Modifier.shadow(
-        elevation = if (cornerOn && pressed) 8.dp else 0.dp,
-        shape = shape,
-        clip = false,
-    )
-    return if (cornerOn) {
-        shadowModifier
+    val cardModifier = if (cornerOn) {
+        // indication 置空：miuix 的直角矩形高亮由 image 侧的形状化覆盖层代替。
+        Modifier.clickable(
+            interactionSource = interaction,
+            indication = null,
+            onClick = onClick,
+        )
+    } else {
+        // 默认态（圆角总闸关）：卡片本来就是直角，miuix 的矩形高亮就是正确形状，零改动。
+        Modifier.clickable(
+            interactionSource = interaction,
+            indication = LocalIndication.current,
+            onClick = onClick,
+        )
+    }
+    // 按下视觉只作用于素材区：shadow + 瞬态黑 10% 覆盖都挂在这里，文字区不受影响。
+    val imageModifier = if (cornerOn) {
+        Modifier
+            .shadow(
+                elevation = if (pressed) 8.dp else 0.dp,
+                shape = shape,
+                clip = false,
+            )
             .drawWithContent {
                 drawContent()
-                // 瞬态按压反馈：只在按住时按卡片形状画一层黑 10%，松手消失。
+                // 瞬态按压反馈：只在按住时按素材容器形状画一层黑 10%，松手消失。
                 // 不要改成 .clip(...)（见上方 KDoc 的 v31.1 回归教训）。
                 if (pressed) {
                     drawOutline(
@@ -358,20 +387,10 @@ fun rememberCardPressModifier(
                     )
                 }
             }
-            .clickable(
-                interactionSource = interaction,
-                // indication 置空：miuix 的直角矩形高亮由上面的形状化覆盖层代替。
-                indication = null,
-                onClick = onClick,
-            )
     } else {
-        // 默认态（圆角总闸关）：卡片本来就是直角，miuix 的矩形高亮就是正确形状，零改动。
-        shadowModifier.clickable(
-            interactionSource = interaction,
-            indication = LocalIndication.current,
-            onClick = onClick,
-        )
+        Modifier
     }
+    return CardPressModifiers(card = cardModifier, image = imageModifier)
 }
 
 /** 按压反馈覆盖层的透明度，对齐 miuix `MiuixIndication` 的 `PRESS_ALPHA_DELTA = 0.10f`。 */

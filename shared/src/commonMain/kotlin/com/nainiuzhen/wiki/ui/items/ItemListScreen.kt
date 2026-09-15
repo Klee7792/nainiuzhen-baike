@@ -34,7 +34,7 @@ import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
-import com.nainiuzhen.wiki.ui.components.rememberCardPressModifier
+import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
 import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
@@ -186,16 +186,18 @@ private fun ItemListBottomContent(
 /** 单个物品方块：素材区（[CardImageBox]）+ 名称区（[CardNameCapsule]）。背景 / 圆角 / 胶囊 / 按下阴影随「卡片外观设置」求值；素材仍严格 4× 原图、xy 居中。 */
 @Composable
 private fun ItemGridCell(item: ItemInfo, onClick: () -> Unit) {
+    // card = 整卡可点击；image = 按下反馈（阴影 + 覆盖）只作用于素材区，文字区不受影响。
+    val press = rememberCardPressModifiers(CardSection.Item, onClick)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(rememberCardPressModifier(CardSection.Item, onClick)),
+            .then(press.card),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // 图标区：素材容器（背景色 / 圆角随「卡片外观设置」求值）。
         CardImageBox(
             section = CardSection.Item,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f).then(press.image),
         ) {
             SpriteImage(
                 frameKey = item.iconFrameKey,
