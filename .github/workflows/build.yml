@@ -172,7 +172,8 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath iosApp/build \
+            SYMROOT="$PWD/iosApp/build/Build/Products" \
+            OBJROOT="$PWD/iosApp/build/Build/Intermediates.noindex" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
