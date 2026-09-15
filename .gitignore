@@ -47,6 +47,8 @@ shared/src/commonMain/composeResources/files/
 # privately via nainiuzhen-assets (assets.pack). See docs/REPO_ASSETS_CI_PLAN.md
 app/src/main/assets/config/
 app/src/main/assets/res/
+# CI 把 assets.pack 拉到此处再构建，本地如有残留也绝不入库
+app/src/main/assets/assets.pack
 
 # miuix is vendored into miuix/ — do NOT re-add ignore rules for it
 miuix/.gradle/

@@ -58,26 +58,30 @@ jobs:
         with:
           gradle-version: "9.6.1"
 
-      # 素材走私有仓库 assets.pack；没配置/还没发布时跳过并告警（APK 可编译但列表为空）
-      - name: Fetch game assets pack (optional)
+      # 素材走私有仓库 Klee7792/nainiuzhen-assets（main 分支根的 assets.pack，NZPK v2）。
+      # 公开仓库不含任何游戏素材：缺包 = 启动即空数据，故 PAT 缺失/拉取失败一律终止构建。
+      # PAT 要求：fine-grained，仅授权 nainiuzhen-assets 仓库，Contents: Read-only。
+      - name: Fetch game assets pack
         env:
           ASSETS_PAT: ${{ secrets.ASSETS_PAT }}
         run: |
           if [ -z "${ASSETS_PAT}" ]; then
-            echo "::warning::未配置 Secret ASSETS_PAT，跳过素材拉取（产出的 APK 没有游戏数据，列表为空）"
-            exit 0
+            echo "::error::未配置 Secret ASSETS_PAT（网页生成 fine-grained PAT 后存入本仓库 Secrets）"
+            exit 1
           fi
-          url="$(curl -fsSL -H "Authorization: Bearer ${ASSETS_PAT}" \
-            https://api.github.com/repos/Klee7792/nainiuzhen-assets/releases/latest \
-            | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep 'assets\.pack' | head -1 || true)"
-          if [ -z "${url}" ]; then
-            echo "::warning::nainiuzhen-assets 尚未发布 assets.pack，跳过"
-            exit 0
+          mkdir -p app/src/main/assets
+          code=$(curl -sSL -w '%{http_code}' -o app/src/main/assets/assets.pack \
+            -H "Authorization: Bearer ${ASSETS_PAT}" \
+            https://raw.githubusercontent.com/Klee7792/nainiuzhen-assets/main/assets.pack)
+          if [ "${code}" != "200" ]; then
+            echo "::error::assets.pack 拉取失败（HTTP ${code}）：检查 PAT 是否只授了 nainiuzhen-assets、私有仓 main 分支是否存在该文件"
+            exit 1
           fi
-          curl -fsSL -H "Authorization: Bearer ${ASSETS_PAT}" \
-            -o "${RUNNER_TEMP}/assets.pack" "${url}"
-          echo "assets.pack 已下载：$(du -h "${RUNNER_TEMP}/assets.pack" | cut -f1)"
-          echo "::notice::解码注入逻辑待 assets.pack 流水线实装后在此接入"
+          if ! head -c 4 app/src/main/assets/assets.pack | grep -q "NZPK"; then
+            echo "::error::assets.pack 魔数校验失败（非 NZPK 容器，可能下载到错误页）"
+            exit 1
+          fi
+          echo "::notice::assets.pack 注入完成：$(wc -c < app/src/main/assets/assets.pack) 字节"
 
       - name: Build
         run: >-
