@@ -22,8 +22,11 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- 状态栏样式经 UIApplication.setStatusBarStyle 由 App 内主题切换驱动（SetStatusBarLightIcons），
-	     必须关闭 VC 接管，否则该调用不生效。 -->
+	<!-- 状态栏样式静态配置：Default = 浅背景黑图标 / 深背景白图标（随系统深色模式自动切换）。
+	     K/N 未导出 setStatusBarStyle，动态切换暂不可行（见 StatusBar.ios.kt）；
+	     关闭 VC 接管以保证全局样式生效。 -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<!-- 单窗口：应用状态是进程级单例，不支持多场景。 -->

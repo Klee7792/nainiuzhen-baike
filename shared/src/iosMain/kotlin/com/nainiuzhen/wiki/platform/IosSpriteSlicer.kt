@@ -11,11 +11,11 @@ import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.EncodedImageFormat
-import org.jetbrains.skia.FilterQuality
+import org.jetbrains.skia.FilterMode
+import org.jetbrains.skia.FilterMipmap
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
-import org.jetbrains.skia.Paint
-import org.jetbrains.skia.Rect
+import org.jetbrains.skia.MipmapMode
 
 /**
  * 基于 skiko（Skia）的切片器实现（iOS）。
@@ -78,16 +78,23 @@ class IosSpriteSlicer : SpriteSlicer {
         null
     }
 
-    /** 从图集 [sheet] 上按 1:1 像素矩形裁出 [w]×[h] 新位图。 */
+    /** 从图集 [sheet] 上按 1:1 像素矩形裁出 [w]×[h] 新位图（NEAREST：像素硬边零模糊）。 */
     private fun extractRegion(sheet: Image, left: Int, top: Int, w: Int, h: Int): Bitmap {
         val out = newBitmap(w, h)
         val canvas = Canvas(out)
-        val paint = Paint().apply { filterQuality = FilterQuality.NEAREST }
         canvas.drawImageRect(
-            sheet,
-            Rect.makeXYWH(left.toFloat(), top.toFloat(), w.toFloat(), h.toFloat()),
-            Rect.makeXYWH(0f, 0f, w.toFloat(), h.toFloat()),
-            paint,
+            image = sheet,
+            srcLeft = left.toFloat(),
+            srcTop = top.toFloat(),
+            srcRight = (left + w).toFloat(),
+            srcBottom = (top + h).toFloat(),
+            dstLeft = 0f,
+            dstTop = 0f,
+            dstRight = w.toFloat(),
+            dstBottom = h.toFloat(),
+            samplingMode = FilterMipmap(FilterMode.NEAREST, MipmapMode.NONE),
+            paint = null,
+            strict = true,
         )
         return out
     }
@@ -103,7 +110,7 @@ class IosSpriteSlicer : SpriteSlicer {
         // (x, y) → (y, W - x)：先平移再旋转 -90°（y-down 坐标系下即视觉逆时针）。
         canvas.translate(0f, w.toFloat())
         canvas.rotate(-90f, 0f, 0f)
-        canvas.drawImage(Image.makeFromBitmap(src), 0f, 0f)
+        drawNearest(canvas, Image.makeFromBitmap(src), 0f, 0f)
         canvas.restore()
         return out
     }
@@ -117,8 +124,26 @@ class IosSpriteSlicer : SpriteSlicer {
         }
         val out = newBitmap(sw, sh)
         val canvas = Canvas(out)
-        canvas.drawImage(Image.makeFromBitmap(src), colorRect.x.toFloat(), colorRect.y.toFloat())
+        drawNearest(canvas, Image.makeFromBitmap(src), colorRect.x.toFloat(), colorRect.y.toFloat())
         return out
+    }
+
+    /** 以整数偏移 1:1 贴图（NEAREST，与 Android 端硬边语义一致）。 */
+    private fun drawNearest(canvas: Canvas, image: Image, left: Float, top: Float) {
+        canvas.drawImageRect(
+            image = image,
+            srcLeft = 0f,
+            srcTop = 0f,
+            srcRight = image.width.toFloat(),
+            srcBottom = image.height.toFloat(),
+            dstLeft = left,
+            dstTop = top,
+            dstRight = left + image.width.toFloat(),
+            dstBottom = top + image.height.toFloat(),
+            samplingMode = FilterMipmap(FilterMode.NEAREST, MipmapMode.NONE),
+            paint = null,
+            strict = true,
+        )
     }
 
     override fun decode(bytes: ByteArray): ImageBitmap {
@@ -126,7 +151,7 @@ class IosSpriteSlicer : SpriteSlicer {
         try {
             // 整图 1:1 贴到等尺寸位图（等价 peekPixels，但只用本文件已验证的 API）。
             val bmp = newBitmap(sheet.width, sheet.height)
-            Canvas(bmp).drawImage(sheet, 0f, 0f)
+            drawNearest(Canvas(bmp), sheet, 0f, 0f)
             return bmp.asComposeImageBitmap()
         } finally {
             sheet.close()
