@@ -82,6 +82,17 @@ jobs:
             exit 1
           fi
           echo "::notice::assets.pack 注入完成：$(wc -c < app/src/main/assets/assets.pack) 字节"
+          # release 签名复用 Android 标准 debug keystore（与本地构建同签名，可覆盖互装）。
+          # 本地 keystore 存私有素材仓，CI 拉到 runner 的 ~/.android/ 下供 validateSigningRelease 使用。
+          mkdir -p "${HOME}/.android"
+          code2=$(curl -sSL -w '%{http_code}' -o "${HOME}/.android/debug.keystore" \
+            -H "Authorization: Bearer ${ASSETS_PAT}" \
+            https://raw.githubusercontent.com/Klee7792/nainiuzhen-assets/main/debug.keystore)
+          if [ "${code2}" != "200" ]; then
+            echo "::error::debug.keystore 拉取失败（HTTP ${code2}）"
+            exit 1
+          fi
+          echo "::notice::debug.keystore 就绪：$(wc -c < "${HOME}/.android/debug.keystore") 字节"
 
       - name: Build
         run: >-
