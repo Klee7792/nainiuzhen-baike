@@ -61,3 +61,6 @@ builds/nz_dump.xml
 *.done
 build_v*_log.txt
 /res/
+
+# Agent workspace data (any depth)
+.workbuddy/
