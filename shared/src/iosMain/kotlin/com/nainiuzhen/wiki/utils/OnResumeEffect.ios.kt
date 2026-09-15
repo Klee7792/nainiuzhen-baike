@@ -18,7 +18,7 @@ actual fun OnResumeEffect(onResume: () -> Unit) {
         val center = NSNotificationCenter.defaultCenter
         val observer = center.addObserverForName(
             name = UIApplication.didBecomeActiveNotification,
-            `object` = null,
+            obj = null,
             queue = NSOperationQueue.mainQueue,
         ) { _ ->
             latestOnResume()
