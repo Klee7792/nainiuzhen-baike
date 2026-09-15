@@ -59,5 +59,9 @@
 	<!-- 高刷设备（ProMotion）满帧率渲染。 -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- 开启文件共享：可用爱思助手 / iMazing 直接取出 Documents/app_log.txt 诊断日志
+	     （无 Mac 时唯一的日志获取途径）。 -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
 </dict>
 </plist>

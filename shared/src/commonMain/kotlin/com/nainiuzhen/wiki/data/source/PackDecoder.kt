@@ -1,5 +1,6 @@
 package com.nainiuzhen.wiki.data.source
 
+import com.nainiuzhen.wiki.utils.AppLog
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -79,7 +80,13 @@ object PackDecoder {
             mutex.withLock {
                 cache[path]?.let { return@withLock it }
                 val entry = entriesByName[path] ?: return@withLock null
-                val bytes = decode(packBytes!!, entry)
+                val bytes = try {
+                    decode(packBytes!!, entry)
+                } catch (t: Throwable) {
+                    // 单条目解压失败（iOS zlib 路径重点怀疑对象）：记录后回退平台资源
+                    AppLog.e("assets.pack 解码失败: $path", t)
+                    return@withLock null
+                }
                 cache[path] = bytes
                 bytes
             }
@@ -95,10 +102,18 @@ object PackDecoder {
                 val bytes = loadPackBytes()
                 if (bytes == null) {
                     // 包不存在（未注入 pack 的构建）→ 置空标记并放行平台资源回退
+                    AppLog.i("assets.pack 缺失 → 回退平台资源（iOS bundle / Android APK assets）")
                     packBytes = ByteArray(0)
                 } else {
-                    entriesByName = parse(bytes)
-                    packBytes = bytes
+                    try {
+                        entriesByName = parse(bytes)
+                        packBytes = bytes
+                        AppLog.i("assets.pack 已加载：${bytes.size} 字节 / ${entriesByName.size} 条目")
+                    } catch (t: Throwable) {
+                        // 解析失败不硬崩：记录后回退，便于取出日志定位
+                        AppLog.e("assets.pack 解析失败 → 回退平台资源", t)
+                        packBytes = ByteArray(0)
+                    }
                 }
             }
         }

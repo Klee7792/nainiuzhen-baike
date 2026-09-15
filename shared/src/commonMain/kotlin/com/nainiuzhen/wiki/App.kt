@@ -36,6 +36,7 @@ import com.nainiuzhen.wiki.data.AssetManager
 import com.nainiuzhen.wiki.data.source.AssetLoader
 import com.nainiuzhen.wiki.utils.IoDispatcher
 import com.nainiuzhen.wiki.utils.SetStatusBarLightIcons
+import com.nainiuzhen.wiki.utils.AppLog
 import com.nainiuzhen.wiki.utils.ApplyPhoneOrientation
 import com.nainiuzhen.wiki.data.repository.SpriteCacheManager
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
@@ -136,6 +137,8 @@ private fun AppRoot(
     var loadTotal by remember { mutableIntStateOf(0) }
     // 冷启动计时：只有本次真的跑完加载流程才有值（>0），热启动 / 后台回前台为 -1 ⇒ 不弹 toast。
     var startupElapsedMs by remember { mutableLongStateOf(-1L) }
+    // 启动加载失败原因：非空时直接上屏展示（iOS 首版排障：宁可看到报错，也不要黑屏无因可查）。
+    var loadError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         // 进程存活时直接复用已加载数据（变更点 #27，避免后台回前台重新加载）。
         if (cachedLoadedData == null) {
@@ -144,34 +147,43 @@ private fun AppRoot(
             runCatching { cache.clear() }
             // 资源加载（读 121 个文件 + 解析 26 个 plist）较重，放到 IO 线程，
             // 避免阻塞主线程导致首启动 ANR；主线程仅负责展示 LoadingScreen。
-            val data = withContext(IoDispatcher) {
-                AssetManager(slicer, cache).loadAll(isDebug) { done, total ->
-                    withContext(Dispatchers.Main) {
-                        loadPhase = 0
-                        loadDone = done
-                        loadTotal = total
+            // iOS 首版排障：加载全流程兜底。异常写诊断日志并上屏，避免「加载失败 → 黑屏」无从下手。
+            try {
+                val data = withContext(IoDispatcher) {
+                    AssetManager(slicer, cache).loadAll(isDebug) { done, total ->
+                        withContext(Dispatchers.Main) {
+                            loadPhase = 0
+                            loadDone = done
+                            loadTotal = total
+                        }
                     }
                 }
-            }
-            // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
-            // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
-            withContext(IoDispatcher) {
-                data.sprite.preloadAllSprites { done, total ->
-                    withContext(Dispatchers.Main) {
-                        loadPhase = 1
-                        loadDone = done
-                        loadTotal = total
+                // 预热切片：全部帧切片进内存后才置 loaded，主界面首屏即可秒出全部图标；
+                // 进度回调在 IO 线程，切回主线程更新状态驱动 LoadingScreen 的真实 0-100%。
+                withContext(IoDispatcher) {
+                    data.sprite.preloadAllSprites { done, total ->
+                        withContext(Dispatchers.Main) {
+                            loadPhase = 1
+                            loadDone = done
+                            loadTotal = total
+                        }
                     }
                 }
+                cachedLoadedData = data
+                // 计时点：数据 + 切片都就绪（= 首屏内容齐备）。
+                startupElapsedMs = appStartElapsedMs()
+                AppLog.i("加载完成：耗时 ${startupElapsedMs}ms")
+            } catch (t: Throwable) {
+                AppLog.e("启动加载失败", t)
+                loadError = "$t"
             }
-            cachedLoadedData = data
-            // 计时点：数据 + 切片都就绪（= 首屏内容齐备）。
-            startupElapsedMs = appStartElapsedMs()
         }
         loadedState.value = cachedLoadedData
     }
     val loaded = loadedState.value
-    if (loaded == null) {
+    if (loadError != null) {
+        StartupErrorScreen(message = loadError!!)
+    } else if (loaded == null) {
         LoadingScreen(
             slicer = slicer,
             phase = loadPhase,
@@ -196,6 +208,30 @@ private fun AppRoot(
             LocalSpriteRepository provides loaded.sprite,
         ) {
             MainScreen()
+        }
+    }
+}
+
+/**
+ * 启动加载失败页：把异常原文直接铺在屏幕上。
+ *
+ * 仅用于排障（iOS 无 Mac、连不了 Xcode 调试器）：错误信息同时写入诊断日志
+ * （Android = logcat；iOS = Documents/app_log.txt）。正常情况下此页不应出现。
+ */
+@Composable
+private fun StartupErrorScreen(message: String) {
+    MiuixTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MiuixTheme.colorScheme.background)
+                .padding(20.dp),
+        ) {
+            Text(
+                text = "启动失败（完整堆栈见诊断日志）\n\n$message",
+                color = MiuixTheme.colorScheme.onBackground,
+                fontSize = 12.sp,
+            )
         }
     }
 }
