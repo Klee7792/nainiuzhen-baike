@@ -78,7 +78,7 @@ class IosSpriteSlicer : SpriteSlicer {
     } catch (_: Exception) {
         // Skia 编解码器拒收（历史上：Xcode CgBI 重压缩的 bundle PNG）→ 上层全部静默
         // 回退透明占位，表现为「图标/图集空白但无报错」，必须留痕。
-        AppLog.w("Skia PNG 解码失败（字节头 ${bytes.take(8).joinToString("") { "%02X".format(it) }}）")
+        AppLog.w("Skia PNG 解码失败（字节头 ${bytes.take(8).joinToString("") { it.toString(16).padStart(2, '0').uppercase() }}）")
         null
     }
 

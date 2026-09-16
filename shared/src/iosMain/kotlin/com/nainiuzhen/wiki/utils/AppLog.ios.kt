@@ -4,7 +4,7 @@ package com.nainiuzhen.wiki.utils
 
 import kotlin.concurrent.Volatile
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.Channel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
