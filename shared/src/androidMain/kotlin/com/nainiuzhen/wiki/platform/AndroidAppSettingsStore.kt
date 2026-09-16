@@ -30,14 +30,14 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         showNavigationBar = prefs.getBoolean(KEY_SHOW_NAV_BAR, true),
         showNavigationBadge = prefs.getBoolean(KEY_SHOW_NAV_BADGE, false),
         navigationBarMode = prefs.getInt(KEY_NAV_BAR_MODE, 0),
-        useFloatingNavigationBar = prefs.getBoolean(KEY_FLOATING_NAV_BAR, false),
+        useFloatingNavigationBar = prefs.getBoolean(KEY_FLOATING_NAV_BAR, true),
         showFloatingToolbar = prefs.getBoolean(KEY_FLOATING_TOOLBAR, false),
         floatingToolbarPosition = prefs.getInt(KEY_FLOATING_TOOLBAR_POS, 0),
         showFloatingActionButton = prefs.getBoolean(KEY_FLOATING_FAB, false),
         floatingActionButtonPosition = prefs.getInt(KEY_FLOATING_FAB_POS, 0),
         enableDim = prefs.getBoolean(KEY_DIM, false),
         blockInputDuringTransition = prefs.getBoolean(KEY_BLOCK_INPUT, true),
-        floatingNavigationBarStyle = prefs.getInt(KEY_FLOATING_NAV_BAR_STYLE, 0),
+        floatingNavigationBarStyle = prefs.getInt(KEY_FLOATING_NAV_BAR_STYLE, 1),
         floatingNavigationBarPosition = prefs.getInt(KEY_FLOATING_NAV_BAR_POS, 0),
         homeImageScale = prefs.getScaleFloat(KEY_HOME_IMAGE_SCALE, 8f),
         cardImageScale = prefs.getScaleFloat(KEY_CARD_IMAGE_SCALE, 5f),
@@ -47,7 +47,8 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         scaleStep = prefs.getScaleFloat(KEY_SCALE_STEP, 0.1f),
         itemCardTextSizeSp = prefs.getScaleFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, 10f),
         recipeCardTextSizeSp = prefs.getScaleFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, 10f),
-        allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, false),
+        allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, true),
+        monetSeed = prefs.getInt(KEY_MONET_SEED, 0),
         // —— v31 卡片外观设置（三组「总开关 + n 板块 + 同步」+ 四角 + 按下阴影同步）—— //
         cardBgMaster = prefs.getBoolean(KEY_CARD_BG_MASTER, false),
         cardBgSync = prefs.getBoolean(KEY_CARD_BG_SYNC, true),
@@ -116,6 +117,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, state.itemCardTextSizeSp)
             putFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, state.recipeCardTextSizeSp)
             putBoolean(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
+            putInt(KEY_MONET_SEED, state.monetSeed)
             // —— v31 卡片外观设置 —— //
             putBoolean(KEY_CARD_BG_MASTER, state.cardBgMaster)
             putBoolean(KEY_CARD_BG_SYNC, state.cardBgSync)
@@ -185,6 +187,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_ITEM_CARD_TEXT_SIZE_SP = "itemCardTextSizeSp"
         const val KEY_RECIPE_CARD_TEXT_SIZE_SP = "recipeCardTextSizeSp"
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
+        const val KEY_MONET_SEED = "monetSeed"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"
         const val KEY_CARD_BG_SYNC = "cardBgSync"

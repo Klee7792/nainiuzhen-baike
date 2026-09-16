@@ -49,14 +49,14 @@ class IosAppSettingsStore : AppSettingsStore {
         showNavigationBar = boolOf(KEY_SHOW_NAV_BAR, true),
         showNavigationBadge = boolOf(KEY_SHOW_NAV_BADGE, false),
         navigationBarMode = intOf(KEY_NAV_BAR_MODE, 0),
-        useFloatingNavigationBar = boolOf(KEY_FLOATING_NAV_BAR, false),
+        useFloatingNavigationBar = boolOf(KEY_FLOATING_NAV_BAR, true),
         showFloatingToolbar = boolOf(KEY_FLOATING_TOOLBAR, false),
         floatingToolbarPosition = intOf(KEY_FLOATING_TOOLBAR_POS, 0),
         showFloatingActionButton = boolOf(KEY_FLOATING_FAB, false),
         floatingActionButtonPosition = intOf(KEY_FLOATING_FAB_POS, 0),
         enableDim = boolOf(KEY_DIM, false),
         blockInputDuringTransition = boolOf(KEY_BLOCK_INPUT, true),
-        floatingNavigationBarStyle = intOf(KEY_FLOATING_NAV_BAR_STYLE, 0),
+        floatingNavigationBarStyle = intOf(KEY_FLOATING_NAV_BAR_STYLE, 1),
         floatingNavigationBarPosition = intOf(KEY_FLOATING_NAV_BAR_POS, 0),
         homeImageScale = floatOf(KEY_HOME_IMAGE_SCALE, 8f),
         cardImageScale = floatOf(KEY_CARD_IMAGE_SCALE, 5f),
@@ -66,7 +66,8 @@ class IosAppSettingsStore : AppSettingsStore {
         scaleStep = floatOf(KEY_SCALE_STEP, 0.1f),
         itemCardTextSizeSp = floatOf(KEY_ITEM_CARD_TEXT_SIZE_SP, 10f),
         recipeCardTextSizeSp = floatOf(KEY_RECIPE_CARD_TEXT_SIZE_SP, 10f),
-        allowPhoneLandscape = boolOf(KEY_ALLOW_PHONE_LANDSCAPE, false),
+        allowPhoneLandscape = boolOf(KEY_ALLOW_PHONE_LANDSCAPE, true),
+        monetSeed = intOf(KEY_MONET_SEED, 0),
         // —— v31 卡片外观设置 —— //
         cardBgMaster = boolOf(KEY_CARD_BG_MASTER, false),
         cardBgSync = boolOf(KEY_CARD_BG_SYNC, true),
@@ -134,6 +135,7 @@ class IosAppSettingsStore : AppSettingsStore {
         putFloat(KEY_ITEM_CARD_TEXT_SIZE_SP, state.itemCardTextSizeSp)
         putFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, state.recipeCardTextSizeSp)
         putBool(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
+        putInt(KEY_MONET_SEED, state.monetSeed)
         // —— v31 卡片外观设置 —— //
         putBool(KEY_CARD_BG_MASTER, state.cardBgMaster)
         putBool(KEY_CARD_BG_SYNC, state.cardBgSync)
@@ -203,6 +205,7 @@ class IosAppSettingsStore : AppSettingsStore {
         const val KEY_ITEM_CARD_TEXT_SIZE_SP = "itemCardTextSizeSp"
         const val KEY_RECIPE_CARD_TEXT_SIZE_SP = "recipeCardTextSizeSp"
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
+        const val KEY_MONET_SEED = "monetSeed"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"
         const val KEY_CARD_BG_SYNC = "cardBgSync"

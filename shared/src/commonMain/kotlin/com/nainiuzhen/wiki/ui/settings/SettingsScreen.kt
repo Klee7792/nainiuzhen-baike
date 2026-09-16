@@ -1,14 +1,29 @@
 package com.nainiuzhen.wiki.ui.settings
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.utils.LocalAppVersion
@@ -19,6 +34,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
@@ -86,10 +102,16 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 SwitchPreference(
                     title = "Monet 取色",
-                    summary = "跟随系统壁纸动态取色",
+                    summary = "Android 跟随壁纸取色；iOS 无壁纸取色 API，可用下方种子色",
                     checked = appState.monet,
                     onCheckedChange = { updateAppState(appState.copy(monet = it)) },
                 )
+                AnimatedVisibility(visible = appState.monet) {
+                    MonetSeedSwatchRow(
+                        selectedSeed = appState.monetSeed,
+                        onSelect = { updateAppState(appState.copy(monetSeed = it)) },
+                    )
+                }
             }
 
             SmallTitle(text = "导航")
@@ -267,6 +289,78 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                     onClick = { navigator.openTopLevel(Route.About) },
                 )
             }
+        }
+    }
+}
+
+/** 预设取色种子色板（ARGB）。「默认」（种子 0）不在本表内，单独用文字圆钮表示。 */
+private val MONET_SEED_PALETTE = listOf(
+    0xFFE5484D.toInt(), // 红
+    0xFFF76B15.toInt(), // 橙
+    0xFFF5A623.toInt(), // 金
+    0xFF30A46C.toInt(), // 绿
+    0xFF12A594.toInt(), // 青绿
+    0xFF0090FF.toInt(), // 蓝
+    0xFF3E63DD.toInt(), // 靛蓝
+    0xFF8E4EC6.toInt(), // 紫
+    0xFFE93D82.toInt(), // 玫红
+    0xFF8D6E63.toInt(), // 棕
+)
+
+/**
+ * Monet 取色的「主题种子色」色板行（v40，随 Monet 开关显隐）。
+ *
+ * - 首个「默认」圆钮 = 种子 0：Android 跟随壁纸动态取色；iOS 无壁纸取色 API，回落 miuix 默认紫。
+ * - 其余圆钮 = 手动种子，经 material-color-utilities 生成整套色板（miuix ThemeController.keyColor）。
+ *   两端行为一致；iOS 用户由此获得可控的动态配色。
+ */
+@Composable
+private fun MonetSeedSwatchRow(selectedSeed: Int, onSelect: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = "主题种子色（默认 = Android 壁纸取色 / iOS 内置紫）",
+            fontSize = 12.sp,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonetSeedSwatch(argb = null, selected = selectedSeed == 0) { onSelect(0) }
+            MONET_SEED_PALETTE.forEach { argb ->
+                MonetSeedSwatch(argb = argb, selected = selectedSeed == argb) { onSelect(argb) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonetSeedSwatch(argb: Int?, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) {
+                    MiuixTheme.colorScheme.primary
+                } else {
+                    MiuixTheme.colorScheme.outline
+                },
+                shape = CircleShape,
+            )
+            .padding(3.dp)
+            .clip(CircleShape)
+            .background(if (argb != null) Color(argb) else MiuixTheme.colorScheme.surfaceVariant)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (argb == null) {
+            Text(text = "默", fontSize = 8.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
         }
     }
 }

@@ -99,7 +99,7 @@ fun App(
         2 -> false
         else -> isSystemInDarkTheme()
     }
-    AppTheme(colorMode = appState.colorMode, monet = appState.monet) {
+    AppTheme(colorMode = appState.colorMode, monet = appState.monet, monetSeed = appState.monetSeed) {
         CompositionLocalProvider(
             LocalAppSettings provides appState,
             LocalUpdateAppSettings provides updateAppState,

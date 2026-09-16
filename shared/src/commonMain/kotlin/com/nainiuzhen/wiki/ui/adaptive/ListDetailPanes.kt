@@ -42,11 +42,13 @@ private const val PANE_SPLIT_MS = 320
 /**
  * 是否启用「列表-详情」双栏（设计文档 §6.1）。
  *
- * 启用条件：**宽 ≥ 840dp 且 高 ≥ 480dp**。只判宽度不够 —— 手机横屏（如 915×393dp）
- * 够宽但太矮，必须保持单栏 + 弹窗，故再叠加 [isShortWindow] 的取反。
+ * 启用条件：**宽 ≥ 840dp 且 高 ≥ 360dp**（v40 起）。
  *
  * - 手机竖屏（726dp 宽）→ false（单栏 + 弹窗）
- * - 手机横屏（915×393dp，高不足）→ false（单栏 + 弹窗）
+ * - 手机横屏（915×393dp）→ **true**（v40：横屏进分栏，底栏/顶栏自然归属左栏主页区域，
+ *   与 iPad 行为一致 —— 用户需求「横屏时底栏控制在左侧主页区域」）；
+ *   阈值从 480dp 放宽到 360dp 只影响**双栏判定**，[isShortWindow]（<480dp）仍用于
+ *   弹窗高度等其他矮屏适配，互不干扰。
  * - 平板 / 桌面窗口 / 模拟器横屏（1105×726dp）→ true（双栏）
  *
  * 说明：实现时先取一次 [rememberWindowClass] 存进局部变量，避免重复调用。
@@ -59,8 +61,14 @@ private const val PANE_SPLIT_MS = 320
 fun rememberUseDualPane(): Boolean {
     val windowClass = rememberWindowClass()
     val wideEnough = windowClass == WindowClass.EXPANDED || windowClass == WindowClass.LARGE
-    return wideEnough && !isShortWindow()
+    // 高度阈值 360dp：双栏布局自身的下限（顶栏折叠态 + 列表行仍可容纳）；
+    // 比 isShortWindow 的 480dp 宽松 —— 手机横屏（393dp）允许进双栏。
+    val tallEnough = LocalWindowInfo.current.containerDpSize.height >= DUAL_PANE_MIN_HEIGHT
+    return wideEnough && tallEnough
 }
+
+/** 双栏布局的最小窗口高度（v40 起 360dp，见 [rememberUseDualPane] 注释）。 */
+private val DUAL_PANE_MIN_HEIGHT = 360.dp
 
 /**
  * 左（列表）栏宽度：窗口宽 × 0.34，夹紧到 [300.dp, 380.dp]。

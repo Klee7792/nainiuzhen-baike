@@ -31,7 +31,8 @@ data class AppState(
     val showNavigationBar: Boolean = true, // Show NavigationBar
     val showNavigationBadge: Boolean = false, // Show Navigation Badge（默认关闭，避免遮住底栏 icon）
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
-    val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
+    // v40 起悬浮底栏默认开启、默认 iOS 风格（用户决策 2026-09-16）；已装用户保留各自已保存的值。
+    val useFloatingNavigationBar: Boolean = true, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
     val floatingToolbarPosition: Int = 0, // FloatingToolbar Position (0=End 1=Start 2=Center)
     val showFloatingActionButton: Boolean = false, // Show FloatingActionButton
@@ -39,7 +40,7 @@ data class AppState(
     val enableDim: Boolean = false, // Enable Dim
     val blockInputDuringTransition: Boolean = true, // Block Input During Transition
     // —— v6 新增 —— //
-    val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS)
+    val floatingNavigationBarStyle: Int = 1, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS；v40 起默认 iOS)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
     // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
     // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
@@ -54,8 +55,14 @@ data class AppState(
     val itemCardTextSizeSp: Float = 10f, // 物品大全卡片名称字号（5..11 sp，默认 10）
     val recipeCardTextSizeSp: Float = 10f, // 配方查询卡片名称字号（5..11 sp，默认 10）
     // —— v8 新增：手机横屏开关（大屏适配 §8.3）—— //
-    // 默认 false = 锁竖屏；true = 允许自由旋转。仅在手机（<sw600dp）生效，大屏由系统忽略方向请求。
-    val allowPhoneLandscape: Boolean = false,
+    // v40 起默认 true = 允许自由旋转（用户决策 2026-09-16）；仅在手机（<sw600dp）生效，大屏由系统忽略方向请求。
+    // 已装用户保留各自已保存的值（iOS 端 Swift 壳同步读取同一键，见 PhoneOrientation.ios.kt）。
+    val allowPhoneLandscape: Boolean = true,
+    // —— v40 新增：Monet 手动取色种子 —— //
+    // 0 = 不指定（Android 跟随壁纸取色；iOS 无壁纸取色 API，回落 miuix 默认种子 0xFF6750A4）。
+    // 非 0 = ARGB 种子色，经 material-color-utilities 生成整套色板（两端通用）。
+    // 场景：iOS 上壁纸取色做不到，用户从「主题种子色」色板里手动选。
+    val monetSeed: Int = 0,
     // —— v9 新增：卡片外观设置（v31，设置子页 CardSettingsScreen）—— //
     // 三组「总开关 + n 板块 + 同步」，求值口径见 utils/CardAppearance.kt：
     //     effective = 总开关 && (同步 || 板块自己的值)

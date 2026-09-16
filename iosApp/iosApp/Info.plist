@@ -41,11 +41,15 @@
 	<array>
 		<string>arm64</string>
 	</array>
-	<!-- v38 首发锁竖屏（与 Android 手机默认一致）；iPad 全方向待大屏适配后放开。 -->
+	<!-- v40：声明含横屏（能力上限）；实际允许方向由 iosApp.swift 的 AppDelegate 按
+	     设置页「手机横屏」开关（NSUserDefaults: allowPhoneLandscape）动态返回。
+	     iPad 恒全方向（TARGETED_DEVICE_FAMILY 含 2）。 -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
