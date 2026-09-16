@@ -5,7 +5,6 @@ package com.nainiuzhen.wiki.utils
 import kotlin.concurrent.Volatile
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSDocumentDirectory
-import platform.Foundation.NSLog
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
 import platform.posix.fclose
@@ -31,9 +30,8 @@ private fun documentsPath(): String? =
  * @param line 已含级别与时间戳的一整行（见 [AppLog]）。
  */
 internal actual fun platformLog(line: String) {
-    // 同步打一行 NSLog：Windows 上 `idevicesyslog | findstr Wiki` 可实时看到（logcat 等价物）。
-    // 消息作为 %s 参数传入，避免内容里的 % 被当成格式符。
-    runCatching { NSLog("%@", "[Wiki] $line") }
+    // ⚠️ 不要在这里加 NSLog：os_log 要求格式串为编译期常量，K/N 传运行期字符串
+    // 会在 CFLogvEx3 → os_log_with_args 里触发 EXC_BREAKPOINT（#18 版实测秒闪退）。
     try {
         val dir = documentsPath() ?: return
         // 追加写：跨启动保留历史。每次进程首次写日志时插一行分隔，便于区分会话。
