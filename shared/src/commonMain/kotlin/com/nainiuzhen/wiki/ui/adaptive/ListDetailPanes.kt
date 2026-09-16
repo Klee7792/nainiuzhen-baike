@@ -156,8 +156,13 @@ fun ListDetailPanes(
         val detailPlaceable = measurables[1].measure(Constraints.fixed(detailWidth, height))
 
         layout(fullWidth, height) {
-            listPlaceable.place(0, 0)
+            // ⚠️ 先放详情层、再放列表层（iOS 白屏排障，commit 见探针轮）：
+            // 探针证明「后画的槽位能上屏、先画的整段丢失」，所以把列表层换到后面画。
+            // 单栏静止时列表层垫在最上（详情层=backdrop+透明占位，本就该垫底）；
+            // 子页打开时 detailOnTop 的 zIndex(1f) 把详情层抬回最上，语义不变；
+            // 双栏两层不重叠，顺序无影响。
             detailPlaceable.place(detailX, 0)
+            listPlaceable.place(0, 0)
         }
     }
 }

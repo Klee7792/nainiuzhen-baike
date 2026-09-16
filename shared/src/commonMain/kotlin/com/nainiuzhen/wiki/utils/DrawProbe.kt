@@ -92,3 +92,21 @@ fun Modifier.tintProbe(tag: String, color: Color): Modifier = composed {
         }
     }
 }
+
+/**
+ * 底层染色探针：染色画在子树内容**之前**（对比 [tintProbe] 的之后）。
+ *
+ * 排障判据：若「tint↓ ✓ 上屏、内容本身不上屏」⇒ 子树前段的绘制把编码器/缓冲毒化，
+ * 后段（含内容）全部丢失；若「tint↓ 也不上屏」⇒ 整段显示列表在上屏前就被整体丢弃。
+ */
+fun Modifier.tintProbeBelow(tag: String, color: Color): Modifier = composed {
+    var logged by remember { mutableStateOf(false) }
+    drawWithContent {
+        drawRect(color)
+        drawContent()
+        if (!logged) {
+            logged = true
+            AppLog.i("tint↓ ✓ $tag")
+        }
+    }
+}

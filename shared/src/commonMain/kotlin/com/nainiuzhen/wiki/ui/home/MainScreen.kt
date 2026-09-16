@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -85,6 +86,7 @@ import com.nainiuzhen.wiki.utils.logDrawError
 import com.nainiuzhen.wiki.utils.logFirstDraw
 import com.nainiuzhen.wiki.utils.logSize
 import com.nainiuzhen.wiki.utils.tintProbe
+import com.nainiuzhen.wiki.utils.tintProbeBelow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -276,7 +278,10 @@ fun MainScreen() {
                     modifier
                         .logSize("list-pane")
                         .logFirstDraw("list-pane")
-                        .tintProbe("list-pane", Color.Magenta.copy(alpha = 0.12f)),
+                        // 排障：强制独立离屏图层——若「整段显示列表被丢弃」假说成立，
+                        // 列表层自己成为一个小缓冲后应能正常合成上屏。
+                        .graphicsLayer { }
+                        .tintProbeBelow("list-pane", Color.Magenta.copy(alpha = 0.12f)),
                 ) {
                     MainPaneShell()
                     // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
