@@ -38,6 +38,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
@@ -82,11 +84,6 @@ import com.nainiuzhen.wiki.ui.nav.SubPageNavHost
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
 import com.nainiuzhen.wiki.utils.AppLog
 import com.nainiuzhen.wiki.utils.LocalAppSettings
-import com.nainiuzhen.wiki.utils.logDrawError
-import com.nainiuzhen.wiki.utils.logFirstDraw
-import com.nainiuzhen.wiki.utils.logSize
-import com.nainiuzhen.wiki.utils.tintProbe
-import com.nainiuzhen.wiki.utils.tintProbeBelow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -271,17 +268,13 @@ fun MainScreen() {
     ) {
         ListDetailPanes(
             dual = useDualPane,
-            // 排障探针：iOS 白屏定位（绘制异常原位捕获 + 尺寸留痕，稳定后移除）
-            modifier = Modifier.logDrawError("main-panes").logSize("main-panes"),
             list = { modifier ->
                 Box(
                     modifier
-                        .logSize("list-pane")
-                        .logFirstDraw("list-pane")
-                        // 排障：强制独立离屏图层——若「整段显示列表被丢弃」假说成立，
-                        // 列表层自己成为一个小缓冲后应能正常合成上屏。
-                        .graphicsLayer { }
-                        .tintProbeBelow("list-pane", Color.Magenta.copy(alpha = 0.12f)),
+                        // iOS 白屏修复（run 35076719999 验证通过）：identity graphicsLayer 强制
+                        // 列表层成为独立离屏图层——没有它，列表层整棵子树的绘制产物不会被合成上屏。
+                        // ⚠️ 这是修复的一部分，不是调试代码，勿删。
+                        .graphicsLayer { },
                 ) {
                     MainPaneShell()
                     // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
@@ -306,9 +299,7 @@ fun MainScreen() {
                 Box(
                     modifier
                         .zIndex(if (detailOnTop) 1f else 0f)
-                        .clipToBounds()
-                        .logDrawError("detail-pane")
-                        .tintProbe("detail-pane", Color(0x33FF6600)),
+                        .clipToBounds(),
                 ) {
                     SubPageNavHost(
                         backStack = backStack,
@@ -323,10 +314,11 @@ fun MainScreen() {
 }
 
 /**
- * iOS 液态玻璃底栏总开关（白屏排查期强制关闭，走通用底栏兜底）。
- * 界面正常后再逐项排查：layerBackdrop 录制 / blur 管线 / 传感器。
+ * iOS 液态玻璃底栏总开关。
+ * 白屏根因已定位为列表层绘制合成问题（与液态玻璃无关），恢复启用；
+ * 视觉不满意再考虑打磨自绘实现或降级为经典毛玻璃。
  */
-private const val IOS_LIQUID_GLASS_ENABLED = false
+private const val IOS_LIQUID_GLASS_ENABLED = true
 
 /**
  * 列表层主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
@@ -342,6 +334,17 @@ private fun MainPaneShell() {
 
     val currentPage = pagerState.currentPage // 0 = 主页，1 = 设置
 
+    // 安全区接入验证（每次会话记一次）：全屏绘制后 iOS 应读到真实的 状态栏 / 小白条 高度
+    // （iPhone XR 预期 top≈47dp bottom≈34dp；读到 0 说明 insets 链路没通，顶/底延伸会失效）。
+    var insetsLogged by remember { mutableStateOf(false) }
+    if (!insetsLogged) {
+        insetsLogged = true
+        AppLog.i(
+            "safe insets top=${WindowInsets.statusBars.asPaddingValues().calculateTopPadding()} " +
+                "bottom=${WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()}",
+        )
+    }
+
     // 切页时把顶栏的折叠 / 滚动偏移重置为 0，使新页面顶栏始终从展开态开始
     LaunchedEffect(currentPage) {
         scrollBehavior.state.heightOffset = 0f
@@ -349,35 +352,17 @@ private fun MainPaneShell() {
     }
 
     Scaffold(
-        // 排障探针：iOS 白屏定位（稳定后移除）
-        modifier = Modifier
-            .logSize("scaffold")
-            .logFirstDraw("scaffold")
-            .tintProbe("scaffold", Color.Red.copy(alpha = 0.15f)),
         topBar = {
             AppTopAppBar(
                 title = if (currentPage == 0) "奶牛镇百科" else "设置",
                 largeTitle = if (currentPage == 0) "奶牛镇百科" else "设置",
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
-                modifier = Modifier
-                    .logDrawError("topbar")
-                    .logSize("topbar")
-                    .tintProbe("topbar", Color.Cyan.copy(alpha = 0.35f)),
             )
         },
         bottomBar = {
-            Box(
-                Modifier
-                    .logDrawError("bottombar")
-                    .logSize("bottombar")
-                    .tintProbe("bottombar", Color.Green.copy(alpha = 0.35f)),
-            ) {
+            Box {
                 if (appState.showNavigationBar) {
-                AppLog.i(
-                    "nav 设置：useFloating=${appState.useFloatingNavigationBar} " +
-                        "style=${appState.floatingNavigationBarStyle}",
-                )
                 val isIos = appState.floatingNavigationBarStyle == 1
                 val navItems = listOf(
                     NavigationItem(label = "主页", icon = MiuixIcons.Home),
@@ -419,21 +404,29 @@ private fun MainPaneShell() {
                             if (isBarDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
                         }
                         FloatingNavigationBar(
-                            modifier = if (blurActive) {
-                                Modifier.textureBlur(
-                                    backdrop = backdrop,
-                                    shape = floatingBarShape,
-                                    blurRadius = 25f,
-                                    colors = BlurDefaults.blurColors(
-                                        blendColors = listOf(
-                                            BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(0.6f)),
-                                        ),
-                                    ),
-                                    highlight = floatingHighlight,
+                            modifier = Modifier
+                                // 全屏绘制后悬浮底栏整体抬离 home indicator（iOS）/ 手势条（Android）；
+                                // 液态玻璃底栏与 miuix NavigationBar 自带 insets 适配，只有这里需要外挂。
+                                .windowInsetsPadding(
+                                    WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
                                 )
-                            } else {
-                                Modifier
-                            },
+                                .then(
+                                    if (blurActive) {
+                                        Modifier.textureBlur(
+                                            backdrop = backdrop,
+                                            shape = floatingBarShape,
+                                            blurRadius = 25f,
+                                            colors = BlurDefaults.blurColors(
+                                                blendColors = listOf(
+                                                    BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                                                ),
+                                            ),
+                                            highlight = floatingHighlight,
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                             color = floatingBarColor,
                             horizontalAlignment = when (appState.floatingNavigationBarPosition) {
                                 1 -> Alignment.Start
@@ -478,27 +471,12 @@ private fun MainPaneShell() {
             }
         },
     ) { innerPadding ->
-        // 排障探针：Scaffold 实际分给内容的内边距（iOS 上若 insets 异常会在这里现形）
-        var padLogged by remember { mutableStateOf(false) }
-        if (!padLogged) {
-            padLogged = true
-            AppLog.i(
-                "scaffold innerPadding top=${innerPadding.calculateTopPadding()} " +
-                    "bottom=${innerPadding.calculateBottomPadding()}",
-            )
-        }
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .logDrawError("content")
-                .logSize("content")
-                .tintProbe("content", Color.Blue.copy(alpha = 0.18f)),
+            modifier = Modifier.fillMaxSize(),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .logDrawError("pager-box")
-                    .tintProbe("pager-box", Color(0x26FFA500))
                     .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             ) {
                 HorizontalPager(
@@ -509,15 +487,10 @@ private fun MainPaneShell() {
                     userScrollEnabled = appState.pageUserScroll,
                 ) { page ->
                     when (page) {
-                        0 -> Box(
-                            Modifier.fillMaxSize()
-                                .logSize("home")
-                                .logDrawError("home")
-                                .tintProbe("home", Color.Yellow.copy(alpha = 0.12f)),
-                        ) {
+                        0 -> Box(Modifier.fillMaxSize()) {
                             HomeContent(innerPadding, scrollBehavior)
                         }
-                        else -> Box(Modifier.fillMaxSize().logSize("settings").logDrawError("settings")) {
+                        else -> Box(Modifier.fillMaxSize()) {
                             SettingsContent(innerPadding, scrollBehavior)
                         }
                     }
@@ -538,7 +511,11 @@ private fun MainPaneShell() {
             val floatingPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                bottom = innerPadding.calculateBottomPadding() + 16.dp,
+                // 底栏被隐藏时 innerPadding.bottom=0，取 max 保证悬浮件不被小白条/手势条遮挡
+                bottom = maxOf(
+                    innerPadding.calculateBottomPadding(),
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                ) + 16.dp,
             )
             if (appState.showFloatingToolbar) {
                 Box(

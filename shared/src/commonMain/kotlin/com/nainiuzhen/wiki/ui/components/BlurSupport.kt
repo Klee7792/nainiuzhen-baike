@@ -3,8 +3,11 @@ package com.nainiuzhen.wiki.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -240,6 +243,12 @@ fun AppSubPageScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                // 全屏绘制后，子页内容统一避让底部安全区（iOS 小白条 / Android 手势条·导航栏）。
+                // Scaffold 无 bottomBar ⇒ innerPadding.bottom 恒为 0，这里集中兜底一次，
+                // 各子页列表自带的 12dp contentPadding 叠加其上，不必逐页修改。
+                .padding(
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                )
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         ) { content(innerPadding) }
     }

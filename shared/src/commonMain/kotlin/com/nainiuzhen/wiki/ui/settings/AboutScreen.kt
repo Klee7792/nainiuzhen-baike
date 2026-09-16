@@ -516,14 +516,16 @@ private fun AboutContent(
                         },
                     )
 
-                    SwitchPreference(
-                        title = "全屏背景",
-                        checked = isFullScreenBackground,
-                        onCheckedChange = {
-                            onFullScreenBackgroundChange(it)
-                        },
-                    )
-                }
+                SwitchPreference(
+                    title = "全屏背景",
+                    checked = isFullScreenBackground,
+                    onCheckedChange = {
+                        onFullScreenBackgroundChange(it)
+                    },
+                )
+            }
+            // 本页是独立 Scaffold + 自绘 LazyColumn，不经 AppSubPageScaffold，
+            // 底部安全区避让仍需自带 spacer（勿删）。
                 item {
                     Spacer(modifier = Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
                 }

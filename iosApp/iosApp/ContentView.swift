@@ -13,8 +13,10 @@ struct ComposeView: UIViewControllerRepresentable {
 struct ContentView: View {
     var body: some View {
         ComposeView()
-            .ignoresSafeArea(.keyboard) // Compose 自己处理键盘
-        // 注意：不 edgesIgnoringSafeArea(.all) —— 与 Android 行为对齐，内容从状态栏下开始，
-        // 状态栏区域由系统底色呈现（v38 首发，安全区内绘制的打磨留待后续版本）。
+            // 全屏绘制：内容延伸到状态栏与小白条（home indicator）之下，
+            // 安全区由 Compose 侧的 WindowInsets（statusBars/navigationBars）消费——
+            // miuix TopAppBar 顶部、NavigationBar / 液态玻璃底栏底部均已内置该适配。
+            // 包含 keyboard region：键盘 insets 同样由 Compose 自己处理。
+            .ignoresSafeArea()
     }
 }

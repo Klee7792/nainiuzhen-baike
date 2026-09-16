@@ -110,7 +110,13 @@ fun NavigationBar(
             val navigationBarsPadding = if (platform() != Platform.IOS) {
                 WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             } else {
-                20.dp
+                // 奶牛镇百科定制：宿主 Compose 已全屏绘制（SwiftUI ignoresSafeArea），
+                // home indicator 高度由 WindowInsets 提供（iPhone XR=34dp）；
+                // 取真实 insets，无 insets 环境兜底 20dp（原上游写死 20dp）。
+                maxOf(
+                    20.dp,
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                )
             }
             Spacer(
                 modifier = Modifier
