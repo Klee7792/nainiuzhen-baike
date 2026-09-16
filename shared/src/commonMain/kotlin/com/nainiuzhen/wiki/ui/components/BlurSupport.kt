@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nainiuzhen.wiki.ui.adaptive.rememberUseDualPane
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
@@ -156,6 +157,8 @@ fun AppTopAppBar(
     largeTitleCentered: Boolean = false,
     forceUniformBlur: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
+    /** 水平安全区避让侧向（v42）：分栏时右栏只避右侧、左栏只避左侧，避免「屏幕边缘 insets」误加到屏幕中间。 */
+    horizontalInsetSides: WindowInsetsSides = WindowInsetsSides.Horizontal,
 ) {
     val appState = LocalAppSettings.current
     if (!appState.showTopAppBar) return
@@ -181,6 +184,7 @@ fun AppTopAppBar(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 bottomContent = bottomContent,
+                horizontalInsetsSides = horizontalInsetSides,
                 modifier = modifier,
             )
         } else {
@@ -192,6 +196,7 @@ fun AppTopAppBar(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 bottomContent = bottomContent,
+                horizontalInsetsSides = horizontalInsetSides,
                 modifier = modifier,
             )
         }
@@ -227,6 +232,10 @@ fun AppSubPageScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val backdrop = rememberAppBlurBackdrop()
+    // v42：横屏分栏下，子页（右栏）左缘在屏幕中间，「屏幕左缘的刘海/小白条 insets」
+    // 若仍整条水平应用，会凭空多出一段左边距（v42 用户反馈 0417-0419）。改为按位置取侧：
+    // 分栏右栏 → 只避 Right；单栏（整屏子页）→ 保持 Horizontal（左右都是屏幕真边缘）。
+    val horizontalSides = if (rememberUseDualPane()) WindowInsetsSides.Right else WindowInsetsSides.Horizontal
     Scaffold(
         topBar = {
             AppTopAppBar(
@@ -240,6 +249,7 @@ fun AppSubPageScaffold(
                 largeTitleCentered = largeTitleCentered,
                 forceUniformBlur = forceUniformBlur,
                 bottomContent = bottomContent,
+                horizontalInsetSides = horizontalSides,
                 modifier = if (topBarWidth != null) modifier.width(topBarWidth) else modifier,
             )
         },
@@ -253,13 +263,12 @@ fun AppSubPageScaffold(
                 .padding(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                 )
-                // 水平安全区（横屏刘海 / 打孔）与顶栏内容避让公式**严格一致**：
-                // miuix TopAppBar 对整条顶栏（含 bottomContent 搜索框）做了
-                // displayCutout + navigationBars 的 Horizontal 避让；内容区若不跟进，
-                // 横屏分栏时「内容比搜索框宽出刘海宽度」（v41 用户反馈）。
+                // 水平安全区（横屏刘海 / 打孔）与顶栏内容避让公式**严格一致**（含侧向）：
+                // miuix TopAppBar 对整条顶栏（含 bottomContent 搜索框）做 displayCutout +
+                // navigationBars 的水平避让；内容区不跟进会出现「内容比搜索框宽出刘海宽度」。
                 // 竖屏时水平 insets 恒为 0，无任何视觉变化。
-                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.displayCutout.only(horizontalSides))
+                .windowInsetsPadding(WindowInsets.navigationBars.only(horizontalSides))
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         ) { content(innerPadding) }
     }

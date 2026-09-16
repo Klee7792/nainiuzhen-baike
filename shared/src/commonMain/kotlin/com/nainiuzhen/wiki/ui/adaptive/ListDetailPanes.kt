@@ -20,8 +20,12 @@ import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-/** 左（列表）栏宽度占窗口宽度的比例（文档 §6.3）。 */
-private const val LIST_PANE_WIDTH_FRACTION = 0.34f
+/**
+ * 左（列表）栏宽度占窗口宽度的比例（文档 §6.3）。
+ * v42：0.34 → 0.38 —— 子页右栏去掉「误加的屏幕左缘 insets 边距」后，用户要求把
+ * 约同等宽度加给左栏（XR 横屏 915dp：311dp → 348dp，+37dp ≈ 一侧安全区宽度）。
+ */
+private const val LIST_PANE_WIDTH_FRACTION = 0.38f
 
 /** 左（列表）栏宽度下限：840dp 屏恰好落在此值。 */
 private val LIST_PANE_MIN_WIDTH = 300.dp
@@ -71,7 +75,7 @@ fun rememberUseDualPane(): Boolean {
 private val DUAL_PANE_MIN_HEIGHT = 360.dp
 
 /**
- * 左（列表）栏宽度：窗口宽 × 0.34，夹紧到 [300.dp, 380.dp]。
+ * 左（列表）栏宽度：窗口宽 × 0.38，夹紧到 [300.dp, 380.dp]。
  * 顶栏限宽与双栏分栏共用本函数，保证两者算出的宽度严格一致。
  */
 @Composable

@@ -20,7 +20,7 @@ data class AppState(
     // —— v4 沿用 —— //
     val enableBlur: Boolean = true,
     val enableSquircle: Boolean = true,
-    val navTransitionStyle: Int = 0, // 0=MiuixDefault 1=AOSP(CrossActivity，移植自 miuix example)
+    val navTransitionStyle: Int = 1, // 0=MiuixDefault 1=AOSP(CrossActivity，移植自 miuix example；v42 起默认 AOSP)
     val enableSwipeBack: Boolean = true,
     // —— v5 新增 14 开关（#3，全部真正接续）—— //
     val enableCornerClip: Boolean = true, // Enable Corner Clip
@@ -31,24 +31,26 @@ data class AppState(
     val showNavigationBar: Boolean = true, // Show NavigationBar
     val showNavigationBadge: Boolean = false, // Show Navigation Badge（默认关闭，避免遮住底栏 icon）
     val navigationBarMode: Int = 0, // NavigationBar Mode (0=IconAndText 1=IconOnly 2=IconWithSelectedLabel)
-    // v40 起悬浮底栏默认开启、默认 iOS 风格（用户决策 2026-09-16）；已装用户保留各自已保存的值。
-    val useFloatingNavigationBar: Boolean = true, // Use FloatingNavigationBar
+    // v40 曾默认开启+iOS 风格，v42 按用户决策回退：默认关闭悬浮底栏、样式回 miuix。
+    // 已装用户保留各自已保存的值（默认值只影响首次安装）。
+    val useFloatingNavigationBar: Boolean = false, // Use FloatingNavigationBar
     val showFloatingToolbar: Boolean = false, // Show FloatingToolbar
     val floatingToolbarPosition: Int = 0, // FloatingToolbar Position (0=End 1=Start 2=Center)
     val showFloatingActionButton: Boolean = false, // Show FloatingActionButton
     val floatingActionButtonPosition: Int = 0, // FAB Position (0=End 1=Start 2=Center)
-    val enableDim: Boolean = false, // Enable Dim
+    val enableDim: Boolean = true, // Enable Dim（v42 起默认开启）
     val blockInputDuringTransition: Boolean = true, // Block Input During Transition
     // —— v6 新增 —— //
-    val floatingNavigationBarStyle: Int = 1, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS；v40 起默认 iOS)
+    val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS；v42 起默认 miuix)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
     // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
     // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
-    val cardImageScale: Float = 5f, // 卡片素材：物品/配方卡片内图片（最大 8）
-    val homeImageScale: Float = 8f, // 主页左侧素材：主页物品/配方入口卡片图（最大 10）
-    val dialogBodyImageScale: Float = 6f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）
-    val dialogRecipeImageScale: Float = 6f, // 弹窗配方素材：配方原料/产物（最大 8）
-    val dialogFavHateImageScale: Float = 6f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
+    // v42 起整体默认缩小一号（用户决策 2026-09-16）。
+    val cardImageScale: Float = 4f, // 卡片素材：物品/配方卡片内图片（最大 8）
+    val homeImageScale: Float = 7f, // 主页左侧素材：主页物品/配方入口卡片图（最大 10）
+    val dialogBodyImageScale: Float = 5f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）
+    val dialogRecipeImageScale: Float = 5f, // 弹窗配方素材：配方原料/产物（最大 8）
+    val dialogFavHateImageScale: Float = 5f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
     val scaleStep: Float = 0.1f, // 滑块步进：0.1 / 0.5 / 1（设置子页可调，#22 步长）
     // —— 卡片名称字号（素材缩放设置子页「卡片文字」组，绝对值 sp）—— //
     // 范围 5..11 sp，默认 10 sp；步长跟随同页 scaleStep（0.1 / 0.5 / 1）。

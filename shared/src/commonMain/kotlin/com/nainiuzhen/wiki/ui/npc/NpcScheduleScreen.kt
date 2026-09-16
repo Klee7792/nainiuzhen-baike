@@ -46,6 +46,9 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.ChevronBackward
+import top.yukonga.miuix.kmp.icon.extended.Pin
+import top.yukonga.miuix.kmp.icon.extended.Unpin
 import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -159,7 +162,8 @@ fun NpcScheduleScreen(npcId: Int) {
                         }
                     }
                 }
-                // 右下角控制行：「固定」开关（持久化）+ 收起/展开箭头（Back 图标旋转成上下箭头）。
+                // 右下角控制行：「固定」开关（持久化，v42 起用 Pin/Unpin 图标）+
+                // 收起/展开箭头（ChevronBackward 旋转成上下箭头）。
                 // 固定（默认）= 每次进页展开；取消固定 = 每次进页收起；箭头随时手动切换本次展示。
                 Row(
                     modifier = Modifier
@@ -168,19 +172,23 @@ fun NpcScheduleScreen(npcId: Int) {
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    RequiredChip(
-                        text = "固定",
-                        selected = appState.scheduleFilterPinned,
+                    IconButton(
                         onClick = {
                             val newPinned = !appState.scheduleFilterPinned
                             updateAppState(appState.copy(scheduleFilterPinned = newPinned))
                             // 点「固定」时若当前收起则立即展开，与「固定展开」语义一致
                             if (newPinned) filterExpanded = true
                         },
-                    )
+                    ) {
+                        Icon(
+                            imageVector = if (appState.scheduleFilterPinned) MiuixIcons.Pin else MiuixIcons.Unpin,
+                            contentDescription = if (appState.scheduleFilterPinned) "取消固定（进页收起）" else "固定展开",
+                            tint = MiuixTheme.colorScheme.onBackground,
+                        )
+                    }
                     IconButton(onClick = { filterExpanded = !filterExpanded }) {
                         Icon(
-                            imageVector = MiuixIcons.Back,
+                            imageVector = MiuixIcons.ChevronBackward,
                             contentDescription = if (filterExpanded) "收起筛选" else "展开筛选",
                             tint = MiuixTheme.colorScheme.onBackground,
                             modifier = Modifier.rotate(chevronRotation),

@@ -110,6 +110,7 @@ fun TopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
     defaultWindowInsetsPadding: Boolean = true,
+    horizontalInsetsSides: WindowInsetsSides = WindowInsetsSides.Horizontal,
     titlePadding: Dp = TopAppBarDefaults.TitlePadding,
     navigationIconPadding: Dp = TopAppBarDefaults.NavigationIconPadding,
     actionIconPadding: Dp = TopAppBarDefaults.ActionIconPadding,
@@ -145,6 +146,7 @@ fun TopAppBar(
         scrollBehavior = scrollBehavior,
         modifier = modifier,
         defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+        horizontalInsetsSides = horizontalInsetsSides,
         bottomContent = bottomContent,
     )
 }
@@ -181,6 +183,7 @@ fun SmallTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
     defaultWindowInsetsPadding: Boolean = true,
+    horizontalInsetsSides: WindowInsetsSides = WindowInsetsSides.Horizontal,
     titlePadding: Dp = TopAppBarDefaults.TitlePadding,
     navigationIconPadding: Dp = TopAppBarDefaults.NavigationIconPadding,
     actionIconPadding: Dp = TopAppBarDefaults.ActionIconPadding,
@@ -223,6 +226,7 @@ fun SmallTopAppBar(
         actionIconPadding = actionIconPadding,
         modifier = modifier,
         defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+        horizontalInsetsSides = horizontalInsetsSides,
         bottomContent = bottomContent,
     )
 }
@@ -638,6 +642,7 @@ private fun TopAppBarLayout(
     modifier: Modifier = Modifier,
     largeTitle: String = title,
     defaultWindowInsetsPadding: Boolean = true,
+    horizontalInsetsSides: WindowInsetsSides = WindowInsetsSides.Horizontal,
     bottomContent: @Composable () -> Unit = {},
 ) {
     // Producer lambdas — reads stay in layout/draw phases so scroll never recomposes this subtree.
@@ -797,8 +802,8 @@ private fun TopAppBarLayout(
             .then(
                 if (defaultWindowInsetsPadding) {
                     Modifier
-                        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-                        .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
+                        .windowInsetsPadding(WindowInsets.displayCutout.only(horizontalInsetsSides))
+                        .windowInsetsPadding(WindowInsets.navigationBars.only(horizontalInsetsSides))
                 } else {
                     Modifier
                 },
@@ -962,6 +967,7 @@ private fun SmallTopAppBarLayout(
     actionIconPadding: Dp,
     modifier: Modifier = Modifier,
     defaultWindowInsetsPadding: Boolean = true,
+    horizontalInsetsSides: WindowInsetsSides = WindowInsetsSides.Horizontal,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val animatedTitleColor by animateColorAsState(
@@ -1022,8 +1028,8 @@ private fun SmallTopAppBarLayout(
             .then(
                 if (defaultWindowInsetsPadding) {
                     Modifier
-                        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-                        .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
+                        .windowInsetsPadding(WindowInsets.displayCutout.only(horizontalInsetsSides))
+                        .windowInsetsPadding(WindowInsets.navigationBars.only(horizontalInsetsSides))
                 } else {
                     Modifier
                 },

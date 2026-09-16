@@ -281,6 +281,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				// 关闭 Xcode 对 bundle 裸 PNG 的 CgBI（pngcrush）重压缩：该私有格式 Skia
+				// 解不了，ic_launcher.png 会静默解码失败 → 关于页/加载页图标空白。
+				// 素材图不受影响（在 assets.pack 大包内，不经此处理）。AppIcon 走 actool 亦不受影响。
+				COMPRESS_PNG_FILES = NO;
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -310,6 +314,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				// 关闭 Xcode 对 bundle 裸 PNG 的 CgBI（pngcrush）重压缩：该私有格式 Skia
+				// 解不了，ic_launcher.png 会静默解码失败 → 关于页/加载页图标空白。
+				// 素材图不受影响（在 assets.pack 大包内，不经此处理）。AppIcon 走 actool 亦不受影响。
+				COMPRESS_PNG_FILES = NO;
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;

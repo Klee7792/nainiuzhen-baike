@@ -508,12 +508,10 @@ fun IosLiquidGlassNavigationBar(
                                 backdrop = backdrop,
                                 shape = { pillShape },
                                 effects = {
-                                    vibrancy()
+                                    // 性能：本层 alpha=0，输出只会被滑动指示器经 combinedBackdrop
+                                    // 采样后再叠加指示器自己的玻璃效果，vibrancy/lens 在此纯浪费
+                                    // （每帧两条 shader 白跑），只保留 blur 供指示器折射磨砂底。
                                     blur(4.dp.toPx(), 4.dp.toPx())
-                                    lens(
-                                        refractionHeight = 24.dp.toPx(),
-                                        refractionAmount = 24.dp.toPx(),
-                                    )
                                 },
                                 onDrawSurface = { drawRect(containerColor) },
                             )

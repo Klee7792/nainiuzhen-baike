@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -364,6 +365,9 @@ private fun MainPaneShell() {
                 largeTitle = if (currentPage == 0) "奶牛镇百科" else "设置",
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
+                // v42：分栏时本栏是左栏，左缘 = 屏幕左缘，只避 Left；右缘在屏幕中间，
+                // 整条 Horizontal 会把屏幕右缘的 insets 误加到栏中间（与右栏子页同理）。
+                horizontalInsetSides = if (rememberUseDualPane()) WindowInsetsSides.Left else WindowInsetsSides.Horizontal,
             )
         },
         bottomBar = {
@@ -454,7 +458,26 @@ private fun MainPaneShell() {
                     val mode = NavigationBarDisplayMode.entries.getOrElse(
                         abs(appState.navigationBarMode).coerceIn(0, 2),
                     ) { NavigationBarDisplayMode.IconAndText }
-                    NavigationBar(mode = mode) {
+                    // 模糊激活时底栏半透明 + textureBlur，与悬浮底栏同一观感语言（淡毛玻璃）；
+                    // 半透明度收敛在 0.72，保证图标对比度的同时让模糊透出一点通透感。
+                    val barBlurActive = backdrop != null
+                    NavigationBar(
+                        modifier = if (barBlurActive) {
+                            Modifier.textureBlur(
+                                backdrop = backdrop,
+                                shape = RectangleShape,
+                                blurRadius = 18f,
+                            )
+                        } else {
+                            Modifier
+                        },
+                        color = if (barBlurActive) {
+                            MiuixTheme.colorScheme.surface.copy(alpha = 0.72f)
+                        } else {
+                            MiuixTheme.colorScheme.surface
+                        },
+                        mode = mode,
+                    ) {
                         NavigationBarItem(
                             selected = currentPage == 0,
                             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
@@ -478,10 +501,19 @@ private fun MainPaneShell() {
         Box(
             modifier = Modifier.fillMaxSize()
                 // 水平安全区（横屏刘海 / 打孔）避让，公式与 miuix TopAppBar 内部一致
-                // （displayCutout + navigationBars 的 Horizontal）：分栏时左栏内容不被刘海遮挡，
-                // 且与自避让的顶栏内容边缘对齐。竖屏时水平 insets 恒为 0，无视觉变化。
-                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)),
+                // （displayCutout + navigationBars），v42 起按位置取侧：分栏时本栏是左栏，
+                // 只避 Left（右缘在屏幕中间，不该吃屏幕右缘的 insets）；
+                // 单栏铺满整屏时左右都是真屏幕边缘，保持 Horizontal。竖屏 insets=0 无变化。
+                .windowInsetsPadding(
+                    WindowInsets.displayCutout.only(
+                        if (rememberUseDualPane()) WindowInsetsSides.Left else WindowInsetsSides.Horizontal,
+                    ),
+                )
+                .windowInsetsPadding(
+                    WindowInsets.navigationBars.only(
+                        if (rememberUseDualPane()) WindowInsetsSides.Left else WindowInsetsSides.Horizontal,
+                    ),
+                ),
         ) {
             Box(
                 modifier = Modifier

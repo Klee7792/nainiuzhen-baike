@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.nainiuzhen.wiki.data.model.SpriteAtlasFrame
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
+import com.nainiuzhen.wiki.utils.AppLog
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
@@ -75,6 +76,9 @@ class IosSpriteSlicer : SpriteSlicer {
     private fun decodeSheet(bytes: ByteArray): Image? = try {
         Image.makeFromEncoded(bytes)
     } catch (_: Exception) {
+        // Skia 编解码器拒收（历史上：Xcode CgBI 重压缩的 bundle PNG）→ 上层全部静默
+        // 回退透明占位，表现为「图标/图集空白但无报错」，必须留痕。
+        AppLog.w("Skia PNG 解码失败（字节头 ${bytes.take(8).joinToString("") { "%02X".format(it) }}）")
         null
     }
 
