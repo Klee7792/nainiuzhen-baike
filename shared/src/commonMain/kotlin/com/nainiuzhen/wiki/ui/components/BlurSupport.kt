@@ -4,12 +4,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -249,6 +253,13 @@ fun AppSubPageScaffold(
                 .padding(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                 )
+                // 水平安全区（横屏刘海 / 打孔）与顶栏内容避让公式**严格一致**：
+                // miuix TopAppBar 对整条顶栏（含 bottomContent 搜索框）做了
+                // displayCutout + navigationBars 的 Horizontal 避让；内容区若不跟进，
+                // 横屏分栏时「内容比搜索框宽出刘海宽度」（v41 用户反馈）。
+                // 竖屏时水平 insets 恒为 0，无任何视觉变化。
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         ) { content(innerPadding) }
     }

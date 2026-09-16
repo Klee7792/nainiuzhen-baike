@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -195,7 +196,12 @@ private val EMPTY_HINTS = listOf(
 @Composable
 fun MainScreen() {
     val useDualPane = rememberUseDualPane()
-    AppLog.i("MainScreen 组合：useDualPane=$useDualPane")
+    // 只在 单栏↔分栏 翻转时记一次日志（此前每次重组都记，一次会话刷几百条，既刷屏又拖性能）。
+    var lastLoggedDual by remember { mutableStateOf<Boolean?>(null) }
+    if (lastLoggedDual != useDualPane) {
+        lastLoggedDual = useDualPane
+        AppLog.i("MainScreen 布局：useDualPane=$useDualPane")
+    }
 
     // —— 唯一返回栈 ——
     // 栈底恒为 [Route.Main]（= 详情层当前没有内容）。各业务页里现成的
@@ -377,9 +383,7 @@ private fun MainPaneShell() {
                 if (appState.useFloatingNavigationBar) {
                     if (IOS_LIQUID_GLASS_ENABLED && isIos) {
                         // iOS 液态玻璃底栏：折射 / 高光 / 按住拖动切换 / 选中果冻弹跳（移植自 miuix demo）
-                        // ⚠️ 白屏排查期强制关闭（IOS_LIQUID_GLASS_ENABLED=false）：这是全应用唯一的
-                        // iOS 专属渲染路径，内部含自建 layerBackdrop 录制 + blur 管线 + 传感器，
-                        // 是「画了但整屏不可见」的头号嫌疑。走下方通用悬浮底栏兜底。
+                        // 白屏排查期曾强制关闭，现已证实白屏与它无关，恢复启用（v41）。
                         IosLiquidGlassNavigationBar(
                             items = navItems,
                             selectedIndex = currentPage,
@@ -472,7 +476,12 @@ private fun MainPaneShell() {
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
+                // 水平安全区（横屏刘海 / 打孔）避让，公式与 miuix TopAppBar 内部一致
+                // （displayCutout + navigationBars 的 Horizontal）：分栏时左栏内容不被刘海遮挡，
+                // 且与自避让的顶栏内容边缘对齐。竖屏时水平 insets 恒为 0，无视觉变化。
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)),
         ) {
             Box(
                 modifier = Modifier

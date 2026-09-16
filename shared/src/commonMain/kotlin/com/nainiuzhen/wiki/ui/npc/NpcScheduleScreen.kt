@@ -1,6 +1,7 @@
 package com.nainiuzhen.wiki.ui.npc
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,12 +30,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.data.model.NpcSchedule
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.LocalAppSettings
+import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
@@ -68,6 +71,7 @@ fun NpcScheduleScreen(npcId: Int) {
     val navigator = LocalNavigator.current
     val data = LocalDataRepository.current
     val appState = LocalAppSettings.current
+    val updateAppState = LocalUpdateAppSettings.current
     val scrollBehavior = MiuixScrollBehavior()
     val all = remember(npcId) { data.npcSchedules(npcId) }
     val npcName = remember(npcId) { data.npcs.firstOrNull { it.id == npcId }?.name ?: "NPC" }
@@ -77,6 +81,14 @@ fun NpcScheduleScreen(npcId: Int) {
     var season by remember { mutableStateOf(1) }
     var weather by remember { mutableStateOf(1) }
     var marriage by remember { mutableStateOf(0) }
+
+    // 筛选区展开态：初始值跟随「固定展开」设置 —— 固定（默认）展开进页、取消固定收起进页；
+    // 页内右下角箭头可随时展开/收起（v41 用户需求）。
+    var filterExpanded by remember { mutableStateOf(appState.scheduleFilterPinned) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (filterExpanded) 90f else -90f,
+        label = "scheduleFilterChevron",
+    )
 
     val filtered = all.filter { s ->
         week in s.week &&
@@ -113,36 +125,66 @@ fun NpcScheduleScreen(npcId: Int) {
                     // ⚠️ 必须用具名参数：`tween` 的第 2 个位置参数是 `delayMillis: Int`（不是 easing）。
                     .animateContentSize(tween(durationMillis = FILTER_ANIM_MS, easing = DecelerateEasing(1.5f))),
             ) {
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    // maxWidth 已是「扣掉左右各 12dp 内边距」后的可用宽度
-                    val twoColumn = maxWidth >= FILTER_TWO_COLUMN_MIN_WIDTH
-                    // 列间距用 FILTER_GROUP_GAP；行间距沿用 RequiredFilterRow 自带的 8dp 底部内边距，
-                    // 故此处不加 verticalArrangement，保证 4×1 观感与改造前完全一致（改动最小）。
-                    if (twoColumn) {
-                        Column(Modifier.fillMaxWidth()) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it })
-                                RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
+                if (filterExpanded) {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        // maxWidth 已是「扣掉左右各 12dp 内边距」后的可用宽度
+                        val twoColumn = maxWidth >= FILTER_TWO_COLUMN_MIN_WIDTH
+                        // 列间距用 FILTER_GROUP_GAP；行间距沿用 RequiredFilterRow 自带的 8dp 底部内边距，
+                        // 故此处不加 verticalArrangement，保证 4×1 观感与改造前完全一致（改动最小）。
+                        if (twoColumn) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it })
+                                    RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    RequiredFilterRow("天气", (1..5).map { it to WEATHER_LABELS[it - 1] }, weather, { weather = it })
+                                    RequiredFilterRow("季节", (1..4).map { it to SEASON_LABELS[it - 1] }, season, { season = it })
+                                }
                             }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(FILTER_GROUP_GAP),
-                                verticalAlignment = Alignment.Top,
-                            ) {
+                        } else {
+                            // 4×1：顺序与原实现一致（星期→天气→季节→婚姻）；仅星期组保留横向滚动
+                            Column(Modifier.fillMaxWidth()) {
+                                RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it }, horizontalScrollEnabled = true)
                                 RequiredFilterRow("天气", (1..5).map { it to WEATHER_LABELS[it - 1] }, weather, { weather = it })
                                 RequiredFilterRow("季节", (1..4).map { it to SEASON_LABELS[it - 1] }, season, { season = it })
+                                RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
                             }
                         }
-                    } else {
-                        // 4×1：顺序与原实现一致（星期→天气→季节→婚姻）；仅星期组保留横向滚动
-                        Column(Modifier.fillMaxWidth()) {
-                            RequiredFilterRow("星期", (1..7).map { it to WEEK_LABELS[it - 1] }, week, { week = it }, horizontalScrollEnabled = true)
-                            RequiredFilterRow("天气", (1..5).map { it to WEATHER_LABELS[it - 1] }, weather, { weather = it })
-                            RequiredFilterRow("季节", (1..4).map { it to SEASON_LABELS[it - 1] }, season, { season = it })
-                            RequiredFilterRow("婚姻", listOf(0 to "未婚", 1 to "已婚"), marriage, { marriage = it })
-                        }
+                    }
+                }
+                // 右下角控制行：「固定」开关（持久化）+ 收起/展开箭头（Back 图标旋转成上下箭头）。
+                // 固定（默认）= 每次进页展开；取消固定 = 每次进页收起；箭头随时手动切换本次展示。
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RequiredChip(
+                        text = "固定",
+                        selected = appState.scheduleFilterPinned,
+                        onClick = {
+                            val newPinned = !appState.scheduleFilterPinned
+                            updateAppState(appState.copy(scheduleFilterPinned = newPinned))
+                            // 点「固定」时若当前收起则立即展开，与「固定展开」语义一致
+                            if (newPinned) filterExpanded = true
+                        },
+                    )
+                    IconButton(onClick = { filterExpanded = !filterExpanded }) {
+                        Icon(
+                            imageVector = MiuixIcons.Back,
+                            contentDescription = if (filterExpanded) "收起筛选" else "展开筛选",
+                            tint = MiuixTheme.colorScheme.onBackground,
+                            modifier = Modifier.rotate(chevronRotation),
+                        )
                     }
                 }
                 HorizontalDivider(

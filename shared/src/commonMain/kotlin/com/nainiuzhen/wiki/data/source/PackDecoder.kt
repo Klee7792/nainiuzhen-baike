@@ -72,6 +72,9 @@ object PackDecoder {
     /** 缺失条目最多记录的条数。 */
     private const val MAX_MISS_LOG = 20
 
+    /** 启动图标路径：刻意不进素材包、永远走平台资源回退，缺失不算异常。 */
+    private const val LAUNCHER_ICON_PATH = "ic_launcher.png"
+
     /** 包内条目数（诊断用；未加载/缺失时为 0）。 */
     val entryCount: Int get() = entriesByName.size
 
@@ -89,7 +92,11 @@ object PackDecoder {
                 if (entry == null) {
                     // 包内无此条目 → 回退平台资源。逐个去重记录（上限 [MAX_MISS_LOG] 条，
                     // 避免资源整体缺失时刷出上百行）。
-                    if (missedPaths.add(path) && missedPaths.size <= MAX_MISS_LOG) {
+                    // ic_launcher.png 刻意不进素材包（启动图标走平台资源），属预期回退，不记 W。
+                    if (path != LAUNCHER_ICON_PATH &&
+                        missedPaths.add(path) &&
+                        missedPaths.size <= MAX_MISS_LOG
+                    ) {
                         AppLog.w("assets.pack 无条目 → 回退平台资源: $path")
                     }
                     return@withLock null

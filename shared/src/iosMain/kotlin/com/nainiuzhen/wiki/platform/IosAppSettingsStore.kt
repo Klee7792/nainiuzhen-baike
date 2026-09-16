@@ -68,6 +68,7 @@ class IosAppSettingsStore : AppSettingsStore {
         recipeCardTextSizeSp = floatOf(KEY_RECIPE_CARD_TEXT_SIZE_SP, 10f),
         allowPhoneLandscape = boolOf(KEY_ALLOW_PHONE_LANDSCAPE, true),
         monetSeed = intOf(KEY_MONET_SEED, 0),
+        scheduleFilterPinned = boolOf(KEY_SCHEDULE_FILTER_PINNED, true),
         // —— v31 卡片外观设置 —— //
         cardBgMaster = boolOf(KEY_CARD_BG_MASTER, false),
         cardBgSync = boolOf(KEY_CARD_BG_SYNC, true),
@@ -136,6 +137,7 @@ class IosAppSettingsStore : AppSettingsStore {
         putFloat(KEY_RECIPE_CARD_TEXT_SIZE_SP, state.recipeCardTextSizeSp)
         putBool(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
         putInt(KEY_MONET_SEED, state.monetSeed)
+        putBool(KEY_SCHEDULE_FILTER_PINNED, state.scheduleFilterPinned)
         // —— v31 卡片外观设置 —— //
         putBool(KEY_CARD_BG_MASTER, state.cardBgMaster)
         putBool(KEY_CARD_BG_SYNC, state.cardBgSync)
@@ -206,6 +208,7 @@ class IosAppSettingsStore : AppSettingsStore {
         const val KEY_RECIPE_CARD_TEXT_SIZE_SP = "recipeCardTextSizeSp"
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
         const val KEY_MONET_SEED = "monetSeed"
+        const val KEY_SCHEDULE_FILTER_PINNED = "scheduleFilterPinned"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"
         const val KEY_CARD_BG_SYNC = "cardBgSync"

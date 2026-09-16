@@ -3,6 +3,7 @@ package com.nainiuzhen.wiki.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -102,7 +104,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 SwitchPreference(
                     title = "Monet 取色",
-                    summary = "Android 跟随壁纸取色；iOS 无壁纸取色 API，可用下方种子色",
+                    summary = "自动根据壁纸取色，如遇系统不支持，则自主选择下方配色",
                     checked = appState.monet,
                     onCheckedChange = { updateAppState(appState.copy(monet = it)) },
                 )
@@ -322,14 +324,16 @@ private fun MonetSeedSwatchRow(selectedSeed: Int, onSelect: (Int) -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
-            text = "主题种子色（默认 = Android 壁纸取色 / iOS 内置紫）",
+            text = "主题种子色",
             fontSize = 12.sp,
             color = MiuixTheme.colorScheme.onSurfaceSecondary,
         )
         Spacer(modifier = Modifier.height(10.dp))
+        // 横向滚动：竖屏全宽可放下 默认+9 色，横屏/分栏放不下 —— 可滚保证全部色板可达。
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
         ) {
             MonetSeedSwatch(argb = null, selected = selectedSeed == 0) { onSelect(0) }
             MONET_SEED_PALETTE.forEach { argb ->

@@ -107,12 +107,14 @@ fun App(
             LocalAppVersion provides appVersion,
         ) {
             SetStatusBarLightIcons(light = !isDark)
-            // 排障探针：窗口实际尺寸与屏幕密度（iOS 白屏排查用，稳定后移除）。
-            // App() 只在设置变化时重组，日志量可忽略。
-            AppLog.i(
-                "window containerDp=${LocalWindowInfo.current.containerDpSize} " +
-                    "density=${LocalDensity.current.density}",
-            )
+            // 窗口尺寸日志：只在值真正变化时记一次（此前每次重组都记，旋转/交互时会刷上百条）。
+            val windowDesc = "window containerDp=${LocalWindowInfo.current.containerDpSize} " +
+                "density=${LocalDensity.current.density}"
+            var lastWindowDesc by remember { mutableStateOf("") }
+            if (lastWindowDesc != windowDesc) {
+                lastWindowDesc = windowDesc
+                AppLog.i(windowDesc)
+            }
             // 按「手机横屏」设置应用方向：启动时一次 + 开关切换时立即生效（大屏适配 §8.3）。
             ApplyPhoneOrientation(allowLandscape = appState.allowPhoneLandscape)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)

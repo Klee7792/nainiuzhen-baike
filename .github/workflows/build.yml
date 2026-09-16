@@ -154,13 +154,17 @@ jobs:
 
       # 版本号：iOS 独立计数（与 Android 的 build_number.txt 解耦），从 1 开始。
       # builds/ios_build_number.txt 存「上一次已发布」的号码，CI 取 +1；
-      # 版本名固定 1.0.<code>（首版 = 1.0.1 / build 1）。升小版本时手改该文件即可。
+      # 版本名把 X.Y.Z 当作 build 号的「百位.十位.个位」：个位满 10 进十位、十位满 10 进百位
+      # （1.0.9 → 1.1.0 → … → 1.9.9 → 2.0.0）。首版 = 1.0.1 / build 1。
       - name: Compute version
         id: ver
         run: |
           n=$(cat builds/ios_build_number.txt | tr -dc '0-9')
           code=$((n + 1))
-          name="1.0.$code"
+          x=$((code / 100 + 1))
+          y=$((code % 100 / 10))
+          z=$((code % 10))
+          name="${x}.${y}.${z}"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "::notice::iOS 版本 = $name (build $code)"

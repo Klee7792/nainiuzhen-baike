@@ -63,6 +63,10 @@ data class AppState(
     // 非 0 = ARGB 种子色，经 material-color-utilities 生成整套色板（两端通用）。
     // 场景：iOS 上壁纸取色做不到，用户从「主题种子色」色板里手动选。
     val monetSeed: Int = 0,
+    // —— v41 新增：日程页筛选区「固定展开」—— //
+    // true（默认）= 固定展开：每次打开日程页筛选区都是展开态；
+    // false = 取消固定：每次打开日程页筛选区都是收起态（页内箭头可临时展开/收起）。
+    val scheduleFilterPinned: Boolean = true,
     // —— v9 新增：卡片外观设置（v31，设置子页 CardSettingsScreen）—— //
     // 三组「总开关 + n 板块 + 同步」，求值口径见 utils/CardAppearance.kt：
     //     effective = 总开关 && (同步 || 板块自己的值)
