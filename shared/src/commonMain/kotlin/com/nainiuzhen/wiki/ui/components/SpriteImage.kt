@@ -87,6 +87,9 @@ fun SpriteImage(
         }
     } ?: pixelScale
     val show = bitmap ?: remember(sprite) { sprite.placeholder() }
+    // 严格模式：scaleContext 场景（含 1 倍）与显式 pixelScale > 1 恒按「原图 × 倍率」定尺寸，
+    // 不允许回落 fillMaxSize——否则 1 倍会撑满卡片，和 5 倍视觉一样（v42 真机实测 bug）。
+    val strict = scaleContext != null || pixelScale > 1f
     if (bitmap == null) {
         // 占位阶段：填满父容器，避免加载时布局跳动。
         Image(
@@ -96,9 +99,12 @@ fun SpriteImage(
             contentScale = contentScale,
             filterQuality = filterQuality,
         )
-    } else if (effectiveScale > 1) {
+    } else if (strict) {
         // 严格整数倍：显示尺寸 = 原图像素 × effectiveScale ÷ 密度（dp），xy 居中于父容器，不填满。
-        // 用独立 Modifier.size，不叠加调用方的 fillMaxSize，避免尺寸约束被父级填满覆盖。
+        // 「先乘后除」的意义：先得到目标物理像素（原图 px × 倍率，整数倍=硬边不模糊），
+        // 再 ÷ 密度换算成 dp（Compose 的 Image 以 dp 定尺寸、按设备密度铺物理像素）。
+        // 用独立 Modifier.size，不叠加调用方的 fillMaxSize，避免尺寸约束被父级填满覆盖；
+        // 父容器约束仍会把超出的部分钳制到卡片大小（即「撑满」后再滑大也不变化的原因）。
         // show 已是非空 ImageBitmap（bitmap != null 分支），避免对委托属性做智能转换。
         val scale = LocalDensity.current.density
         val w = Dp(show.width * effectiveScale / scale)
