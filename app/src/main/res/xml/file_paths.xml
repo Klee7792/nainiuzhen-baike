@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 诊断日志分享（FileProvider）可读路径：cacheDir/logs/app_log.txt -->
+<paths>
+    <cache-path
+        name="logs"
+        path="logs/" />
+</paths>

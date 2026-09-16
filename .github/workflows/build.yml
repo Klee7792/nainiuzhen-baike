@@ -187,6 +187,21 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ steps.ver.outputs.code }} \
             build
 
+      # CgBI 双保险：即使 COMPRESS_PNG_FILES=NO 失效，也用仓库原始 PNG 覆盖 bundle 里的
+      # 副本（pngcrush 产物 Skia 解不了 → 关于页/加载页图标白图）。并打印字节头留证。
+      - name: Restore pristine launcher icon in .app
+        run: |
+          app=$(ls -d iosApp/build/Build/Products/Release-iphoneos/*.app 2>/dev/null | head -1)
+          if [ -z "$app" ]; then
+            echo "::error::未找到 .app（Restore pristine launcher icon）"
+            exit 1
+          fi
+          echo "bundle 内 ic_launcher.png 字节头（覆盖前）:"
+          xxd -l 16 "$app/ic_launcher.png" || true
+          cp iosApp/iosApp/ic_launcher.png "$app/ic_launcher.png"
+          echo "覆盖后字节头（应为 89504e470d0a1a0a = 标准 PNG）:"
+          xxd -l 16 "$app/ic_launcher.png"
+
       - name: Package unsigned .ipa
         run: |
           # 产物名 = PRODUCT_NAME = nainiuzhenbaike（见 project.pbxproj）；用通配兜底，

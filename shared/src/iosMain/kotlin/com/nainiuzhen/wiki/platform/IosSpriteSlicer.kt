@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package com.nainiuzhen.wiki.platform
 
 import androidx.compose.ui.graphics.ImageBitmap
@@ -8,15 +10,31 @@ import androidx.compose.ui.unit.IntSize
 import com.nainiuzhen.wiki.data.model.SpriteAtlasFrame
 import com.nainiuzhen.wiki.data.source.SpriteSlicer
 import com.nainiuzhen.wiki.utils.AppLog
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
+import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.FilterMode
 import org.jetbrains.skia.FilterMipmap
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.MipmapMode
+import platform.CoreGraphics.CGBitmapContextCreate
+import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
+import platform.CoreGraphics.CGContextDrawImage
+import platform.CoreGraphics.CGContextRestoreGState
+import platform.CoreGraphics.CGContextSaveGState
+import platform.CoreGraphics.CGContextScaleCTM
+import platform.CoreGraphics.CGContextTranslateCTM
+import platform.CoreGraphics.CGImageAlphaInfo
+import platform.CoreGraphics.CGImageGetHeight
+import platform.CoreGraphics.CGImageGetWidth
+import platform.CoreGraphics.CGRectMake
+import platform.UIKit.UIImage
 
 /**
  * 基于 skiko（Skia）的切片器实现（iOS）。
@@ -73,12 +91,52 @@ class IosSpriteSlicer : SpriteSlicer {
         placeholder()
     }
 
-    private fun decodeSheet(bytes: ByteArray): Image? = try {
-        Image.makeFromEncoded(bytes)
-    } catch (_: Exception) {
-        // Skia 编解码器拒收（历史上：Xcode CgBI 重压缩的 bundle PNG）→ 上层全部静默
-        // 回退透明占位，表现为「图标/图集空白但无报错」，必须留痕。
-        AppLog.w("Skia PNG 解码失败（字节头 ${bytes.take(8).joinToString("") { it.toString(16).padStart(2, '0').uppercase() }}）")
+    private fun decodeSheet(bytes: ByteArray): Image? {
+        val skia = try {
+            Image.makeFromEncoded(bytes)
+        } catch (_: Exception) {
+            // Skia 编解码器拒收（历史上：Xcode CgBI 重压缩的 bundle PNG）→ 上层全部静默
+            // 回退透明占位，表现为「图标/图集空白但无报错」，必须留痕。
+            val header = bytes.take(8).joinToString("") { it.toString(16).padStart(2, '0').uppercase() }
+            AppLog.w("Skia PNG 解码失败（字节头 $header）→ 尝试 UIKit 解码兜底")
+            decodeViaUIKit(bytes)
+        }
+        return skia
+    }
+
+    /**
+     * UIKit（ImageIO）解码兜底：CgBI 等苹果私有 PNG 格式 Skia 拒收，但 ImageIO 原生支持。
+     * 把 CGImage 逐像素绘制进 RGBA8 缓冲（CG 坐标系 Y 向上，翻转成 Skia 的 Y 向下），
+     * 再经 `Image.makeRaster(RGBA_8888 + PREMUL)` 重建 Skia 图。
+     */
+    private fun decodeViaUIKit(bytes: ByteArray): Image? = try {
+        val uiImage = UIImage(data = bytes.toNSData())
+        val cgImage = uiImage.CGImage ?: return null
+        val w = CGImageGetWidth(cgImage).toInt()
+        val h = CGImageGetHeight(cgImage).toInt()
+        if (w <= 0 || h <= 0) return null
+        val bytesPerRow = w * 4
+        val buffer = ByteArray(bytesPerRow * h)
+        val drawn = buffer.usePinned { pinned ->
+            val ctx = CGBitmapContextCreate(
+                pinned.addressOf(0),
+                w.toULong(), h.toULong(),
+                8u, bytesPerRow.toULong(),
+                CGColorSpaceCreateDeviceRGB(),
+                CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value,
+            ) ?: return null
+            CGContextSaveGState(ctx)
+            CGContextTranslateCTM(ctx, 0.0, h.toDouble())
+            CGContextScaleCTM(ctx, 1.0, -1.0)
+            CGContextDrawImage(ctx, CGRectMake(0.0, 0.0, w.toDouble(), h.toDouble()), cgImage)
+            CGContextRestoreGState(ctx)
+            true
+        }
+        if (!drawn) return null
+        AppLog.i("UIKit 解码兜底成功 ${w}x$h")
+        Image.makeRaster(ImageInfo(w, h, ColorType.RGBA_8888, ColorAlphaType.PREMUL), buffer, bytesPerRow)
+    } catch (t: Throwable) {
+        AppLog.e("UIKit 解码兜底失败", t)
         null
     }
 

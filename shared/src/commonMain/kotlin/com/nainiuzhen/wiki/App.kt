@@ -319,7 +319,9 @@ private fun LoadingScreen(
         value = withContext(IoDispatcher) {
             try {
                 slicer.decode(AssetLoader.loadBytes("ic_launcher.png"))
-            } catch (_: Exception) {
+                    .also { AppLog.i("启动图标解码成功 ${it.width}x${it.height}") }
+            } catch (t: Throwable) {
+                AppLog.e("启动图标解码失败（回退占位方块）", t)
                 null
             }
         }

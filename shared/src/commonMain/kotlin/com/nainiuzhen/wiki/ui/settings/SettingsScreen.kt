@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.utils.LocalAppVersion
+import com.nainiuzhen.wiki.utils.ShareDiagnosticsLog
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.LocalUpdateAppSettings
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -282,8 +283,8 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 ArrowPreference(
                     title = "诊断日志",
-                    summary = "数据加载概况与运行日志（排障用）",
-                    onClick = { navigator.openTopLevel(Route.Diagnostics) },
+                    summary = "弹出系统分享，可存本地或经 QQ/微信/隔空投送发送（排障用）",
+                    onClick = { ShareDiagnosticsLog() },
                 )
                 ArrowPreference(
                     title = "关于",

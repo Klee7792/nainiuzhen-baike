@@ -14,7 +14,6 @@ import com.nainiuzhen.wiki.ui.npc.NpcScheduleScreen
 import com.nainiuzhen.wiki.ui.recipe.RecipeListScreen
 import com.nainiuzhen.wiki.ui.settings.AboutScreen
 import com.nainiuzhen.wiki.ui.settings.CardSettingsScreen
-import com.nainiuzhen.wiki.ui.settings.DiagnosticsScreen
 import com.nainiuzhen.wiki.ui.settings.ImageScaleSettingsScreen
 import com.nainiuzhen.wiki.ui.settings.about.LicenseScreen
 import com.nainiuzhen.wiki.utils.LocalAppSettings
@@ -155,9 +154,6 @@ fun SubPageNavHost(
         }
         entry<Route.CardSettings>(swipeDismiss = swipeBackDirection) {
             CardSettingsScreen()
-        }
-        entry<Route.Diagnostics>(swipeDismiss = swipeBackDirection) {
-            DiagnosticsScreen()
         }
     }
 }

@@ -97,13 +97,17 @@ class SpriteRepository(
     /** 从 `assets/` 根读取任意 PNG 并解码为 [ImageBitmap]（如关于页 app 图标）。内存命中直接返回。 */
     suspend fun getAssetImage(path: String): ImageBitmap {
         mutex.withLock { assetMemory[path] }?.let { return it }
-        return try {
-            val bmp = slicer.decode(AssetLoader.loadBytes(path))
-            mutex.withLock { assetMemory[path] = bmp }
-            bmp
-        } catch (_: Exception) {
+        // 成功/失败都记日志（仅首解，命中内存表后静默）：排查「图标空白但无报错」的关键线索。
+        val bmp = try {
+            slicer.decode(AssetLoader.loadBytes(path)).also {
+                AppLog.i("资源解码成功: $path ${it.width}x${it.height}")
+            }
+        } catch (t: Throwable) {
+            AppLog.e("资源解码失败（回退占位图）: $path", t)
             slicer.placeholder()
         }
+        mutex.withLock { assetMemory[path] = bmp }
+        return bmp
     }
 
     /**

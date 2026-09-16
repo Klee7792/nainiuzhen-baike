@@ -49,8 +49,4 @@ sealed interface Route : NavKey {
     /** 卡片设置子页（从设置页「卡片设置」进入；背景 / 圆角 / 名称胶囊）。 */
     @Serializable
     data object CardSettings : Route
-
-    /** 诊断信息子页（从设置页「诊断日志」进入；数据概况 + 运行日志）。 */
-    @Serializable
-    data object Diagnostics : Route
 }
