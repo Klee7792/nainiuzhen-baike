@@ -79,7 +79,11 @@ import com.nainiuzhen.wiki.ui.nav.Navigator
 import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.ui.nav.SubPageNavHost
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
+import com.nainiuzhen.wiki.utils.AppLog
 import com.nainiuzhen.wiki.utils.LocalAppSettings
+import com.nainiuzhen.wiki.utils.logDrawError
+import com.nainiuzhen.wiki.utils.logFirstDraw
+import com.nainiuzhen.wiki.utils.logSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -263,8 +267,10 @@ fun MainScreen() {
     ) {
         ListDetailPanes(
             dual = useDualPane,
+            // 排障探针：iOS 白屏定位（绘制异常原位捕获 + 尺寸留痕，稳定后移除）
+            modifier = Modifier.logDrawError("main-panes").logSize("main-panes"),
             list = { modifier ->
-                Box(modifier) {
+                Box(modifier.logSize("list-pane").logFirstDraw("list-pane")) {
                     MainPaneShell()
                     // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
                     // 所以左栏得自己盖一层同色遮罩，并在弹窗期间把点击解释为「先关弹窗」。
@@ -285,7 +291,7 @@ fun MainScreen() {
                 // clipToBounds：详情槽内容必须裁剪在本槽矩形内。miuix MiuixDefault 转场会给
                 // 被覆盖层 -0.25×width 的视差位移，而 Compose 默认不裁剪子层——「暂无内容」页
                 // 会随位移左移溢出详情槽、盖到左侧栏上（横屏黑块 bug）。裁剪后溢出部分不可见。
-                Box(modifier.zIndex(if (detailOnTop) 1f else 0f).clipToBounds()) {
+                Box(modifier.zIndex(if (detailOnTop) 1f else 0f).clipToBounds().logDrawError("detail-pane")) {
                     SubPageNavHost(
                         backStack = backStack,
                         navigator = navigator,
@@ -319,16 +325,20 @@ private fun MainPaneShell() {
     }
 
     Scaffold(
+        // 排障探针：iOS 白屏定位（稳定后移除）
+        modifier = Modifier.logSize("scaffold").logFirstDraw("scaffold"),
         topBar = {
             AppTopAppBar(
                 title = if (currentPage == 0) "奶牛镇百科" else "设置",
                 largeTitle = if (currentPage == 0) "奶牛镇百科" else "设置",
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
+                modifier = Modifier.logDrawError("topbar").logSize("topbar"),
             )
         },
         bottomBar = {
-            if (appState.showNavigationBar) {
+            Box(Modifier.logDrawError("bottombar").logSize("bottombar")) {
+                if (appState.showNavigationBar) {
                 val isIos = appState.floatingNavigationBarStyle == 1
                 val navItems = listOf(
                     NavigationItem(label = "主页", icon = MiuixIcons.Home),
@@ -422,13 +432,24 @@ private fun MainPaneShell() {
                         )
                     }
                 }
+                }
             }
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        // 排障探针：Scaffold 实际分给内容的内边距（iOS 上若 insets 异常会在这里现形）
+        var padLogged by remember { mutableStateOf(false) }
+        if (!padLogged) {
+            padLogged = true
+            AppLog.i(
+                "scaffold innerPadding top=${innerPadding.calculateTopPadding()} " +
+                    "bottom=${innerPadding.calculateBottomPadding()}",
+            )
+        }
+        Box(modifier = Modifier.fillMaxSize().logDrawError("content").logSize("content")) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .logDrawError("pager-box")
                     .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             ) {
                 HorizontalPager(
@@ -439,8 +460,12 @@ private fun MainPaneShell() {
                     userScrollEnabled = appState.pageUserScroll,
                 ) { page ->
                     when (page) {
-                        0 -> HomeContent(innerPadding, scrollBehavior)
-                        else -> SettingsContent(innerPadding, scrollBehavior)
+                        0 -> Box(Modifier.fillMaxSize().logSize("home").logDrawError("home")) {
+                            HomeContent(innerPadding, scrollBehavior)
+                        }
+                        else -> Box(Modifier.fillMaxSize().logSize("settings").logDrawError("settings")) {
+                            SettingsContent(innerPadding, scrollBehavior)
+                        }
                     }
                 }
             }

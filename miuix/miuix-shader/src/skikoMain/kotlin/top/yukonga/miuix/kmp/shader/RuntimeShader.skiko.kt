@@ -14,8 +14,14 @@ import kotlinx.coroutines.internal.SynchronizedObject
 import kotlinx.coroutines.internal.synchronized
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
+import org.jetbrains.skiko.OS
+import org.jetbrains.skiko.hostOs
 
-actual fun isRuntimeShaderSupported(): Boolean = true
+// ⚠️ iOS（Metal）暂时关闭 RuntimeShader 全链路（纹理模糊 / 液态玻璃 / 渐进模糊等）。
+// iOS 首版出现过「进入主界面后整屏只剩背景色」的故障，SkSL 管线是头号嫌疑；
+// 关闭后 BlurredBar / 底栏 / 对话框侧模糊全部自动回落到纯色兜底路径。
+// 桌面端（JVM）不受影响，仍返回 true。待 iOS 界面正常后再逐项排查放开。
+actual fun isRuntimeShaderSupported(): Boolean = hostOs != OS.Ios
 
 /**
  * Creates a platform-specific [RuntimeShader] from an AGSL/SkSL shader string.

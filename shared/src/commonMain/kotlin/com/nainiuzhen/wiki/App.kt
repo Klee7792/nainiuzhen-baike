@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.nainiuzhen.wiki.data.AssetManager
 import com.nainiuzhen.wiki.data.source.AssetLoader
 import com.nainiuzhen.wiki.utils.IoDispatcher
@@ -105,6 +107,12 @@ fun App(
             LocalAppVersion provides appVersion,
         ) {
             SetStatusBarLightIcons(light = !isDark)
+            // 排障探针：窗口实际尺寸与屏幕密度（iOS 白屏排查用，稳定后移除）。
+            // App() 只在设置变化时重组，日志量可忽略。
+            AppLog.i(
+                "window containerDp=${LocalWindowInfo.current.containerDpSize} " +
+                    "density=${LocalDensity.current.density}",
+            )
             // 按「手机横屏」设置应用方向：启动时一次 + 开关切换时立即生效（大屏适配 §8.3）。
             ApplyPhoneOrientation(allowLandscape = appState.allowPhoneLandscape)
             AppRoot(slicer = slicer, cache = cache, isDebug = isDebug)
