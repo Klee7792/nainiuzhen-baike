@@ -84,6 +84,7 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.utils.logDrawError
 import com.nainiuzhen.wiki.utils.logFirstDraw
 import com.nainiuzhen.wiki.utils.logSize
+import com.nainiuzhen.wiki.utils.tintProbe
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -195,6 +196,7 @@ private val EMPTY_HINTS = listOf(
 @Composable
 fun MainScreen() {
     val useDualPane = rememberUseDualPane()
+    AppLog.i("MainScreen 组合：useDualPane=$useDualPane")
 
     // —— 唯一返回栈 ——
     // 栈底恒为 [Route.Main]（= 详情层当前没有内容）。各业务页里现成的
@@ -270,7 +272,12 @@ fun MainScreen() {
             // 排障探针：iOS 白屏定位（绘制异常原位捕获 + 尺寸留痕，稳定后移除）
             modifier = Modifier.logDrawError("main-panes").logSize("main-panes"),
             list = { modifier ->
-                Box(modifier.logSize("list-pane").logFirstDraw("list-pane")) {
+                Box(
+                    modifier
+                        .logSize("list-pane")
+                        .logFirstDraw("list-pane")
+                        .tintProbe("list-pane", Color.Magenta.copy(alpha = 0.12f)),
+                ) {
                     MainPaneShell()
                     // 左栏自补遮罩：miuix 遮罩只盖右栏（弹窗渲染进右栏 Scaffold），
                     // 所以左栏得自己盖一层同色遮罩，并在弹窗期间把点击解释为「先关弹窗」。
@@ -291,7 +298,13 @@ fun MainScreen() {
                 // clipToBounds：详情槽内容必须裁剪在本槽矩形内。miuix MiuixDefault 转场会给
                 // 被覆盖层 -0.25×width 的视差位移，而 Compose 默认不裁剪子层——「暂无内容」页
                 // 会随位移左移溢出详情槽、盖到左侧栏上（横屏黑块 bug）。裁剪后溢出部分不可见。
-                Box(modifier.zIndex(if (detailOnTop) 1f else 0f).clipToBounds().logDrawError("detail-pane")) {
+                Box(
+                    modifier
+                        .zIndex(if (detailOnTop) 1f else 0f)
+                        .clipToBounds()
+                        .logDrawError("detail-pane")
+                        .tintProbe("detail-pane", Color(0x33FF6600)),
+                ) {
                     SubPageNavHost(
                         backStack = backStack,
                         navigator = navigator,
@@ -303,6 +316,12 @@ fun MainScreen() {
         )
     }
 }
+
+/**
+ * iOS 液态玻璃底栏总开关（白屏排查期强制关闭，走通用底栏兜底）。
+ * 界面正常后再逐项排查：layerBackdrop 录制 / blur 管线 / 传感器。
+ */
+private const val IOS_LIQUID_GLASS_ENABLED = false
 
 /**
  * 列表层主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
@@ -326,19 +345,34 @@ private fun MainPaneShell() {
 
     Scaffold(
         // 排障探针：iOS 白屏定位（稳定后移除）
-        modifier = Modifier.logSize("scaffold").logFirstDraw("scaffold"),
+        modifier = Modifier
+            .logSize("scaffold")
+            .logFirstDraw("scaffold")
+            .tintProbe("scaffold", Color.Red.copy(alpha = 0.15f)),
         topBar = {
             AppTopAppBar(
                 title = if (currentPage == 0) "奶牛镇百科" else "设置",
                 largeTitle = if (currentPage == 0) "奶牛镇百科" else "设置",
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
-                modifier = Modifier.logDrawError("topbar").logSize("topbar"),
+                modifier = Modifier
+                    .logDrawError("topbar")
+                    .logSize("topbar")
+                    .tintProbe("topbar", Color.Cyan.copy(alpha = 0.35f)),
             )
         },
         bottomBar = {
-            Box(Modifier.logDrawError("bottombar").logSize("bottombar")) {
+            Box(
+                Modifier
+                    .logDrawError("bottombar")
+                    .logSize("bottombar")
+                    .tintProbe("bottombar", Color.Green.copy(alpha = 0.35f)),
+            ) {
                 if (appState.showNavigationBar) {
+                AppLog.i(
+                    "nav 设置：useFloating=${appState.useFloatingNavigationBar} " +
+                        "style=${appState.floatingNavigationBarStyle}",
+                )
                 val isIos = appState.floatingNavigationBarStyle == 1
                 val navItems = listOf(
                     NavigationItem(label = "主页", icon = MiuixIcons.Home),
@@ -351,8 +385,11 @@ private fun MainPaneShell() {
                     { if (appState.showNavigationBadge) ({ NavigationBadgeDot() }) else null }
 
                 if (appState.useFloatingNavigationBar) {
-                    if (isIos) {
+                    if (IOS_LIQUID_GLASS_ENABLED && isIos) {
                         // iOS 液态玻璃底栏：折射 / 高光 / 按住拖动切换 / 选中果冻弹跳（移植自 miuix demo）
+                        // ⚠️ 白屏排查期强制关闭（IOS_LIQUID_GLASS_ENABLED=false）：这是全应用唯一的
+                        // iOS 专属渲染路径，内部含自建 layerBackdrop 录制 + blur 管线 + 传感器，
+                        // 是「画了但整屏不可见」的头号嫌疑。走下方通用悬浮底栏兜底。
                         IosLiquidGlassNavigationBar(
                             items = navItems,
                             selectedIndex = currentPage,
@@ -445,11 +482,18 @@ private fun MainPaneShell() {
                     "bottom=${innerPadding.calculateBottomPadding()}",
             )
         }
-        Box(modifier = Modifier.fillMaxSize().logDrawError("content").logSize("content")) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .logDrawError("content")
+                .logSize("content")
+                .tintProbe("content", Color.Blue.copy(alpha = 0.18f)),
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .logDrawError("pager-box")
+                    .tintProbe("pager-box", Color(0x26FFA500))
                     .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             ) {
                 HorizontalPager(
@@ -460,7 +504,12 @@ private fun MainPaneShell() {
                     userScrollEnabled = appState.pageUserScroll,
                 ) { page ->
                     when (page) {
-                        0 -> Box(Modifier.fillMaxSize().logSize("home").logDrawError("home")) {
+                        0 -> Box(
+                            Modifier.fillMaxSize()
+                                .logSize("home")
+                                .logDrawError("home")
+                                .tintProbe("home", Color.Yellow.copy(alpha = 0.12f)),
+                        ) {
                             HomeContent(innerPadding, scrollBehavior)
                         }
                         else -> Box(Modifier.fillMaxSize().logSize("settings").logDrawError("settings")) {

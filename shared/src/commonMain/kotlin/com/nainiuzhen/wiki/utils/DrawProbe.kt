@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 
 /**
@@ -67,6 +68,27 @@ fun Modifier.logDrawError(tag: String): Modifier = composed {
             } else {
                 AppLog.e("draw ✗ $tag（重复）", t)
             }
+        }
+    }
+}
+
+/**
+ * 染色探针：在子树内容之上叠一层半透明纯色。
+ *
+ * 用途（iOS 白屏决定性实验）：给各层级挂不同颜色的染色后录屏——
+ * **截屏里哪层颜色出现了，就说明哪层的绘制真的到达了屏幕**；
+ * 全部没出现 = 整棵子树的输出在合成阶段丢失（而非「画成白色」）。
+ * 染色是画在 drawContent() 之后的，所以即使子树内容本身不可见，
+ * 只要本层的绘制命令被合成，染色就会出现。
+ */
+fun Modifier.tintProbe(tag: String, color: Color): Modifier = composed {
+    var logged by remember { mutableStateOf(false) }
+    drawWithContent {
+        drawContent()
+        drawRect(color)
+        if (!logged) {
+            logged = true
+            AppLog.i("tint ✓ $tag")
         }
     }
 }
