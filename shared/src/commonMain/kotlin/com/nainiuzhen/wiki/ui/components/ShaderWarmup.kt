@@ -144,8 +144,8 @@ private fun WarmupBarBody() {
  * 6. 弹窗侧栏玻璃（textureBlur r25，弹窗 / FadeEdges 同源背景层）—— 只受 RuntimeShader 能力约束；
  * 7. **A2** 按压态色散 lens（LiquidGlassLensDispersion）—— 只在「按住拖动底栏」时出现，静止态漏掉；
  * 8. **A2** 按压光斑 shader（InteractiveHighlight.SPOT_SHADER）—— 同上，复用 drawPressSpot 同一实现；
- * 9. **A1** 关于页动态背景 OS3（OS3_BG_FRAG + 标题 r150 + 卡片 r60 扩展混合 MiBlendModesExt）；
- * 10. **A1** 关于页动态背景 OS2（OS2_BG_FRAG + 同上 r150/r60/ExtBlend）—— 两套片段着色器各编译一次。
+ * 9. **A1** 关于页动态背景 OS3（OS3_BG_FRAG + 标题 r150 + 卡片 r60；std/ext 由当前模式的 blend token 决定）；
+ * 10. **A1** 关于页动态背景 OS2（OS2_BG_FRAG + 同上 r150/r60）—— 两套片段着色器各编译一次。
  *
  * 门控：底栏项按「底栏是否显示 + 悬浮 / 玻璃风格」入队；顶栏项按「顶栏是否显示 + 当前模糊风格」
  * 决定先后；弹窗项无条件入队；A2 仅在 iOS 液态玻璃底栏（glassEnabled）下有意义，随 ① 同入队；
