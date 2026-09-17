@@ -176,6 +176,19 @@ private const val DIALOG_CLOSE_GRACE_MS = 280
 private const val DETAIL_TOP_LINGER_MS = 360L
 
 /**
+ * 常驻 FPS 曲线日志开关。
+ *
+ * **默认 false（release 不跑）**：`FpsTracker.start()` 内部是
+ * `while (running) { withFrameNanos { ... } }`，会持续申请帧时钟 ⇒ 系统认为本 App
+ * 永远有待渲染帧 ⇒ **App 永不 idle**，静止画面也按 60fps 出图（实测 61.6% 的帧逐像素相同），
+ * 纯属耗电/发热的浪费。
+ *
+ * 需要排查 iOS 卡顿时把它改成 true 重新出包即可（日志格式见 [FpsTracker] 的类注释）；
+ * 注意开启后应用内 FPS 数字在 `parallelRendering` 下不可信（只反映主线程帧生产，测不到上屏）。
+ */
+private const val FPS_TRACKER_ENABLED = false
+
+/**
  * 右栏空态提示文案池（分栏下「还没点开任何板块」时显示）。
  *
  * 冷启动随机取一条；之后**只在从子页退回空白状态时**换一条（见 [MainScreen] 里的 reroll 逻辑）。
@@ -197,8 +210,12 @@ private val EMPTY_HINTS = listOf(
 
 @Composable
 fun MainScreen() {
-    // App 级连续 FPS 曲线日志（幂等，只启一次）：定位 iOS 卡顿来源与出现时机。
-    LaunchedEffect(Unit) { FpsTracker.start() }
+    // App 级连续 FPS 曲线日志：release 不启（见 FPS_TRACKER_ENABLED 说明）。
+    // 注意 FpsTracker.mark(...) 的调用点保留不动 —— 未启动时它只会打一行 `FPS 场景: xxx`，
+    // 既无副作用，又正好当作导航轨迹日志用。
+    if (FPS_TRACKER_ENABLED) {
+        LaunchedEffect(Unit) { FpsTracker.start() }
+    }
 
     val useDualPane = rememberUseDualPane()
     // 只在 单栏↔分栏 翻转时记一次日志（此前每次重组都记，一次会话刷几百条，既刷屏又拖性能）。
