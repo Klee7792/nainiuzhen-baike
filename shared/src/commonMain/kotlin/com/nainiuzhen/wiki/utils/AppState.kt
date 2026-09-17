@@ -43,6 +43,10 @@ data class AppState(
     // —— v6 新增 —— //
     val floatingNavigationBarStyle: Int = 0, // FloatingNavigationBar Style (0=Default/Miuix 1=iOS；v42 起默认 miuix)
     val floatingNavigationBarPosition: Int = 0, // FloatingNavigationBar Position (0=Center 1=Start 2=End)
+    // —— v9 新增：交互期玻璃降级（iOS 液态玻璃底栏）——
+    // true（默认）= 按压 / 拖动底栏时临时跳过 lens 折射 pass、色散改走非色散程序、离屏 padding 降到 13dp，
+    // 以保流畅（见 IosLiquidGlassNavigationBar 的 B2/B3 改动）；false = 逐字节保持原观感。
+    val glassInteractionDegrade: Boolean = true,
     // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
     // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
     // v42 起整体默认缩小一号（用户决策 2026-09-16）。

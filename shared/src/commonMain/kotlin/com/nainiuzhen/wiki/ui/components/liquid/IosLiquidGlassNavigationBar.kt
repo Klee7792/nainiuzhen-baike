@@ -93,6 +93,7 @@ import top.yukonga.miuix.kmp.blur.colorControls
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.sensor.rememberDeviceTilt
 import com.nainiuzhen.wiki.ui.components.liquid.lens
+import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.Platform
@@ -210,6 +211,7 @@ fun IosLiquidGlassNavigationBar(
     badge: (Int) -> (@Composable () -> Unit)? = { null },
 ) {
     val isDark = isSystemInDarkTheme()
+    val appState = LocalAppSettings.current
     val pillShape = remember { CircleShape }
     val accentColor = MiuixTheme.colorScheme.primary
     val tabContentColor = MiuixTheme.colorScheme.onSurface
@@ -451,18 +453,26 @@ fun IosLiquidGlassNavigationBar(
                                 Modifier.drawBackdrop(
                                     backdrop = backdrop,
                                     shape = { pillShape },
-                    effects = {
-                        // 24dp lens refraction + 16dp press-scale reach, raised before blur() reads it.
-                        padding = maxOf(padding, 40.dp.toPx())
+                                effects = {
+                        // 常驻离屏 padding 下限：lens() 自身会把 padding 抬到 refractionAmount(=24dp)，
+                        // 取样半径 24dp 已足够它；按压缩放 layerBlock 每侧只需 ~8dp；取二者较大值 = 24dp。
+                        // 原 40dp 每侧多供 16dp 纯属浪费面积。blur() 会自行把 padding 抬到其 kernel reach，
+                        // 不必为 blur 额外供给（见 miuix BackdropEffects.kt blur()）。
+                        // 交互期降级（glassInteractionDegrade 开 + 按压/拖动进行中）：临时降到 13dp，并跳过
+                        // lens 折射 pass（少一趟 GPU pass；padding 实际由 blur(4dp) 抬到 ~13dp，见任务 B3）。
+                        val interacting = appState.glassInteractionDegrade && dampedDrag.pressProgress > 0.01f
+                        padding = if (interacting) 13.dp.toPx() else 24.dp.toPx()
                         vibrancy()
                         blur(
                             4.dp.toPx(),
                             4.dp.toPx(),
                         )
-                        lens(
-                            refractionHeight = 24.dp.toPx(),
-                            refractionAmount = 24.dp.toPx(),
-                        )
+                        if (!interacting) {
+                            lens(
+                                refractionHeight = 24.dp.toPx(),
+                                refractionAmount = 24.dp.toPx(),
+                            )
+                        }
                     },
                                     highlight = { baseHighlight.value.copy(alpha = 0.75f) },
                                     layerBlock = {
@@ -537,11 +547,15 @@ fun IosLiquidGlassNavigationBar(
                                 shape = { pillShape },
                                 effects = {
                                     val progress = dampedDrag.pressProgress
+                                    // 交互期降级：按压/拖动进行中（glassInteractionDegrade 开）把色散关掉，
+                                    // 走便宜的非色散 LiquidGlassLens 程序（chromaticAberration=0f）。
+                                    // 开关 false 时 interacting 恒为 false ⇒ chromaticAberration 恒 0.5f，逐字节等价原行为。
+                                    val interacting = appState.glassInteractionDegrade && progress > 0.01f
                                     lens(
                                         refractionHeight = 10.dp.toPx() * progress,
                                         refractionAmount = 14.dp.toPx() * progress,
                                         depthEffect = true,
-                                        chromaticAberration = 0.5f,
+                                        chromaticAberration = if (interacting) 0f else 0.5f,
                                     )
                                 },
                                 highlight = { pillHighlight.value.copy(alpha = dampedDrag.pressProgress) },

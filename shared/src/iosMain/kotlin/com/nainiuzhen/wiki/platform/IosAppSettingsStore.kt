@@ -58,6 +58,7 @@ class IosAppSettingsStore : AppSettingsStore {
         blockInputDuringTransition = boolOf(KEY_BLOCK_INPUT, true),
         floatingNavigationBarStyle = intOf(KEY_FLOATING_NAV_BAR_STYLE, 0),
         floatingNavigationBarPosition = intOf(KEY_FLOATING_NAV_BAR_POS, 0),
+        glassInteractionDegrade = boolOf(KEY_GLASS_INTERACTION_DEGRADE, true),
         homeImageScale = floatOf(KEY_HOME_IMAGE_SCALE, 7f),
         cardImageScale = floatOf(KEY_CARD_IMAGE_SCALE, 4f),
         dialogBodyImageScale = floatOf(KEY_DIALOG_BODY_IMAGE_SCALE, 5f),
@@ -127,6 +128,7 @@ class IosAppSettingsStore : AppSettingsStore {
         putBool(KEY_BLOCK_INPUT, state.blockInputDuringTransition)
         putInt(KEY_FLOATING_NAV_BAR_STYLE, state.floatingNavigationBarStyle)
         putInt(KEY_FLOATING_NAV_BAR_POS, state.floatingNavigationBarPosition)
+        putBool(KEY_GLASS_INTERACTION_DEGRADE, state.glassInteractionDegrade)
         putFloat(KEY_HOME_IMAGE_SCALE, state.homeImageScale)
         putFloat(KEY_CARD_IMAGE_SCALE, state.cardImageScale)
         putFloat(KEY_DIALOG_BODY_IMAGE_SCALE, state.dialogBodyImageScale)
@@ -198,6 +200,7 @@ class IosAppSettingsStore : AppSettingsStore {
         const val KEY_BLOCK_INPUT = "blockInputDuringTransition"
         const val KEY_FLOATING_NAV_BAR_STYLE = "floatingNavigationBarStyle"
         const val KEY_FLOATING_NAV_BAR_POS = "floatingNavigationBarPosition"
+        const val KEY_GLASS_INTERACTION_DEGRADE = "glassInteractionDegrade"
         const val KEY_HOME_IMAGE_SCALE = "homeImageScale"
         const val KEY_CARD_IMAGE_SCALE = "cardImageScale"
         const val KEY_DIALOG_BODY_IMAGE_SCALE = "dialogBodyImageScale"
