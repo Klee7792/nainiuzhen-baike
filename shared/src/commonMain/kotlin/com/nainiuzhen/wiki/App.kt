@@ -75,6 +75,17 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 private var cachedLoadedData: com.nainiuzhen.wiki.data.AssetManager.LoadedData? = null
 
 /**
+ * 启动图标解码状态。
+ * 加载中**不画任何内容**——若在此态回退占位「牛」，首帧必然先画「牛」再切真图，
+ * 造成每次冷启动都可见的换图跳动（本项目实测问题）。只有真正解码失败才回退「牛」。
+ */
+private sealed interface LogoState {
+    data object Loading : LogoState
+    data class Ready(val bitmap: ImageBitmap) : LogoState
+    data object Failed : LogoState
+}
+
+/**
  * 应用入口（:shared 公共入口）。由 :app 的 MainActivity 注入平台实现
  * [slicer] / [cache]，并传入 [isDebug]（决定是否展示黑名单物品 / NPC）。
  *
@@ -321,15 +332,18 @@ private fun LoadingScreen(
     total: Int,
 ) {
     // logo：加载页尚未 provide LocalSpriteRepository，故直接用 AssetLoader + slicer
-    // 从 assets 根解码应用图标（ic_launcher.png，与 AboutScreen 同源），失败时回退占位方块。
-    val logo by produceState<ImageBitmap?>(initialValue = null, slicer) {
+    // 从 assets 根解码应用图标（ic_launcher.png，与 AboutScreen 同源）。
+    // 三态：加载中只留 primary 方块不画字；解码成功画真图；仅解码失败才回退「牛」。
+    val logo by produceState<LogoState>(initialValue = LogoState.Loading, slicer) {
         value = withContext(IoDispatcher) {
             try {
-                slicer.decode(AssetLoader.loadBytes("ic_launcher.png"))
-                    .also { AppLog.i("启动图标解码成功 ${it.width}x${it.height}") }
+                LogoState.Ready(
+                    slicer.decode(AssetLoader.loadBytes("ic_launcher.png"))
+                        .also { AppLog.i("启动图标解码成功 ${it.width}x${it.height}") }
+                )
             } catch (t: Throwable) {
                 AppLog.e("启动图标解码失败（回退占位方块）", t)
-                null
+                LogoState.Failed
             }
         }
     }
@@ -351,9 +365,8 @@ private fun LoadingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // 上方图标：真实应用图标（assets/ic_launcher.png）圆角显示；解码失败回退占位方块
-            // （logo 为委托属性无法智能转换，先落到局部非委托变量再判空）。
-            val logoBitmap = logo
+            // 上方图标：真实应用图标（assets/ic_launcher.png）圆角显示；解码失败才回退「牛」。
+            // 加载中（Loading）只留 primary 方块、不画任何内容，从根上消除换图跳动。
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -361,20 +374,20 @@ private fun LoadingScreen(
                     .background(MiuixTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center,
             ) {
-                if (logoBitmap != null) {
-                    Image(
-                        bitmap = logoBitmap,
+                when (val s = logo) {
+                    is LogoState.Ready -> Image(
+                        bitmap = s.bitmap,
                         contentDescription = "应用图标",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                     )
-                } else {
-                    Text(
+                    LogoState.Failed -> Text(
                         text = "牛",
                         fontSize = 56.sp,
                         fontWeight = FontWeight.Bold,
                         color = MiuixTheme.colorScheme.onPrimary,
                     )
+                    LogoState.Loading -> Unit // 中性占位：只留 primary 方块，不画字
                 }
             }
             Spacer(Modifier.height(28.dp))
