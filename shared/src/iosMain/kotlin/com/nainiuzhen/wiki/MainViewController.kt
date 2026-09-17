@@ -4,6 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeUIViewController
 import com.nainiuzhen.wiki.platform.bundleAssetBytes
 import com.nainiuzhen.wiki.platform.IosAppSettingsStore
+import com.nainiuzhen.wiki.platform.IosCacheDirGuard
 import com.nainiuzhen.wiki.platform.IosSpriteCacheManager
 import com.nainiuzhen.wiki.platform.IosSpriteSlicer
 import com.nainiuzhen.wiki.utils.AppVersion
@@ -59,6 +60,9 @@ fun MainViewController(): UIViewController {
     IosStartupTime.mark()
     AppLog.i("MainViewController 入口")
     AppLog.i("bundle 路径：${NSBundle.mainBundle.bundlePath}")
+    // 启动最早期（早于第一帧）自愈缓存目录并落盘探针：Metal 管线缓存写不进去会让
+    // 每次冷启动都退回「先卡后流畅」（见 IosCacheDirGuard 注释）。
+    IosCacheDirGuard.ensureAndProbe()
     // 预检素材包是否真的进了 bundle（只读一次；失败也会在加载阶段再记一条）
     val packSize = runCatching { bundleAssetBytes("assets.pack").size }.getOrNull()
     AppLog.i("assets.pack 预检：${packSize?.let { "$it 字节" } ?: "缺失"}")
