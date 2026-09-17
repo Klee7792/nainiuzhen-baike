@@ -328,8 +328,9 @@ fun MainScreen() {
  * iOS 液态玻璃底栏总开关。
  * 白屏根因已定位为列表层绘制合成问题（与液态玻璃无关），恢复启用；
  * 视觉不满意再考虑打磨自绘实现或降级为经典毛玻璃。
+ * 可见性为 internal：ShaderWarmup 的预热清单要按同一个开关决定是否预热液态玻璃底栏，避免两处常量漂移。
  */
-private const val IOS_LIQUID_GLASS_ENABLED = true
+internal const val IOS_LIQUID_GLASS_ENABLED = true
 
 /**
  * 列表层主体：顶栏 + 底栏 + 「主页 / 设置」两页 HorizontalPager。
@@ -425,16 +426,17 @@ private fun MainPaneShell() {
                                 )
                                 .then(
                                     if (blurActive) {
-                                        Modifier.textureBlur(
+                                        // 收敛到 AppBlurPresets：与 ShaderWarmup 共用同一实现，
+                                        // 保证加载页预热到的正是这里首帧要编译的那条 GPU 管线。
+                                        Modifier.appFloatingBarBlur(
                                             backdrop = backdrop,
                                             shape = floatingBarShape,
-                                            blurRadius = 25f,
+                                            highlight = floatingHighlight,
                                             colors = BlurDefaults.blurColors(
                                                 blendColors = listOf(
                                                     BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(0.6f)),
                                                 ),
                                             ),
-                                            highlight = floatingHighlight,
                                         )
                                     } else {
                                         Modifier
@@ -468,11 +470,7 @@ private fun MainPaneShell() {
                     val barBlurActive = backdrop != null
                     NavigationBar(
                         modifier = if (barBlurActive) {
-                            Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = RectangleShape,
-                                blurRadius = 18f,
-                            )
+                            Modifier.appBottomBarBlur(backdrop = backdrop)
                         } else {
                             Modifier
                         },

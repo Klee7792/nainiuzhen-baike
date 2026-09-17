@@ -48,6 +48,7 @@ import com.nainiuzhen.wiki.ui.home.MainScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.components.AppToastHost
+import com.nainiuzhen.wiki.ui.components.ShaderWarmupHost
 import com.nainiuzhen.wiki.ui.theme.AppTheme
 import com.nainiuzhen.wiki.utils.AppState
 import com.nainiuzhen.wiki.utils.AppSettingsStore
@@ -217,12 +218,18 @@ private fun AppRoot(
     if (loadError != null) {
         StartupErrorScreen(message = loadError!!)
     } else if (loaded == null) {
-        LoadingScreen(
-            slicer = slicer,
-            phase = loadPhase,
-            done = loadDone,
-            total = loadTotal,
-        )
+        // 加载页层级：先画「着色器预热盒」（128dp 小盒 + 真实模糊/玻璃组件），再用不透明的加载页
+        // 盖住它。Skia 无遮挡剔除 ⇒ 预热盒会真实走一遍绘制，把首次绘制才编译的 GPU 管线（数十~数百 ms、
+        // 仅进程内缓存）提前编译好；用户只看到进度条，看不到预热盒。
+        Box(Modifier.fillMaxSize()) {
+            ShaderWarmupHost()
+            LoadingScreen(
+                slicer = slicer,
+                phase = loadPhase,
+                done = loadDone,
+                total = loadTotal,
+            )
+        }
     } else {
         // 进入主页后弹一次冷启动耗时（X.XX 秒）。延迟 300ms 让主页首帧先出来，
         // 避免 toast 抢在界面绘制之前。只在冷启动（真的加载过）时弹。
