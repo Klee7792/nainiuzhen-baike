@@ -460,6 +460,7 @@ fun IosLiquidGlassNavigationBar(
                         // 不必为 blur 额外供给（见 miuix BackdropEffects.kt blur()）。
                         // 交互期降级（glassInteractionDegrade 开 + 按压/拖动进行中）：临时降到 13dp，并跳过
                         // lens 折射 pass（少一趟 GPU pass；padding 实际由 blur(4dp) 抬到 ~13dp，见任务 B3）。
+                        // 非交互路径与改动前折射/lens 路径等价，差异仅在离屏 padding 由 40dp 改为 24dp（离屏面积约减半）。
                         val interacting = appState.glassInteractionDegrade && dampedDrag.pressProgress > 0.01f
                         padding = if (interacting) 13.dp.toPx() else 24.dp.toPx()
                         vibrancy()
@@ -547,15 +548,15 @@ fun IosLiquidGlassNavigationBar(
                                 shape = { pillShape },
                                 effects = {
                                     val progress = dampedDrag.pressProgress
-                                    // 交互期降级：按压/拖动进行中（glassInteractionDegrade 开）把色散关掉，
-                                    // 走便宜的非色散 LiquidGlassLens 程序（chromaticAberration=0f）。
-                                    // 开关 false 时 interacting 恒为 false ⇒ chromaticAberration 恒 0.5f，逐字节等价原行为。
-                                    val interacting = appState.glassInteractionDegrade && progress > 0.01f
+                                    // 此处不做色散降级：pill 的 lens 只在按压期存在（refractionAmount = 14dp * progress，
+                                    // progress=0 时整趟 lens 不产生可见效果），所以"交互期把 chromaticAberration 关掉"
+                                    // 等价于永久失去这颗水滴的彩虹光晕——不是"交互期临时降级"，而是丢视觉，故保持恒定 0.5f。
+                                    // 交互期省的开销来自上面主层 B3 的「跳过整趟 lens pass」，不是这里的色散。
                                     lens(
                                         refractionHeight = 10.dp.toPx() * progress,
                                         refractionAmount = 14.dp.toPx() * progress,
                                         depthEffect = true,
-                                        chromaticAberration = if (interacting) 0f else 0.5f,
+                                        chromaticAberration = 0.5f,
                                     )
                                 },
                                 highlight = { pillHighlight.value.copy(alpha = dampedDrag.pressProgress) },

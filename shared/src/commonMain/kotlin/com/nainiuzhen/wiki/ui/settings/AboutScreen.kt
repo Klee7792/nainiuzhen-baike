@@ -78,8 +78,6 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -227,21 +225,10 @@ private fun AboutContent(
     } else {
         ColorBlendToken.Pured_Regular_Light
     }
-    val logoBlend = remember(isDark) {
-        if (isDark) {
-            listOf(
-                BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge),
-                BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight),
-                BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab),
-            )
-        } else {
-            listOf(
-                BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn),
-                BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight),
-                BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab),
-            )
-        }
-    }
+    // 命名注意：ColorBlendToken 的 *Light / *Dark 后缀沿用 miuix demo 语义（指"用在哪种底上"），
+    // 与"当前是否深色模式"相反 —— 深色模式取 *Light，浅色模式取 *Dark。
+    // 内容已与上面原内联列表逐项一致，像素不变（已核对 miuix example/AboutPage.kt:200-206）。
+    val logoBlend = if (isDark) ColorBlendToken.TitleLight else ColorBlendToken.TitleDark
 
     val horizontalPadding = 24.dp
     val topAppBarPad = innerPadding.calculateTopPadding()

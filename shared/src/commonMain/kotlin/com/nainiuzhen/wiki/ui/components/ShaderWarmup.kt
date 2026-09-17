@@ -270,8 +270,9 @@ private fun rememberWarmupItems(bd: WarmupBackdrops): List<WarmupItem> {
     // —— A1：关于页动态背景（OS3 / OS2 两套片段着色器 + r150 / r60 扩展混合模糊）——
     // 进关于页首帧会黑屏 ~2.4s：BgEffectPainter 的 OS3_BG_FRAG / OS2_BG_FRAG 两程序，以及
     // 标题 r150、卡片 r60 的 textureBlur 都**只在关于页**才出现（与已覆盖的 r4/10/18/25 是不同程序）；
-    // 且卡片 / 标题的 BlurDefaults.blurColors 含 Luminosity / LinearLight / Lab 等扩展混合模式
-    // （mode.value >= 100），必须触发到 MiBlendModesExt。两处 isOs3Effect 各组合一次。
+    // 标题 r150 两组 token 都含 LinearLight(100) + Lab(106) ⇒ 恒走 MiBlendModesExt；
+    // 卡片 r60 的 std/ext 由当前模式决定：深色 Overlay_Thin_Light 含 PlusDarker(120) ⇒ Ext，
+    // 浅色 Pured_Regular_Light 仅 Overlay(15)/HardLight(20) ⇒ 只走 MiBlendModesStd。两处 isOs3Effect 各组合一次。
     val aboutBgWarmupContent: @Composable (Boolean) -> Unit = { isOs3Effect ->
         val appState = LocalAppSettings.current
         // 与 AboutScreen 判定 isDark 的规则一致，确保 logo / card 那两处 blendColors 命中同款扩展模式。
@@ -281,7 +282,8 @@ private fun rememberWarmupItems(bd: WarmupBackdrops): List<WarmupItem> {
             else -> isSystemInDarkTheme()
         }
         // 原样抄 AboutScreen 的 logoBlend / cardBlend（含 blendModes）—— 不重写 shader key。
-        val logoBlend = if (isDark) ColorBlendToken.TitleDark else ColorBlendToken.TitleLight
+        // 注意 token 名与模式相反：深色取 TitleLight（见 AboutScreen L230 注释）。
+        val logoBlend = if (isDark) ColorBlendToken.TitleLight else ColorBlendToken.TitleDark
         val cardBlend = if (isDark) ColorBlendToken.Overlay_Thin_Light else ColorBlendToken.Pured_Regular_Light
         val backdrop = bd.enabled
         Box(Modifier.fillMaxSize()) {
@@ -324,10 +326,11 @@ private fun rememberWarmupItems(bd: WarmupBackdrops): List<WarmupItem> {
             )
         }
     }
-    val aboutOs3Item = WarmupItem("关于页动态背景 OS3(OS3_BG_FRAG+r150/r60+ExtBlend)") {
+    // std/ext 由当前模式的 blend token 决定；浅色模式 r60 走 Std、深色走 Ext，运行时切模式会走另一支。
+    val aboutOs3Item = WarmupItem("关于页动态背景 OS3(OS3_BG_FRAG+r150/r60+混合模式)") {
         aboutBgWarmupContent(true)
     }
-    val aboutOs2Item = WarmupItem("关于页动态背景 OS2(OS2_BG_FRAG+r150/r60+ExtBlend)") {
+    val aboutOs2Item = WarmupItem("关于页动态背景 OS2(OS2_BG_FRAG+r150/r60+混合模式)") {
         aboutBgWarmupContent(false)
     }
 

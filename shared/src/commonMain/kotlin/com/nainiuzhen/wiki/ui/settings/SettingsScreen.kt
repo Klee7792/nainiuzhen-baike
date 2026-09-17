@@ -223,11 +223,11 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                                     }
                                 }
                                 // 交互期玻璃降级：仅 iOS 液态玻璃底栏（样式=1）生效时出现；
-                                // 拖动底栏时临时跳过 lens 折射 / 关闭色散以保流畅（见 IosLiquidGlassNavigationBar B3）。
+                                // 拖动底栏时临时跳过 lens 折射以保流畅（见 IosLiquidGlassNavigationBar B3）。
                                 AnimatedVisibility(visible = appState.floatingNavigationBarStyle == 1) {
                                     SwitchPreference(
                                         title = "交互期玻璃降级",
-                                        summary = "拖动底栏时临时降低折射细节以保流畅",
+                                        summary = "按压底栏时临时跳过边缘折射，减少即时绘制量",
                                         checked = appState.glassInteractionDegrade,
                                         onCheckedChange = {
                                             updateAppState(appState.copy(glassInteractionDegrade = it))
