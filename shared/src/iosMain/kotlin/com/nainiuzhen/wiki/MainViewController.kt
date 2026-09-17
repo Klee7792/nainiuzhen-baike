@@ -1,5 +1,6 @@
 package com.nainiuzhen.wiki
 
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeUIViewController
 import com.nainiuzhen.wiki.platform.bundleAssetBytes
 import com.nainiuzhen.wiki.platform.IosAppSettingsStore
@@ -29,6 +30,20 @@ private fun installCrashHook() {
 }
 
 /**
+ * iOS 并行渲染总开关（可回退）。
+ *
+ * ① 置 true 时，Compose 会在**专用渲染线程**编码绘制命令，UI 线程与渲染线程解耦 —— 这是
+ *    「切换标签 / 弹窗滞后、厚重感」的典型解药，提升滚动与转场流畅度。
+ * ② 必须在 `ComposeUIViewController(configure = { ... })` 作用域内设置；**在 configure 外
+ *    修改无效**（CMP 1.12.0 KDoc 原文：Changing this setting outside of `configure` argument
+ *    scope has no effect）。
+ * ③ 依据：同款设备 + 同 iOS 版本下，miuix example 的 iOS demo 即使用该配置且稳定 60FPS。
+ * ④ 若真机出现「截图内容滞后一拍」或 UIKit interop（分享面板）异常，改 false 即可回退，
+ *    无需改动其他任何代码。
+ */
+private const val IOS_PARALLEL_RENDERING = true
+
+/**
  * iOS 应用入口（对应 Android 的 `MainActivity` 平台装配层）。
  *
  * Swift 侧经 `MainViewControllerKt.MainViewController()` 调用（framework baseName = shared）。
@@ -37,6 +52,7 @@ private fun installCrashHook() {
  *
  * isDebug 固定 false：iOS 分发只有 release（TrollStore 侧载未签名 ipa），黑名单过滤照常生效。
  */
+@OptIn(ExperimentalComposeUiApi::class)
 fun MainViewController(): UIViewController {
     installCrashHook()
     // 先打点再打日志：日志里的时间戳依赖它（见 IosStartupTime 注释）。
@@ -50,7 +66,11 @@ fun MainViewController(): UIViewController {
         as? String ?: "1.0.0"
     val versionCode = (NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleVersion")
         as? String)?.toIntOrNull() ?: 1
-    return ComposeUIViewController {
+    return ComposeUIViewController(
+        configure = {
+            parallelRendering = IOS_PARALLEL_RENDERING
+        },
+    ) {
         App(
             slicer = IosSpriteSlicer(),
             cache = IosSpriteCacheManager(version = versionCode),

@@ -3,8 +3,16 @@
 
 package i18n
 
-import platform.Foundation.NSLocale
+import platform.Foundation.NSUserDefaults
 
-/** iOS/macOS expose the user's preferred languages through `NSLocale.preferredLanguages` (Obj-C class method → Companion in Kotlin/Native). */
+/**
+ * iOS/macOS: the user's preferred languages come from the `AppleLanguages` defaults key,
+ * which is exactly what `NSLocale.preferredLanguages` reads underneath
+ * (accessed via NSUserDefaults because NSLocale class members are not
+ * resolvable on Kotlin/Native 2.4.20 bindings).
+ */
 actual fun systemLanguageTag(): String =
-    NSLocale.Companion.preferredLanguages.firstOrNull() ?: "en"
+    NSUserDefaults.standardUserDefaults
+        .stringArrayForKey("AppleLanguages")
+        ?.firstOrNull() as? String
+        ?: "en"

@@ -3,6 +3,7 @@ package com.nainiuzhen.wiki.ui.nav
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.nainiuzhen.wiki.data.repository.DataRepository
 import com.nainiuzhen.wiki.data.repository.SpriteRepository
+import com.nainiuzhen.wiki.utils.FpsTracker
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavKey
 
@@ -14,6 +15,7 @@ import top.yukonga.miuix.kmp.nav.core.NavKey
 class Navigator(val backStack: NavBackStack) {
     /** 入栈；若栈中已存在相同 key 则跳过。 */
     fun push(key: NavKey) {
+        FpsTracker.mark("push ${key::class.simpleName ?: "?"}")
         if (key !in backStack) backStack.add(key)
     }
 
@@ -35,6 +37,7 @@ class Navigator(val backStack: NavBackStack) {
      * @param key 目标板块路由。
      */
     fun openTopLevel(key: NavKey) {
+        FpsTracker.mark("openTopLevel ${key::class.simpleName ?: "?"}")
         // 已经停在该板块上时保持原状：不要把 key 摘了重加，否则会重置页内的搜索/筛选/滚动状态。
         if (backStack.size == 2 && backStack[1] == key) return
         while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
@@ -43,6 +46,7 @@ class Navigator(val backStack: NavBackStack) {
 
     /** 替换栈顶；栈空时改为入栈。 */
     fun replace(key: NavKey) {
+        FpsTracker.mark("replace ${key::class.simpleName ?: "?"}")
         if (backStack.isNotEmpty()) {
             backStack[backStack.lastIndex] = key
         } else {
@@ -52,6 +56,7 @@ class Navigator(val backStack: NavBackStack) {
 
     /** 出栈（保留栈底）。 */
     fun pop() {
+        FpsTracker.mark("pop")
         if (backStack.size > 1) backStack.removeLastOrNull()
     }
 

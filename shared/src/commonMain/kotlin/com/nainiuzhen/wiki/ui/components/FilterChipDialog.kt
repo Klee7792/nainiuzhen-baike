@@ -13,6 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
+import com.nainiuzhen.wiki.utils.FpsTracker
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -45,6 +51,14 @@ fun FilterChipDialog(
     onSelectedChange: (Set<String>) -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(FILTER_DIALOG_MAX_HEIGHT)
+    // FPS 场景标记：弹窗首次显示时打点（仅一次，避免反复开合刷屏）。
+    var fpsMarked by remember { mutableStateOf(false) }
+    LaunchedEffect(show) {
+        if (show && !fpsMarked) {
+            fpsMarked = true
+            FpsTracker.mark("dialog FilterChip")
+        }
+    }
     // 登记到左栏拦截层（分栏时才有）：弹窗开着时点左栏 = 先关弹窗，而不是被跳转盖掉。
     RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
     // 强制底部贴合：miuix 在大屏（宽≥840dp 且 高≥480dp）会改为居中，导致横屏底部留白过大。

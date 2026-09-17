@@ -10,11 +10,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.ui.adaptive.RegisterDetailOverlay
+import com.nainiuzhen.wiki.utils.FpsTracker
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 /**
@@ -45,6 +51,14 @@ fun BasicDetailDialog(
     content: @Composable () -> Unit,
 ) {
     val resolvedMaxHeight = rememberDialogMaxHeight(maxHeight)
+    // FPS 场景标记：弹窗首次显示时打点（仅一次，避免反复开合刷屏）。
+    var fpsMarked by remember { mutableStateOf(false) }
+    LaunchedEffect(show) {
+        if (show && !fpsMarked) {
+            fpsMarked = true
+            FpsTracker.mark("dialog BasicDetail")
+        }
+    }
     // 登记给左栏拦截层：分栏时左栏没被 miuix 遮罩覆盖，需靠它把「点左栏」变成「先关弹窗」。
     RegisterDetailOverlay(show = show, onDismiss = onDismissRequest)
 

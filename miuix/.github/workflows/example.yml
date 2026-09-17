@@ -2,41 +2,109 @@ name: Build Example App
 
 on:
   workflow_dispatch:
+    inputs:
+      build-android:
+        description: "Android (debug APK)"
+        type: boolean
+        default: false
+      build-web:
+        description: "Web (Wasm + JS)"
+        type: boolean
+        default: false
+      build-ios:
+        description: "iOS (unsigned IPA)"
+        type: boolean
+        default: false
+      build-macos:
+        description: "macOS arm64 (DMG)"
+        type: boolean
+        default: false
+      build-linux-x64:
+        description: "Linux x64"
+        type: boolean
+        default: false
+      build-linux-arm64:
+        description: "Linux arm64"
+        type: boolean
+        default: false
+      build-windows:
+        description: "Windows x64"
+        type: boolean
+        default: false
 
 concurrency:
   group: example-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # 根据勾选的平台动态生成桌面构建 matrix（macOS / Linux x64 / Linux arm64 / Windows）
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+      has-builds: ${{ steps.gen.outputs.has-builds }}
+    steps:
+      - name: Generate desktop matrix from inputs
+        id: gen
+        env:
+          MACOS: ${{ inputs.build-macos }}
+          LINUX_X64: ${{ inputs.build-linux-x64 }}
+          LINUX_ARM64: ${{ inputs.build-linux-arm64 }}
+          WINDOWS: ${{ inputs.build-windows }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, json
+
+          m = []
+          if os.environ["MACOS"] == "true":
+              m.append({
+                  "os": "macos-latest",
+                  "platform": "macos arm64",
+                  "build-command": "./gradlew packageDmgNativeReleaseMacosArm64",
+                  "artifact-path": "example/macos/build/compose/binaries/main/native-macosArm64-release-dmg/*.dmg",
+                  "artifact-name": "Miuix-darwin-arm64-dmg.dmg",
+                  "archive": False,
+              })
+          if os.environ["LINUX_X64"] == "true":
+              m.append({
+                  "os": "ubuntu-latest",
+                  "platform": "linux x64",
+                  "build-command": "./gradlew createReleaseDistributable",
+                  "artifact-path": "example/desktop/build/compose/binaries/main-release/app/Miuix",
+                  "artifact-name": "Miuix-linux-x64-bin",
+                  "archive": True,
+              })
+          if os.environ["LINUX_ARM64"] == "true":
+              m.append({
+                  "os": "ubuntu-24.04-arm",
+                  "platform": "linux arm64",
+                  "build-command": "./gradlew createReleaseDistributable",
+                  "artifact-path": "example/desktop/build/compose/binaries/main-release/app/Miuix",
+                  "artifact-name": "Miuix-linux-arm64-bin",
+                  "archive": True,
+              })
+          if os.environ["WINDOWS"] == "true":
+              m.append({
+                  "os": "windows-latest",
+                  "platform": "windows x64",
+                  "build-command": "./gradlew createReleaseDistributable",
+                  "artifact-path": "example/desktop/build/compose/binaries/main-release/app/Miuix",
+                  "artifact-name": "Miuix-windows-x64-exe",
+                  "archive": True,
+              })
+
+          print("matrix=" + json.dumps({"include": m}))
+          print("has-builds=" + ("true" if m else "false"))
+          PY
+
   build:
+    needs: prepare-matrix
+    # 未勾选任何桌面平台时，矩阵为空（include: []），strategy 求值会报
+    # "matrix must define at least one vector" 而整体 fail。这里用 has-builds 干净跳过。
+    if: needs.prepare-matrix.outputs.has-builds == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            platform: macos arm64
-            build-command: ./gradlew packageDmgNativeReleaseMacosArm64
-            artifact-path: example/macos/build/compose/binaries/main/native-macosArm64-release-dmg/*.dmg
-            artifact-name: Miuix-darwin-arm64-dmg.dmg
-            archive: false
-          - os: ubuntu-latest
-            platform: linux x64
-            build-command: ./gradlew createReleaseDistributable
-            artifact-path: example/desktop/build/compose/binaries/main-release/app/Miuix
-            artifact-name: Miuix-linux-x64-bin
-            archive: true
-          - os: ubuntu-24.04-arm
-            platform: linux arm64
-            build-command: ./gradlew createReleaseDistributable
-            artifact-path: example/desktop/build/compose/binaries/main-release/app/Miuix
-            artifact-name: Miuix-linux-arm64-bin
-            archive: true
-          - os: windows-latest
-            platform: windows x64
-            build-command: ./gradlew createReleaseDistributable
-            artifact-path: example/desktop/build/compose/binaries/main-release/app/Miuix
-            artifact-name: Miuix-windows-x64-exe
-            archive: true
+      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Sources
         uses: actions/checkout@v7
@@ -69,7 +137,9 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-name }}
           archive: ${{ matrix.archive }}
+
   ios:
+    if: ${{ inputs.build-ios == true }}
     runs-on: macos-latest
     steps:
       - name: Checkout Sources
@@ -111,6 +181,49 @@ jobs:
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$APP" "$RUNNER_TEMP/Payload/"
           ( cd "$RUNNER_TEMP" && zip -r -y "$GITHUB_WORKSPACE/Miuix-ios-arm64-unsigned.ipa" Payload )
+      - name: Verify iOS back-deployment
+        shell: bash
+        run: |
+          APP="$RUNNER_TEMP/Miuix.xcarchive/Products/Applications/Miuix.app"
+          BIN="$APP/Miuix"
+          echo "MinimumOSVersion: $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist" 2>/dev/null || echo unknown)"
+
+          # 先把符号表落盘，再用 grep 读文件。
+          # 不能写 `nm ... | grep -q "..."`：在 shell 的 -o pipefail 下，grep -q 命中即退出，
+          # nm 继续写管道会收到 EPIPE/SIGPIPE 而非零退出，整个 pipeline 结果为假，造成误判。
+          # 用 -m 输出绑定属性，形如 `(undefined) weak external _sym` / `(undefined) external _sym`；
+          # 若该平台 nm 不支持 -m，则回退到 -u（此时无绑定属性，三态判定按"无 weak 信息"处理）。
+          nm -m "$BIN" > "$RUNNER_TEMP/miuix-syms.txt" 2>/dev/null || nm -u "$BIN" > "$RUNNER_TEMP/miuix-syms.txt"
+
+          # 参考信息：SwiftUI 是否为弱链接 dylib（LC_LOAD_WEAK_DYLIB）。失败不影响判定。
+          echo "LC_LOAD_WEAK_DYLIB count: $(otool -l "$BIN" 2>/dev/null | grep -c LC_LOAD_WEAK_DYLIB || true)"
+
+          # 展示行：列出所有 WindowGroup 相关符号。weak import 才是期望/健康状态。
+          echo "Loaded WindowGroup symbols (weak import is the expected/healthy state):"
+          grep -i windowgroup "$RUNNER_TEMP/miuix-syms.txt" || echo "  (none)"
+
+          # WindowGroup.init(id:title:lazyContent:) 仅在 SwiftUI iOS 17.6+ 存在。
+          # 关键：只要入口不再使用 SwiftUI，或降 deployment target 后链接器把该符号从
+          # 强引用(strong external)改成弱引用(weak external)，dyld 在缺少该符号的旧系统
+          # (如 iOS 16.3)上都不会报 "Symbol not found"，可安全回部署。
+          # 只有仍是强引用时才会在旧系统启动即崩，此时才应拦截。
+          grep "WindowGroupV2id5title11lazyContent" "$RUNNER_TEMP/miuix-syms.txt" > "$RUNNER_TEMP/wg-sym.txt" || true
+
+          # 三态判定（用 test -s 判断文件非空，全程不经过管道，避免 SIGPIPE）。
+          if [ ! -s "$RUNNER_TEMP/wg-sym.txt" ]; then
+            echo "OK: no WindowGroup lazyContent reference (not referenced)"
+          elif grep -q "weak" "$RUNNER_TEMP/wg-sym.txt"; then
+            echo "OK: weak import - back-deployment safe"
+          elif grep -q "external" "$RUNNER_TEMP/wg-sym.txt"; then
+            # nm -m 有绑定属性且明确是 external(强引用) → 旧系统会崩，拦截。
+            echo "::error::References SwiftUI WindowGroup.init(id:title:lazyContent:) as a STRONG (non-weak) import; the app will crash at launch (dyld SIGABRT) on iOS < 17.6."
+            echo "Offending symbol line(s):"
+            cat "$RUNNER_TEMP/wg-sym.txt"
+            exit 1
+          else
+            # 回退到 nm -u（无 -m）时符号行无绑定属性，无法区分 weak/strong → 容忍，仅告警不失败。
+            echo "::warning::WindowGroup lazyContent symbol present but binding info unavailable (nm -m unsupported); cannot confirm weak/strong back-deployment status. Not failing."
+          fi
       - name: Upload unsigned iOS IPA artifact
         uses: actions/upload-artifact@v7
         with:
@@ -119,6 +232,7 @@ jobs:
           archive: false
 
   web:
+    if: ${{ inputs.build-web == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sources
@@ -150,6 +264,7 @@ jobs:
           path: example/web/build/dist/js/productionExecutable
 
   android:
+    if: ${{ inputs.build-android == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sources

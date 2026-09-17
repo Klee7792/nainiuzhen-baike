@@ -85,6 +85,7 @@ import com.nainiuzhen.wiki.ui.nav.Route
 import com.nainiuzhen.wiki.ui.nav.SubPageNavHost
 import com.nainiuzhen.wiki.ui.settings.SettingsContent
 import com.nainiuzhen.wiki.utils.AppLog
+import com.nainiuzhen.wiki.utils.FpsTracker
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -196,6 +197,9 @@ private val EMPTY_HINTS = listOf(
 
 @Composable
 fun MainScreen() {
+    // App 级连续 FPS 曲线日志（幂等，只启一次）：定位 iOS 卡顿来源与出现时机。
+    LaunchedEffect(Unit) { FpsTracker.start() }
+
     val useDualPane = rememberUseDualPane()
     // 只在 单栏↔分栏 翻转时记一次日志（此前每次重组都记，一次会话刷几百条，既刷屏又拖性能）。
     var lastLoggedDual by remember { mutableStateOf<Boolean?>(null) }
@@ -354,6 +358,7 @@ private fun MainPaneShell() {
 
     // 切页时把顶栏的折叠 / 滚动偏移重置为 0，使新页面顶栏始终从展开态开始
     LaunchedEffect(currentPage) {
+        FpsTracker.mark("tab $currentPage") // FPS 场景标记：主页 / 设置切换
         scrollBehavior.state.heightOffset = 0f
         scrollBehavior.state.contentOffset = 0f
     }
