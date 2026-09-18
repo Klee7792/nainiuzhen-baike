@@ -40,6 +40,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  * @param item 物品（为 null 时显示占位名称）。
  * @param num 数量（如配方原料数量）；为 null 不显示。
  * @param onClick 点击回调。
+ * @param countAsOwnRow 是否把数量（`×N`）渲染为「图标与名称之间」的独立一行并右对齐。
+ *   默认 false = 旧行为：数量以 9sp 角标叠在图标右下角。仅配方弹窗的原料 / 产物区开启；
+ *   其余调用点（物品详情、收藏、NPC 喜好等）保持默认，行为 100% 不变。
  */
 @Composable
 fun ItemMiniCard(
@@ -47,6 +50,7 @@ fun ItemMiniCard(
     num: Int? = null,
     onClick: () -> Unit = {},
     scaleContext: SpriteScaleContext = SpriteScaleContext.DialogRecipe,
+    countAsOwnRow: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -76,7 +80,8 @@ fun ItemMiniCard(
                 frameKey = item?.iconFrameKey ?: "",
                 scaleContext = scaleContext,
             )
-            if (num != null) {
+            // 数量角标（默认行为）：仅在未启用「独立数量行」时显示，叠在图片上层右下角。
+            if (num != null && !countAsOwnRow) {
                 // 数量角标：显示在图片上层右下角，无胶囊底、字号更小
                 Text(
                     text = "×$num",
@@ -88,6 +93,22 @@ fun ItemMiniCard(
                         .padding(start = 1.dp),
                 )
             }
+        }
+        // 独立数量行（countAsOwnRow = 配方弹窗原料 / 产物区）：置于图标与名称之间的单独一行，
+        // 整行右对齐（fillMaxWidth + TextAlign.End）。字号沿用角标的 9sp，显示条件与角标一致
+        // （num != null），避免同一数量出现两次。
+        if (countAsOwnRow && num != null) {
+            Text(
+                text = "×$num",
+                fontSize = 9.sp,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MiuixTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+            )
         }
         Text(
             text = item?.name ?: "#?",

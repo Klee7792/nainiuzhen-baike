@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -28,6 +27,7 @@ import com.nainiuzhen.wiki.data.model.RecipeInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.BlurredSearchField
 import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
@@ -35,7 +35,6 @@ import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
-import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.CardSection
@@ -43,7 +42,6 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
@@ -64,7 +62,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  * - 搜索框同步顶栏模糊：搜索框属于顶栏的 `bottomContent`，与顶栏同处一个模糊容器内，
  *   顶栏模糊已覆盖该区域，只需把输入框自身背景改为半透明让模糊透出即可。复用顶栏同一份
  *   backdrop（不再额外 capture 一层内容），避免每帧多一次整屏图层记录。配色统一走共享的
- *   [searchFieldColors]（物品 / 配方 / NPC 三处一致），透明度常量见
+ *   [BlurredSearchField]（物品 / 配方 / NPC 三处一致），透明度常量见
  *   [com.nainiuzhen.wiki.ui.components.SEARCH_FIELD_BLUR_ALPHA]。
  */
 @Composable
@@ -108,14 +106,10 @@ fun RecipeListScreen() {
         },
         subtitle = "共 ${filtered.size} 个配方",
         bottomContent = {
-            TextField(
+            BlurredSearchField(
                 value = query,
                 onValueChange = { query = it },
                 label = "搜索配方",
-                colors = searchFieldColors(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
             )
         },
     ) { innerPadding ->

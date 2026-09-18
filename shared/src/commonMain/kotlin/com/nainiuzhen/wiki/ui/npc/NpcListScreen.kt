@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -26,13 +25,13 @@ import com.nainiuzhen.wiki.data.model.NpcInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.BlurredSearchField
 import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
-import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.CardSection
@@ -40,7 +39,6 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
@@ -55,7 +53,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  * v7→v8 变更：
  * 1. 筛选弹窗改用共享胶囊 [FilterChipDialog]（与物品子页一致），替换原右对齐复选框行。
  * 2. 列表卡片立绘恢复正常比例（移除 120% 放大；放大改到主页板块入口与详情 dialog 左侧图）。
- * 3. 搜索框改用共享配色 [searchFieldColors]，与顶栏模糊同步（模糊生效时半透明）。
+ * 3. 搜索框改用共享组件 [BlurredSearchField]（含独立高斯磨砂背景），与顶栏模糊同步。
  */
 @Composable
 fun NpcListScreen() {
@@ -102,14 +100,10 @@ fun NpcListScreen() {
             }
         },
         bottomContent = {
-            TextField(
+            BlurredSearchField(
                 value = query,
                 onValueChange = { query = it },
                 label = "搜索 NPC",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                colors = searchFieldColors(),
             )
         },
     ) { innerPadding ->

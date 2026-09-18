@@ -245,8 +245,12 @@ fun IosLiquidGlassNavigationBar(
     val startPadPx = with(density) { 4.dp.toPx() }
 
     // 选中指示器水平位移：基础 = 4dp 起始内边距 + 进度 × 单选项宽；
-    // 用 coerceIn 夹在 [首选项左缘, 末选项左缘] 之间，拖动/橡皮筋越界时指示器永不跑出底栏
-    //（修复「选中项目超出底栏」）。RTL 保持原公式不动，避免引入未经验证的镜像偏差。
+    // 用 coerceIn 夹在 [首选项左缘, 末选项左缘] 之间，拖动/橡皮筋越界时指示器永不跑出底栏。
+    // ⚠️ 有意**不**按放大倍数（scale）再夹一层：miuix demo 就是纯 progressOffset（见 demo
+    // LiquidGlassNavigationBar.kt:506/553，无 coerceIn），按下期胶囊以中心对称放大、允许轻微越出
+    // 底栏边缘 —— 这是该组件的既定观感。此前「压扁 / 超出底栏」的真因是交互期离屏 padding 被降到
+    // 13dp，裁掉了每侧 14.93dp 的放大溢出；现 padding 恒 ≥ 40dp，无需也不应再动位移。
+    // RTL 保持原公式不动，避免引入未经验证的镜像偏差。
     fun pillTranslationX(value: Float, offset: Float): Float {
         val progressOffset = value * tabWidthPx
         return if (isLtr) {
@@ -454,20 +458,19 @@ fun IosLiquidGlassNavigationBar(
                                     backdrop = backdrop,
                                     shape = { pillShape },
                                 effects = {
-                        // 常驻离屏 padding 下限：lens() 自身会把 padding 抬到 refractionAmount(=24dp)，
-                        // 取样半径 24dp 已足够它；按压缩放 layerBlock 每侧只需 ~8dp；取二者较大值 = 24dp。
-                        // 原 40dp 每侧多供 16dp 纯属浪费面积。blur() 会自行把 padding 抬到其 kernel reach，
-                        // 不必为 blur 额外供给（见 miuix BackdropEffects.kt blur()）。
-                        // 交互期降级（glassInteractionDegrade 开 + 按压/拖动进行中）：临时降到 13dp，并跳过
-                        // lens 折射 pass（少一趟 GPU pass；padding 实际由 blur(4dp) 抬到 ~13dp，见任务 B3）。
-                        // 非交互路径与改动前折射/lens 路径等价，差异仅在离屏 padding 由 40dp 改为 24dp（离屏面积约减半）。
-                        val interacting = appState.glassInteractionDegrade && dampedDrag.pressProgress > 0.01f
-                        padding = if (interacting) 13.dp.toPx() else 24.dp.toPx()
+                        // 40dp = 24dp lens refraction + 16dp press-scale reach，来自 miuix demo L424，勿降。
+                        // 离屏 padding 下限恒为 40dp：按下期胶囊放大到 78dp，上下各溢出 (78-56)/2 = 11dp，
+                        // 需 ≥ 其半高+溢出+折射取样 的离屏层才不被裁 —— 13dp/24dp 都不够，被裁的溢出
+                        // 会表现为指示器「上下压扁」。故 padding 与是否交互无关，恒定 ≥ 40dp。
+                        padding = maxOf(padding, 40.dp.toPx())
                         vibrancy()
                         blur(
                             4.dp.toPx(),
                             4.dp.toPx(),
                         )
+                        // glassInteractionDegrade 的降级语义 = 交互期仅「跳过 lens 折射 pass」（少一趟 GPU pass），
+                        // 不再靠缩小 padding 实现（缩小 padding 在拖动放大期必然裁切溢出的指示器）。
+                        val interacting = appState.glassInteractionDegrade && dampedDrag.pressProgress > 0.01f
                         if (!interacting) {
                             lens(
                                 refractionHeight = 24.dp.toPx(),

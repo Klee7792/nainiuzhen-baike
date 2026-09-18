@@ -130,7 +130,8 @@ private fun RecipeDetailBody(
         if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
         SmallTitle(text = "原料")
         val mats = recipe.materials.map { data.itemById(it.id) to it.num }
-        MaterialCardRow(items = mats, onItemClick = onItemClick)
+        // 数量（×N）独立成行、置于图标与名称之间、右对齐
+        MaterialCardRow(items = mats, onItemClick = onItemClick, countAsOwnRow = true)
         hasSectionAbove = true
     }
 
@@ -138,7 +139,12 @@ private fun RecipeDetailBody(
     if (hasSectionAbove) SectionDivider() else Spacer(Modifier.size(10.dp))
     SmallTitle(text = "产物")
     val product = data.itemById(recipe.target)
-    MaterialCardRow(items = listOf(product to recipe.targetNum), onItemClick = onItemClick)
+    // 产出数量（×N）同样独立成行、置于图标与名称之间、右对齐
+    MaterialCardRow(
+        items = listOf(product to recipe.targetNum),
+        onItemClick = onItemClick,
+        countAsOwnRow = true,
+    )
     hasSectionAbove = true
 
     // 4. 解锁方式：标签 + 内容「一行」左右分区（内容超长自动换行），主题强调色
@@ -199,11 +205,15 @@ fun SectionDivider(modifier: Modifier = Modifier) {
  * 物品卡片行：≤4 张时整体水平居中（不裁切、不加边缘）；超过 4 张则横向滚动，
  * 并套用 [FadeEdges] 在两侧加高斯模糊 / 渐变淡入淡出边缘（与 [ItemCardRow] 一致）。
  * 卡片大小、样式与物品区一致，点击穿透到物品详情。
+ *
+ * @param countAsOwnRow 透传给 [ItemMiniCard]：true 时数量（`×N`）在图标与名称之间独立成行、右对齐。
+ *   配方弹窗的原料 / 产物区统一传 true。
  */
 @Composable
 private fun MaterialCardRow(
     items: List<Pair<ItemInfo?, Int>>,
     onItemClick: (ItemInfo) -> Unit,
+    countAsOwnRow: Boolean = false,
 ) {
     if (items.isEmpty()) return
     val row: @Composable () -> Unit = {
@@ -217,6 +227,7 @@ private fun MaterialCardRow(
                         item = item,
                         num = num,
                         onClick = { if (item != null) onItemClick(item) },
+                        countAsOwnRow = countAsOwnRow,
                     )
                 }
             }
@@ -231,6 +242,7 @@ private fun MaterialCardRow(
                         item = item,
                         num = num,
                         onClick = { if (item != null) onItemClick(item) },
+                        countAsOwnRow = countAsOwnRow,
                     )
                 }
             }

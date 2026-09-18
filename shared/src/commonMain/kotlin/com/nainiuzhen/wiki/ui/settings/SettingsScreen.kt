@@ -43,6 +43,8 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.animation.AnimatedVisibility
+import top.yukonga.miuix.kmp.utils.Platform
+import top.yukonga.miuix.kmp.utils.platform
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
@@ -224,7 +226,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                                 }
                                 // 交互期玻璃降级：仅 iOS 液态玻璃底栏（样式=1）生效时出现；
                                 // 拖动底栏时临时跳过 lens 折射以保流畅（见 IosLiquidGlassNavigationBar B3）。
-                                AnimatedVisibility(visible = appState.floatingNavigationBarStyle == 1) {
+                                AnimatedVisibility(visible = platform() != Platform.Android && appState.floatingNavigationBarStyle == 1) {
                                     SwitchPreference(
                                         title = "交互期玻璃降级",
                                         summary = "按压底栏时临时跳过边缘折射，减少即时绘制量",
@@ -295,7 +297,7 @@ fun SettingsContent(innerPadding: PaddingValues, scrollBehavior: ScrollBehavior)
                 )
                 ArrowPreference(
                     title = "诊断日志",
-                    summary = "弹出系统分享，可存本地或经 QQ/微信/隔空投送发送（排障用）",
+                    summary = "导出运行日志，方便排查故障",
                     onClick = { ShareDiagnosticsLog() },
                 )
                 ArrowPreference(

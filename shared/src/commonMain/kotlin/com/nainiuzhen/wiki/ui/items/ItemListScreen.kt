@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -28,6 +27,7 @@ import com.nainiuzhen.wiki.data.model.ItemInfo
 import com.nainiuzhen.wiki.data.model.searchText
 import com.nainiuzhen.wiki.ui.adaptive.AdaptiveIconGrid
 import com.nainiuzhen.wiki.ui.components.AppSubPageScaffold
+import com.nainiuzhen.wiki.ui.components.BlurredSearchField
 import com.nainiuzhen.wiki.ui.components.CardImageBox
 import com.nainiuzhen.wiki.ui.components.CardNameCapsule
 import com.nainiuzhen.wiki.ui.components.FilterChipDialog
@@ -35,7 +35,6 @@ import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
-import com.nainiuzhen.wiki.ui.components.searchFieldColors
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.CardSection
@@ -43,7 +42,6 @@ import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Filter
@@ -64,7 +62,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  *
  * v7 变更（bug-v6「物品大全页」）：
  * - 筛选弹窗改为胶囊多选（[FilterChipDialog]）：[FlowRow] 自动换行，末尾「重置」红字清空勾选。
- * - 搜索框跟随顶栏模糊（[searchFieldColors]）：搜索框属于顶栏的 `bottomContent`，与顶栏同处
+ * - 搜索框跟随顶栏模糊（[BlurredSearchField]）：搜索框属于顶栏的 `bottomContent`，与顶栏同处
  *   一个模糊容器内，顶栏模糊已覆盖该区域；这里只把输入框自身背景改为半透明，让顶栏的模糊
  *   透出来。复用顶栏同一份 backdrop，**不再额外 capture 一层内容**，避免每帧多一次整屏图层记录。
  * - 「共 xx 个物品」计数走 miuix 原生 `subtitle`：展开时作为大标题第二行，且 `largeTitleCentered=true`
@@ -164,21 +162,18 @@ fun ItemListScreen() {
  * 顶栏 `bottomContent`：仅搜索框。
  *
  * 「共 xx 个物品」计数已改为标题正下方的独立 overlay（见 [AppTopAppBar]），
- * 此处只保留搜索框，配色统一走 [searchFieldColors]，与配方 / NPC 两个板块保持一致。
+ * 此处只保留搜索框，统一走共享组件 [BlurredSearchField]（内部含独立高斯磨砂背景），
+ * 与配方 / NPC 两个板块保持一致。
  */
 @Composable
 private fun ItemListBottomContent(
     query: String,
     onQueryChange: (String) -> Unit,
 ) {
-    TextField(
+    BlurredSearchField(
         value = query,
         onValueChange = onQueryChange,
         label = "搜索物品",
-        colors = searchFieldColors(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
     )
 }
 

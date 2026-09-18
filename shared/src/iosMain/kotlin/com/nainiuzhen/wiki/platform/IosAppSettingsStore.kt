@@ -58,7 +58,7 @@ class IosAppSettingsStore : AppSettingsStore {
         blockInputDuringTransition = boolOf(KEY_BLOCK_INPUT, true),
         floatingNavigationBarStyle = intOf(KEY_FLOATING_NAV_BAR_STYLE, 0),
         floatingNavigationBarPosition = intOf(KEY_FLOATING_NAV_BAR_POS, 0),
-        glassInteractionDegrade = boolOf(KEY_GLASS_INTERACTION_DEGRADE, true),
+        glassInteractionDegrade = boolOf(KEY_GLASS_INTERACTION_DEGRADE, false),
         homeImageScale = floatOf(KEY_HOME_IMAGE_SCALE, 7f),
         cardImageScale = floatOf(KEY_CARD_IMAGE_SCALE, 4f),
         dialogBodyImageScale = floatOf(KEY_DIALOG_BODY_IMAGE_SCALE, 5f),

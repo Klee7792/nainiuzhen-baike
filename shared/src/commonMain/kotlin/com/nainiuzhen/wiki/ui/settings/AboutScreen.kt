@@ -65,10 +65,10 @@ import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.utils.IoDispatcher
+import com.nainiuzhen.wiki.utils.showToast
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -411,7 +411,6 @@ private fun AboutContent(
                                     },
                                     onClick = { uriHandler.openUri("https://github.com/compose-miuix-ui/miuix") },
                                 )
-                                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
                                 ArrowPreference(
                                     title = "加入群组",
                                     endActions = {
@@ -421,7 +420,7 @@ private fun AboutContent(
                                             color = MiuixTheme.colorScheme.onSurfaceVariantActions,
                                         )
                                     },
-                                    onClick = { uriHandler.openUri("https://t.me/YuKongA13579") },
+                                    onClick = { showToast("暂时没有群组") },
                                 )
                             }
 
@@ -458,7 +457,6 @@ private fun AboutContent(
                                     },
                                     onClick = { uriHandler.openUri("https://www.apache.org/licenses/LICENSE-2.0.txt") },
                                 )
-                                HorizontalDivider(color = MiuixTheme.colorScheme.dividerLine)
                                 ArrowPreference(
                                     title = "第三方开源协议",
                                     onClick = { navigator.push(Route.License) },

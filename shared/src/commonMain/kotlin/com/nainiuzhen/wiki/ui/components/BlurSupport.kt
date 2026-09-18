@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.Scaffold
 import androidx.compose.ui.graphics.Color
@@ -38,6 +40,16 @@ import top.yukonga.miuix.kmp.blur.progressiveTextureBlur
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+/**
+ * 顶栏模糊采样源：由 [AppTopAppBar] 向下提供，供 bottomContent 内需要「独立高斯模糊」的元素
+ * （如搜索框 [BlurredSearchField]）复用同一个 [LayerBackdrop]。
+ *
+ * ⚠️ 不要在子页面里自行调用 [rememberAppBlurBackdrop]：`backdrop` 只在 [AppSubPageScaffold] 内创建，
+ * 并通过 `Modifier.layerBackdrop` 挂到内容根节点上；子页面重新 `remember` 会得到一个**未挂载**的
+ * 新实例，采样恒为空。这里改为把顶栏那份 backdrop 透出去，三处搜索框共用、零新增图层捕获。
+ */
+val LocalTopBarBackdrop = compositionLocalOf<LayerBackdrop?> { null }
 
 /**
  * 根据当前设置创建用于顶栏/背景模糊的 [LayerBackdrop]。
@@ -174,31 +186,38 @@ fun AppTopAppBar(
         // ⚠️ 旧 miuix 的 largeTitleCentered 参数已被新版（1206）移除，新 TopAppBar 硬编码大标题左对齐、
         //    无对齐/居中等价参数（已核对 miuix-ui TopAppBar.kt 全量签名与 demo 用法）。为保编译先移除该实参，
         //    展开态大标题暂时从「水平居中」变为「居左」——视觉变化已知、未静默处理，待主理人定方案。
-        if (largeTitle != null) {
-            TopAppBar(
-                title = title,
-                largeTitle = largeTitle,
-                subtitle = subtitle,
-                scrollBehavior = scrollBehavior,
-                color = barColor,
-                navigationIcon = navigationIcon,
-                actions = actions,
-                bottomContent = bottomContent,
-                horizontalInsetsSides = horizontalInsetSides,
-                modifier = modifier,
-            )
-        } else {
-            SmallTopAppBar(
-                title = title,
-                subtitle = subtitle,
-                scrollBehavior = scrollBehavior,
-                color = barColor,
-                navigationIcon = navigationIcon,
-                actions = actions,
-                bottomContent = bottomContent,
-                horizontalInsetsSides = horizontalInsetSides,
-                modifier = modifier,
-            )
+        // 把顶栏 backdrop 通过 CompositionLocal 向下透出：miuix TopAppBar 会在**本 provider 作用域内**
+        // 调用 bottomContent，因此搜索框（[BlurredSearchField]）等 bottomContent 元素可在此拿到同一个
+        // backdrop 做「独立高斯模糊」，无需、也不能自行 remember 一份新 backdrop。
+        // ⚠️ provider 必须包住 TopAppBar 自身（而不是只包 bottomContent）——bottomContent 的调用点
+        //    在 TopAppBar 内部，外部拿不到该 lambda 的调用上下文。
+        CompositionLocalProvider(LocalTopBarBackdrop provides backdrop) {
+            if (largeTitle != null) {
+                TopAppBar(
+                    title = title,
+                    largeTitle = largeTitle,
+                    subtitle = subtitle,
+                    scrollBehavior = scrollBehavior,
+                    color = barColor,
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    bottomContent = bottomContent,
+                    horizontalInsetsSides = horizontalInsetSides,
+                    modifier = modifier,
+                )
+            } else {
+                SmallTopAppBar(
+                    title = title,
+                    subtitle = subtitle,
+                    scrollBehavior = scrollBehavior,
+                    color = barColor,
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    bottomContent = bottomContent,
+                    horizontalInsetsSides = horizontalInsetSides,
+                    modifier = modifier,
+                )
+            }
         }
     }
 }

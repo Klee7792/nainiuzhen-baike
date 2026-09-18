@@ -39,7 +39,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         blockInputDuringTransition = prefs.getBoolean(KEY_BLOCK_INPUT, true),
         floatingNavigationBarStyle = prefs.getInt(KEY_FLOATING_NAV_BAR_STYLE, 0),
         floatingNavigationBarPosition = prefs.getInt(KEY_FLOATING_NAV_BAR_POS, 0),
-        glassInteractionDegrade = prefs.getBoolean(KEY_GLASS_INTERACTION_DEGRADE, true),
+        glassInteractionDegrade = prefs.getBoolean(KEY_GLASS_INTERACTION_DEGRADE, false),
         homeImageScale = prefs.getScaleFloat(KEY_HOME_IMAGE_SCALE, 7f),
         cardImageScale = prefs.getScaleFloat(KEY_CARD_IMAGE_SCALE, 4f),
         dialogBodyImageScale = prefs.getScaleFloat(KEY_DIALOG_BODY_IMAGE_SCALE, 5f),
