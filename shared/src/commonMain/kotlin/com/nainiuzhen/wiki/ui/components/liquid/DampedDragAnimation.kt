@@ -106,6 +106,13 @@ internal class DampedDragAnimation(
         releaseJob?.cancel()
         pressJob?.cancel()
         velocityTracker.resetTracking()
+        // 同时清零拖动残速：velocity 只在收敛动画（updateValue）里被重写，
+        // 抬手后无人清它；残值会让胶囊层持续各向异性拉伸
+        // （见 IosLiquidGlassNavigationBar 的 pill layerBlock 注释）。
+        // 每次手势开始时归零，后续拖动由 updateVelocity 实时重建。
+        animationScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            velocityAnimation.snapTo(0f)
+        }
         pressJob = animationScope.launch {
             launch { pressProgressAnimation.animateTo(1f, pressProgressAnimationSpec) }
             launch { scaleXAnimation.animateTo(pressedScale, scaleXAnimationSpec) }

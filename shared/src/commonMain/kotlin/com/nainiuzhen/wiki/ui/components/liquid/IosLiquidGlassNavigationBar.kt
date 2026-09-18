@@ -572,7 +572,15 @@ fun IosLiquidGlassNavigationBar(
                                 layerBlock = {
                                     scaleX = dampedDrag.scaleX
                                     scaleY = dampedDrag.scaleY
-                                    val v = dampedDrag.velocity / 10f
+                                    // ⚠️ 「沿拖动方向拉伸」必须乘 pressProgress 做门控（demo 无此门控）。
+                                    // velocity 只在 updateValue 的收敛动画里被 updateVelocity 重写，手势结束后
+                                    // 没有任何地方把它归零，于是它会永久停在非零残值上；而 scaleX /= 、scaleY *= 是
+                                    // 各向异性的（cX 用 0.75、cY 用 0.25），结果就是胶囊被永久拉伸 ——
+                                    // 实测：主页 scaleX≈1.24/scaleY≈0.92（上下压扁），设置 scaleX≈0.84/scaleY≈1.05
+                                    // （左右压扁）。pressProgress 在抬手后必回 0，乘上它可保证静止态
+                                    // 严格 scaleX == scaleY == 1，同时保留拖动期的原有弹性观感。
+                                    val press = dampedDrag.pressProgress
+                                    val v = dampedDrag.velocity / 10f * press
                                     scaleX /= 1f - (v * 0.75f).coerceIn(-0.2f, 0.2f)
                                     scaleY *= 1f - (v * 0.25f).coerceIn(-0.2f, 0.2f)
                                 },
