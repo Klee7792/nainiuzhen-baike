@@ -8,7 +8,7 @@ package com.nainiuzhen.wiki.utils
  * （历史教训：关于页「查看源码」曾残留 miuix demo 的上游地址
  * `github.com/compose-miuix-ui/miuix`，纯属字面量散落导致的漏改。）
  */
-const val PROJECT_REPO_URL: String = "https://github.com/Klee7792/nainiuzhenbaike"
+const val PROJECT_REPO_URL: String = "https://github.com/Klee7792/nainiuzhen-baike"
 
 /**
  * 仓库 Issues 页 —— 全应用**唯一对外联系通道**。

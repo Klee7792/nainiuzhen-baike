@@ -15,7 +15,7 @@
 | 包名 | `com.nainiuzhen.wiki`（Android applicationId；v5 由 `com.harvesttown.encyclopedia` 变更） |
 | 目标平台 | Android（正式分发）；iOS（GitHub Actions 出未签名 ipa → 巨魔 TrollStore 侧载） |
 | 数据 | 全离线，游戏解包数据 + 素材（私有仓 `nainiuzhen-assets`，`assets.pack` 容器） |
-| 公开仓库 | https://github.com/Klee7792/nainiuzhenbaike.git |
+| 公开仓库 | https://github.com/Klee7792/nainiuzhen-baike.git |
 
 ## 2. 产品目标（一句话）
 
