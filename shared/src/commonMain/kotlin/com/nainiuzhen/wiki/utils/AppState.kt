@@ -121,6 +121,12 @@ data class AppState(
     val cardCapsuleItem: Boolean = false,
     val cardCapsuleRecipe: Boolean = false,
     val cardCapsuleNpc: Boolean = false,
+    // —— 使用须知 —— //
+    // 用户已同意的「使用须知」版本号；< utils/NOTICE_VERSION 时启动强制弹窗。
+    // 默认 0 ⇒ 首次安装与老版本升级上来的用户都会看到一次弹窗（有意为之）。
+    // ⚠️ 本字段是**必须三处同步**的那一类（AppState + AndroidAppSettingsStore +
+    //    IosAppSettingsStore），与上面图片缩放默认值「双端有意不一致」的情况**不同**。
+    val agreedNoticeVersion: Int = 0,
 )
 
 /** 运行时应用版本信息：由 Android 端经 [BuildConfig.VERSION_NAME] / [BuildConfig.VERSION_CODE] 注入，

@@ -48,6 +48,7 @@ import com.nainiuzhen.wiki.ui.home.MainScreen
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.ui.components.AppToastHost
+import com.nainiuzhen.wiki.ui.components.NoticeGate
 import com.nainiuzhen.wiki.ui.components.ShaderWarmupHost
 import com.nainiuzhen.wiki.ui.theme.AppTheme
 import com.nainiuzhen.wiki.utils.AppState
@@ -261,6 +262,9 @@ private fun AppRoot(
         ) {
             MainScreen()
         }
+        // 首次启动「使用须知」：数据就绪、主界面已在背后渲染后才弹，避免盖在加载页上。
+        // 未同意当前版本时强制确认（点遮罩/返回键都关不掉），见 ui/components/NoticeDialog.kt。
+        NoticeGate()
     }
 }
 

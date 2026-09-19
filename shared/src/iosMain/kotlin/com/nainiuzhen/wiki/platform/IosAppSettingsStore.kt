@@ -74,6 +74,7 @@ class IosAppSettingsStore : AppSettingsStore {
         allowPhoneLandscape = boolOf(KEY_ALLOW_PHONE_LANDSCAPE, true),
         monetSeed = intOf(KEY_MONET_SEED, 0),
         scheduleFilterPinned = boolOf(KEY_SCHEDULE_FILTER_PINNED, true),
+        agreedNoticeVersion = intOf(KEY_NOTICE_VERSION, 0),
         // —— v31 卡片外观设置 —— //
         cardBgMaster = boolOf(KEY_CARD_BG_MASTER, false),
         cardBgSync = boolOf(KEY_CARD_BG_SYNC, true),
@@ -144,6 +145,7 @@ class IosAppSettingsStore : AppSettingsStore {
         putBool(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
         putInt(KEY_MONET_SEED, state.monetSeed)
         putBool(KEY_SCHEDULE_FILTER_PINNED, state.scheduleFilterPinned)
+        putInt(KEY_NOTICE_VERSION, state.agreedNoticeVersion)
         // —— v31 卡片外观设置 —— //
         putBool(KEY_CARD_BG_MASTER, state.cardBgMaster)
         putBool(KEY_CARD_BG_SYNC, state.cardBgSync)
@@ -216,6 +218,7 @@ class IosAppSettingsStore : AppSettingsStore {
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
         const val KEY_MONET_SEED = "monetSeed"
         const val KEY_SCHEDULE_FILTER_PINNED = "scheduleFilterPinned"
+        const val KEY_NOTICE_VERSION = "agreedNoticeVersion"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"
         const val KEY_CARD_BG_SYNC = "cardBgSync"

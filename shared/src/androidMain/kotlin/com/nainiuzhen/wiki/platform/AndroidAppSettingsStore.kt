@@ -51,6 +51,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         allowPhoneLandscape = prefs.getBoolean(KEY_ALLOW_PHONE_LANDSCAPE, true),
         monetSeed = prefs.getInt(KEY_MONET_SEED, 0),
         scheduleFilterPinned = prefs.getBoolean(KEY_SCHEDULE_FILTER_PINNED, true),
+        agreedNoticeVersion = prefs.getInt(KEY_NOTICE_VERSION, 0),
         // —— v31 卡片外观设置（三组「总开关 + n 板块 + 同步」+ 四角 + 按下阴影同步）—— //
         cardBgMaster = prefs.getBoolean(KEY_CARD_BG_MASTER, false),
         cardBgSync = prefs.getBoolean(KEY_CARD_BG_SYNC, true),
@@ -122,6 +123,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
             putBoolean(KEY_ALLOW_PHONE_LANDSCAPE, state.allowPhoneLandscape)
             putInt(KEY_MONET_SEED, state.monetSeed)
             putBoolean(KEY_SCHEDULE_FILTER_PINNED, state.scheduleFilterPinned)
+            putInt(KEY_NOTICE_VERSION, state.agreedNoticeVersion)
             // —— v31 卡片外观设置 —— //
             putBoolean(KEY_CARD_BG_MASTER, state.cardBgMaster)
             putBoolean(KEY_CARD_BG_SYNC, state.cardBgSync)
@@ -194,6 +196,7 @@ class AndroidAppSettingsStore(context: Context) : AppSettingsStore {
         const val KEY_ALLOW_PHONE_LANDSCAPE = "allowPhoneLandscape"
         const val KEY_MONET_SEED = "monetSeed"
         const val KEY_SCHEDULE_FILTER_PINNED = "scheduleFilterPinned"
+        const val KEY_NOTICE_VERSION = "agreedNoticeVersion"
         // —— v31 卡片外观设置 —— //
         const val KEY_CARD_BG_MASTER = "cardBgMaster"
         const val KEY_CARD_BG_SYNC = "cardBgSync"
