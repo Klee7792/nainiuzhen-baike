@@ -293,7 +293,14 @@ fun FloatingNavigationBar(
 
     val navBarBottomPadding = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
     val bottomPaddingValue = when (platform()) {
-        Platform.IOS -> 36.dp
+        // 奶牛镇百科定制：上游 iOS 分支固定 36dp 是「纯留白」（不叠加 inset），而宿主
+        // MainScreen.kt 又给悬浮底栏额外挂了一层 .windowInsetsPadding(navigationBars.bottom)
+        // （iOS ≈ home indicator 34dp）——Compose 的 insets 消费不会自动对后代生效，组件内
+        // 再读一次 WindowInsets.navigationBars 拿到的是完整值，故两者会叠加。
+        // 真机实测底栏下缘到屏幕底：iOS ≈70dp（36+34）、Android ≈60dp（26+2×inset），iOS 明显偏大。
+        // 改为 26dp，与 Android 分支的「26dp 基础留白」口径对齐 ⇒ iOS 合计 ≈60dp，两端观感一致。
+        // ⚠️ 只动 iOS 分支：Android 侧数值保持原样，避免影响已确认的观感。
+        Platform.IOS -> 26.dp
 
         else -> {
             if (navBarBottomPadding != 0.dp) 26.dp + navBarBottomPadding else 36.dp
@@ -340,12 +347,18 @@ fun FloatingNavigationBar(
                 )
                 .then(
                     if (shadowElevation > 0.dp) {
+                        // 奶牛镇百科定制：上游 alpha = 0.2f 在浅色界面下会在底栏四周糊出一圈明显的灰晕。
+                        // 真机截图逐像素实测（Android 1080x2400）：底栏下缘下方最暗亮度 191.6、局部背景 238
+                        // ⇒ 等效黑不透明度 ≈0.198（与 0.2f 一一对应）；同场景下本项目 iOS 液态玻璃底栏
+                        // （IosLiquidGlassNavigationBar）同位置实测 ≈0.042，观感干净。
+                        // 故收到 0.1f，与上游自己较新的 FloatingToolbar 的 dropShadow(alpha = 0.1f) 同口径。
+                        // radius / color 一律不动，只降不透明度，最小化对其它调用点的视觉影响。
                         Modifier.dropShadow(
                             shape = shape,
                             shadow = Shadow(
                                 radius = 10.dp,
                                 color = Color.Black,
-                                alpha = 0.2f,
+                                alpha = 0.1f,
                             ),
                         )
                     } else {
