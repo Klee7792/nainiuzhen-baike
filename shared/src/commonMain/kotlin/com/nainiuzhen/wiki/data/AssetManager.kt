@@ -89,9 +89,7 @@ class AssetManager(
         // 却不会抛异常，是最难查的一类故障）。
         val items = loadItems(atlas, iconMapping, itemBlack, isDebug).logCount("物品")
         tick()
-        // 物品 id -> 帧名映射，供 loadRecipes 修正「icon 字段成批错误」的配方主图（详见 loadRecipes KDoc）。
-        val itemFrameKeys = items.associate { it.id to it.iconFrameKey }
-        val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug, itemFrameKeys).logCount("配方")
+        val recipes = loadRecipes(atlas, iconMapping, recipeBlack, isDebug).logCount("配方")
         tick()
         val npcs = loadNpcs(npcBlack, isDebug).logCount("NPC")
         tick()
@@ -258,35 +256,31 @@ class AssetManager(
     /**
      * 解析配方（`compound_unlocks.json`）。
      *
-     * ## ⚠️ 为什么配方主图不是直接取 `icon`，而要先看产物 `target`（勿删！）
+     * ## ⚠️ 配方主图只认 `icon`，**不要**改回「按产物 `target` 取图」（勿删！）
      *
-     * 游戏原配置 `compound_unlocks.json` 的 `icon` 字段存在**成批错误**：例如 `id=360333 桌布`
-     * 的产物是 `target=261668`，`icon` 却被写成 `260415`（士力架食谱的图标）；同批共 **89 条**
-     * 记录的 `icon` 都是 `260415`，表现为「配方查询」里几十个配方全显示成同一张（士力架）图
-     * （本修正可纠正其中的 87 条；发布包因剔除配方黑名单，实际纠正 86 条）。这不是 App 的推导 bug，
-     * 而是照抄了源数据的坏字段，故这里做一层修正。
+     * 源数据 `icon` 字段有**成批错误**：共 **89 条**配方的 `icon` 被写成 `260415`
+     * （物品 id 260415 的名字就是「士力架」）。其中 `360114 士力架食谱` 的 `target` 也是
+     * `260415`（本来就对），其余 **88 条**是错的。
      *
-     * 规则：仅对满足 `icon != null && id != icon && target != null` 的记录修正主图 ——
-     * `id == icon` 的多为图纸，其 `icon` 本身就是正确的 36xxxx 图纸帧，**必须原样保留**，
-     * 否则会把本来正确的显示改坏（回归）。修正分三层：
-     *   ① `resolveFrameKey(atlas, target)` —— 直接取产物自身的帧；
-     *   ② ① 失败（产物无对应帧）时，退到产物在物品库里的帧 `itemFrameKeys[target]`
-     *      （并要求该帧在图集中真实存在，与 [resolveFrameKey] 内部同一存在性判断手段）；
-     *   ③ ② 仍失败则回退现状结果 `base`，**不引入新的空白图**。
+     * 第一版修法是在**代码里**改成按产物 `target` 取帧，结果引入新 bug：
+     * `360450 骑士之剑图纸` / `360451 野兽之爪图纸` / `360452 攻击药水配方` /
+     * `360453 防御药水配方` / `360454 暴击药水配方` / `360455 武装战锤图纸` /
+     * `360456 狂化战戒图纸` 这 **7 条**全部显示成「木剑」—— 因为它们的 `target` 是占位值
+     * `40000202`（木剑），`materials` 也全是占位（干草 / 纤维 / 木头），属**未实装**配方。
+     * ⇒ **`target` 不是权威字段**，这 7 条的 `target` 是脏数据。
      *
-     * 经真实数据穷举（**调试口径**，即不做黑名单过滤的全量 481 条）：本修正使 130 条配方帧名变化，
-     * 其中 16 条仅靠第 ② 层兜底才修得掉；落占位图的配方数从 9 条降到 7 条；`id == icon` 的记录零变化。
-     * 发布包因剔除配方黑名单，实际为 125 条变化、占位 6→4（差别条目本就不显示，结论不变）。
+     * 最终方案是**数据侧修、代码侧只认 `icon`**：已把那 88 条的 `icon` 直接改成各自的
+     * `target` 值（改的是私有素材仓 `nainiuzhen-assets/config/compound_unlocks.json`，
+     * 2026-09-19），本函数仍只走 `icon_mapping` → `icon` → `id` 这条链路。
      *
-     * @param itemFrameKeys `物品 id -> iconFrameKey` 映射，由 [loadItems] 产出；
-     *   [loadAll] 中 `loadItems` 先于本函数执行，顺序天然可用，勿改成全局变量或重读 json。
+     * 可行性依据（已核实）：`icon_mapping.json` 里**没有任何 36xxxx（配方 id）键**（0 条），
+     * 因此配方的 `icon` 字段就是最终决定项，改配置必定生效。
      */
     private fun loadRecipes(
         atlas: SpriteAtlas,
         iconMapping: Map<Int, String>,
         black: Set<Int>,
         isDebug: Boolean,
-        itemFrameKeys: Map<Int, String>,
     ): List<RecipeInfo> {
         val raw =
             json.decodeFromString<CompoundRaw>(AssetLoader.loadText("config/compound_unlocks.json"))
@@ -295,15 +289,7 @@ class AssetManager(
             if (!isDebug && (r.id ?: 0) in black) return@mapNotNull null
             val mapped = iconMapping[r.id ?: 0]
             val candidate = mapped ?: r.icon?.toString() ?: (r.id ?: 0).toString()
-            val base = resolveFrameKey(atlas, candidate)
-            // 详见本函数 KDoc：icon 字段成批错误，故按产物 target 修正主图（仅限 icon != id 的记录）。
-            val target = r.target
-            val frameKey =
-                if (r.icon != null && r.id != r.icon && target != null) {
-                    resolveRecipeFrameKey(atlas, target, itemFrameKeys, base)
-                } else {
-                    base
-                }
+            val frameKey = resolveFrameKey(atlas, candidate)
             RecipeInfo(
                 id = r.id ?: 0,
                 name = r.name,
@@ -320,31 +306,6 @@ class AssetManager(
                 iconFrameKey = frameKey,
             )
         }
-    }
-
-    /**
-     * 解析配方主图帧：优先按产物 [target] 取帧，失败则退回 [base]（现状结果）。
-     * 详见 [loadRecipes] KDoc 的「为什么」——不要把它当多余逻辑删除。
-     *
-     * @param target 配方产物物品 id。
-     * @param itemFrameKeys `物品 id -> iconFrameKey` 映射（[loadItems] 产出）。
-     * @param base 现状推导结果（`icon_mapping` / `icon` / `id` 链路），作为最终兜底。
-     * @return ① 产物自身的帧；② 产物物品的帧（须在图集中真实存在）；③ 均失败则返回 [base]。
-     */
-    private fun resolveRecipeFrameKey(
-        atlas: SpriteAtlas,
-        target: Int,
-        itemFrameKeys: Map<Int, String>,
-        base: String,
-    ): String {
-        // ① 直接取 target 自己的帧。
-        val direct = resolveFrameKey(atlas, target.toString())
-        if (atlas.getFrame(direct) != null) return direct
-        // ② 退到产物物品的帧，且要求该帧在图集中真实存在（与 resolveFrameKey 内部同一手段）。
-        val itemFrame = itemFrameKeys[target]
-        if (itemFrame != null && atlas.getFrame(itemFrame) != null) return itemFrame
-        // ③ 维持现状，不引入新的空白图。
-        return base
     }
 
     private fun loadNpcs(black: Set<Int>, isDebug: Boolean): List<NpcInfo> {
