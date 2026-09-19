@@ -232,10 +232,15 @@ private fun AboutContent(
 
     val horizontalPadding = 24.dp
     val topAppBarPad = innerPadding.calculateTopPadding()
+    // 列表内边距（顶部 logo 占位项 + 下面 4 个选项卡片）。
+    // 横向取 12.dp：设置页的实际外边距就是 12dp（SettingsScreen.kt 的 Card 自带
+    // `padding(horizontal = 12.dp)`、LazyColumn 无横向 contentPadding）；本页原先
+    // LazyColumn 横向 24dp 与 Card 自带的 12dp 叠成了 36dp，选项卡片看起来「左右边距太宽」
+    // （用户反馈 2026-09-19）。故横向收到 12dp，并同步去掉 Card 自带的 12dp ⇒ 实际 12dp，对齐设置页。
     val scrollPadding = PaddingValues(
         top = topAppBarPad,
-        start = horizontalPadding,
-        end = horizontalPadding,
+        start = 12.dp,
+        end = 12.dp,
         bottom = innerPadding.calculateBottomPadding() + 24.dp,
     )
     // demo：logoPadding 比 scrollPadding 多 extraTop=40.dp，Column 内再 +52.dp
@@ -381,7 +386,8 @@ private fun AboutContent(
                         ) {
                             Card(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp)
+                                    // 横向外边距已由外层 LazyColumn 的 12dp contentPadding 提供
+                                    // （对齐设置页），此处不再自带 padding，避免叠成 24dp。
                                     .then(
                                         if (backdrop != null) {
                                             Modifier.textureBlur(
@@ -426,7 +432,6 @@ private fun AboutContent(
 
                             Card(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp)
                                     .padding(top = 12.dp)
                                     .then(
                                         if (backdrop != null) {
