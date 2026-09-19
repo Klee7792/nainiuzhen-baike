@@ -15,7 +15,7 @@ blob 密钥由文件名哈希派生，直接翻包看到的全是乱码（防小
 v2 新增 Names 段：纯内存解码器需按路径取条目，哈希表无法反查文件名，故补混淆名字表。
 
 用法:
-  python tools/pack_assets.py --src D:/1Project/nainiuzhen-assets --out D:/1Project/nainiuzhen-assets/assets.pack
+  python tools/pack_assets.py --src D:/1Project/nainiuzhen-wiki/nainiuzhen-assets --out D:/1Project/nainiuzhen-wiki/nainiuzhen-assets/assets.pack
   python tools/pack_assets.py --src ... --out ... --peek config/item_database.json
 """
 import argparse
