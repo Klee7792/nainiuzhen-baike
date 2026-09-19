@@ -52,12 +52,12 @@ data class AppState(
     val glassInteractionDegrade: Boolean = false,
     // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
     // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
-    // v42 起整体默认缩小一号（用户决策 2026-09-16）。
-    val cardImageScale: Float = 4f, // 卡片素材：物品/配方卡片内图片（最大 8）
+    // v43 起默认值定为 5 / 7 / 6 / 6 / 6（用户决策 2026-09-19）。
+    val cardImageScale: Float = 5f, // 卡片素材：物品/配方卡片内图片（最大 8）
     val homeImageScale: Float = 7f, // 主页左侧素材：主页物品/配方入口卡片图（最大 10）
-    val dialogBodyImageScale: Float = 5f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）
-    val dialogRecipeImageScale: Float = 5f, // 弹窗配方素材：配方原料/产物（最大 8）
-    val dialogFavHateImageScale: Float = 5f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
+    val dialogBodyImageScale: Float = 6f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）
+    val dialogRecipeImageScale: Float = 6f, // 弹窗配方素材：配方原料/产物（最大 8）
+    val dialogFavHateImageScale: Float = 6f, // 弹窗喜恶素材：NPC 最爱/喜欢/讨厌（最大 8）
     val scaleStep: Float = 0.1f, // 滑块步进：0.1 / 0.5 / 1（设置子页可调，#22 步长）
     // —— 卡片名称字号（素材缩放设置子页「卡片文字」组，绝对值 sp）—— //
     // 范围 5..11 sp，默认 10 sp；步长跟随同页 scaleStep（0.1 / 0.5 / 1）。

@@ -33,7 +33,7 @@ import kotlin.math.roundToInt
  * 5 个独立滑块（#22 复盘，弹窗细分为 3 项）：
  * - 「列表与主页」
  *   - 卡片素材 [com.nainiuzhen.wiki.utils.AppState.cardImageScale]（默认 5，最大 8）：物品 / 配方卡片内图片。
- *   - 主页左侧素材 [com.nainiuzhen.wiki.utils.AppState.homeImageScale]（默认 8，最大 10）：主页物品 / 配方入口卡片图。
+ *   - 主页左侧素材 [com.nainiuzhen.wiki.utils.AppState.homeImageScale]（默认 7，最大 10）：主页物品 / 配方入口卡片图。
  * - 「详情弹窗」
  *   - 弹窗本体素材 [com.nainiuzhen.wiki.utils.AppState.dialogBodyImageScale]（默认 6，最大 8）：物品 / 配方详情头部素材。
  *   - 弹窗配方素材 [com.nainiuzhen.wiki.utils.AppState.dialogRecipeImageScale]（默认 6，最大 8）：配方原料 / 产物。
