@@ -269,12 +269,22 @@ class AssetManager(
      * `40000202`（木剑），`materials` 也全是占位（干草 / 纤维 / 木头），属**未实装**配方。
      * ⇒ **`target` 不是权威字段**，这 7 条的 `target` 是脏数据。
      *
-     * 最终方案是**数据侧修、代码侧只认 `icon`**：已把那 88 条的 `icon` 直接改成各自的
-     * `target` 值（改的是私有素材仓 `nainiuzhen-assets/config/compound_unlocks.json`，
-     * 2026-09-19），本函数仍只走 `icon_mapping` → `icon` → `id` 这条链路。
+     * 最终方案是**数据侧修、代码侧只认 `icon`**（改的是私有素材仓
+     * `nainiuzhen-assets/config/compound_unlocks.json`，2026-09-19，提交 `f064365` + `49d5d55`）：
+     * 那 88 条的 `icon` 已改成**产物自己的帧**，与 App 显示物品列表走同一条间接链路 ——
+     *   ① 78 条直接写 `target`（`target` 本身就是图集帧名）；
+     *   ② 10 条写 `icon_mapping[target]`（`target` 只是物品 id、**不是帧名**，裸写会落**占位空图**；
+     *      例：`360229 何首乌粉` 的 `target=261633`，其真实帧是 `260673`）。
+     * 两条例外**故意保留裸值**：`360459 持久作战食谱` 的 `icon_mapping[262486]` 是 `260000`
+     *   —— `260000` 在本项目里是「脏值标记」（配方黑名单规则之一就是 `icon == 260000`），
+     *   而它的裸 `target(262486)` 本身是真实帧，故保留；`360461 伐木食谱` 两条路都取不到帧，
+     *   但它已在配方黑名单里、不显示，保持原样。
      *
      * 可行性依据（已核实）：`icon_mapping.json` 里**没有任何 36xxxx（配方 id）键**（0 条），
      * 因此配方的 `icon` 字段就是最终决定项，改配置必定生效。
+     * 若日后重新生成这批 `icon`，规则固定为：`target` 是真实帧就写 `target`，否则写
+     * `icon_mapping[target]`（**不要**无条件写映射值 —— 会踩上面 `260000` 那个坑）。
+     * 改完必须重打包 `assets.pack` 推到私有仓，否则 App 读到的仍是旧配置。
      */
     private fun loadRecipes(
         atlas: SpriteAtlas,
