@@ -32,6 +32,7 @@ import com.nainiuzhen.wiki.ui.components.FilterChipDialog
 import com.nainiuzhen.wiki.ui.components.NpcPortraitImage
 import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
+import com.nainiuzhen.wiki.ui.components.rememberImeDismisser
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.CardSection
@@ -64,6 +65,8 @@ fun NpcListScreen() {
     var selected by remember { mutableStateOf<NpcInfo?>(null) }
     var query by remember { mutableStateOf("") }
     var showFilter by remember { mutableStateOf(false) }
+    // 点卡片 / 点右上角筛选时先收起输入法（用户反馈：输入法不收、弹窗被挤到输入法上方）。
+    val dismissIme = rememberImeDismisser()
     val groups = remember(data) { data.npcs.map { npcGroupLabel(it.sex) }.distinct().sorted() }
     var selectedGroups by remember { mutableStateOf<Set<String>>(emptySet()) }
 
@@ -91,7 +94,7 @@ fun NpcListScreen() {
             }
         },
         actions = {
-            IconButton(onClick = { showFilter = true }) {
+            IconButton(onClick = { dismissIme(); showFilter = true }) {
                 Icon(
                     imageVector = MiuixIcons.Filter,
                     contentDescription = "筛选",
@@ -131,7 +134,7 @@ fun NpcListScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(filtered, key = { it.id }) { npc ->
-                        NpcGridCell(npc = npc, onClick = { selected = npc })
+                        NpcGridCell(npc = npc, onClick = { dismissIme(); selected = npc })
                     }
                 }
             }

@@ -35,6 +35,7 @@ import com.nainiuzhen.wiki.ui.components.ProvideMarqueeCoordinator
 import com.nainiuzhen.wiki.ui.components.SpriteImage
 import com.nainiuzhen.wiki.ui.components.SpriteScaleContext
 import com.nainiuzhen.wiki.ui.components.rememberCardPressModifiers
+import com.nainiuzhen.wiki.ui.components.rememberImeDismisser
 import com.nainiuzhen.wiki.ui.nav.LocalDataRepository
 import com.nainiuzhen.wiki.ui.nav.LocalNavigator
 import com.nainiuzhen.wiki.utils.CardSection
@@ -74,6 +75,8 @@ fun RecipeListScreen() {
     var selected by remember { mutableStateOf<RecipeInfo?>(null) }
     var query by remember { mutableStateOf("") }
     var showFilter by remember { mutableStateOf(false) }
+    // 点卡片 / 点右上角筛选时先收起输入法（用户反馈：输入法不收、弹窗被挤到输入法上方）。
+    val dismissIme = rememberImeDismisser()
     val types = remember(data) { data.recipes.map { it.typeLabel }.distinct().sorted() }
     var selectedTypes by remember { mutableStateOf<Set<String>>(emptySet()) }
 
@@ -96,7 +99,7 @@ fun RecipeListScreen() {
             }
         },
         actions = {
-            IconButton(onClick = { showFilter = true }) {
+            IconButton(onClick = { dismissIme(); showFilter = true }) {
                 Icon(
                     imageVector = MiuixIcons.Filter,
                     contentDescription = "筛选",
@@ -138,7 +141,7 @@ fun RecipeListScreen() {
                     horizontalArrangement = Arrangement.spacedBy(gap),
                 ) {
                     items(filtered, key = { it.id }) { recipe ->
-                        RecipeGridCell(recipe = recipe, onClick = { selected = recipe })
+                        RecipeGridCell(recipe = recipe, onClick = { dismissIme(); selected = recipe })
                     }
                 }
             }

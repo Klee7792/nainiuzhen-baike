@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.nainiuzhen.wiki.utils.LocalAppSettings
 import top.yukonga.miuix.kmp.basic.TextField
@@ -123,6 +126,22 @@ fun BlurredSearchField(
                 colors = searchFieldColors(backdropGlass = glassBackdrop != null),
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/**
+ * 收起软键盘并清除焦点：三大板块列表页在「点卡片 / 点右上角筛选」时调用，
+ * 否则输入法会一直留在屏幕上、弹窗还会被挤到输入法上方（用户反馈 2026-09-19）。
+ */
+@Composable
+fun rememberImeDismisser(): () -> Unit {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    return remember(focusManager, keyboard) {
+        {
+            focusManager.clearFocus()
+            keyboard?.hide()
         }
     }
 }
