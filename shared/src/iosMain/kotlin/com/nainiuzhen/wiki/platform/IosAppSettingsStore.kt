@@ -60,10 +60,14 @@ class IosAppSettingsStore : AppSettingsStore {
         floatingNavigationBarPosition = intOf(KEY_FLOATING_NAV_BAR_POS, 0),
         glassInteractionDegrade = boolOf(KEY_GLASS_INTERACTION_DEGRADE, false),
         homeImageScale = floatOf(KEY_HOME_IMAGE_SCALE, 7f),
-        cardImageScale = floatOf(KEY_CARD_IMAGE_SCALE, 5f),
-        dialogBodyImageScale = floatOf(KEY_DIALOG_BODY_IMAGE_SCALE, 6f),
-        dialogRecipeImageScale = floatOf(KEY_DIALOG_RECIPE_IMAGE_SCALE, 6f),
-        dialogFavHateImageScale = floatOf(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 6f),
+        // ⚠️ 缩放默认值**双端有意不一致**（用户决策 2026-09-19）：
+        //   Android = 5 / 7 / 6 / 6 / 6（见 AndroidAppSettingsStore）
+        //   iOS     = 4 / 7 / 5 / 5 / 5（保持旧口径）
+        // 所以这里**不要**去对齐 AppState 的 data class 默认值，也别按「三处必须同步」的旧惯例改。
+        cardImageScale = floatOf(KEY_CARD_IMAGE_SCALE, 4f),
+        dialogBodyImageScale = floatOf(KEY_DIALOG_BODY_IMAGE_SCALE, 5f),
+        dialogRecipeImageScale = floatOf(KEY_DIALOG_RECIPE_IMAGE_SCALE, 5f),
+        dialogFavHateImageScale = floatOf(KEY_DIALOG_FAV_HATE_IMAGE_SCALE, 5f),
         scaleStep = floatOf(KEY_SCALE_STEP, 0.1f),
         itemCardTextSizeSp = floatOf(KEY_ITEM_CARD_TEXT_SIZE_SP, 10f),
         recipeCardTextSizeSp = floatOf(KEY_RECIPE_CARD_TEXT_SIZE_SP, 10f),

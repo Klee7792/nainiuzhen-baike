@@ -31,6 +31,8 @@ import kotlin.math.roundToInt
  * 素材缩放设置子页（从设置页「素材缩放设置」进入）。
  *
  * 5 个独立滑块（#22 复盘，弹窗细分为 3 项）：
+ * ⚠️ 下方括号里的「默认」是按 **Android** 写的；**iOS 默认值是 4 / 7 / 5 / 5 / 5**（双端有意不一致，
+ * 用户决策 2026-09-19）。真正生效的默认在 AndroidAppSettingsStore / IosAppSettingsStore。
  * - 「列表与主页」
  *   - 卡片素材 [com.nainiuzhen.wiki.utils.AppState.cardImageScale]（默认 5，最大 8）：物品 / 配方卡片内图片。
  *   - 主页左侧素材 [com.nainiuzhen.wiki.utils.AppState.homeImageScale]（默认 7，最大 10）：主页物品 / 配方入口卡片图。

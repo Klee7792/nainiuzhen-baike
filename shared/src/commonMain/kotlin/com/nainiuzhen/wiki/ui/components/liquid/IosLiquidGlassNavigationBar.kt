@@ -210,8 +210,17 @@ fun IosLiquidGlassNavigationBar(
     modifier: Modifier = Modifier,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
 ) {
-    val isDark = isSystemInDarkTheme()
     val appState = LocalAppSettings.current
+    // ⚠️ 阴影 / 胶囊明暗必须跟随「应用主题」，而不是「系统主题」：
+    // miuix demo 用的是应用主题（ui.isInDarkTheme），移植时误换成了 isSystemInDarkTheme()。
+    // 当 App 被设为浅色（colorMode=2）而系统处于深色时，旧写法会走去 0.2f 的深阴影，
+    // 在浅色界面上糊成一团灰（真机截图实测：等效黑透明度 0.20，而浅色主题应为 0.10）。
+    // 口径与 MainScreen.kt:435 miuix 悬浮底栏的 isBarDark 完全一致。
+    val isDark = when (appState.colorMode) {
+        0 -> isSystemInDarkTheme()
+        1 -> true
+        else -> false
+    }
     val pillShape = remember { CircleShape }
     val accentColor = MiuixTheme.colorScheme.primary
     val tabContentColor = MiuixTheme.colorScheme.onSurface

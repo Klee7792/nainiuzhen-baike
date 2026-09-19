@@ -52,7 +52,10 @@ data class AppState(
     val glassInteractionDegrade: Boolean = false,
     // —— v7 新增：素材缩放倍率（设置子页可调，#22）—— //
     // 全部为 Float，滑块以 0.1 为步进；括号内为「最大值」（见 ImageScaleSettingsScreen 的 valueRange）。
-    // v43 起默认值定为 5 / 7 / 6 / 6 / 6（用户决策 2026-09-19）。
+    // v43 起：Android 默认 5 / 7 / 6 / 6 / 6；iOS 保持 4 / 7 / 5 / 5 / 5（用户决策 2026-09-19）。
+    // ⚠️ 本处 data class 默认值只是「通用兜底」（实际生效的是 App.kt:106 的 settings.load()）：
+    //    每端真正的默认分别在 AndroidAppSettingsStore / IosAppSettingsStore，二者**有意不一致**，
+    //    不要再按「默认值必须三处同步」的旧惯例把它们对齐。
     val cardImageScale: Float = 5f, // 卡片素材：物品/配方卡片内图片（最大 8）
     val homeImageScale: Float = 7f, // 主页左侧素材：主页物品/配方入口卡片图（最大 10）
     val dialogBodyImageScale: Float = 6f, // 弹窗本体素材：物品/配方详情头部素材（最大 8）

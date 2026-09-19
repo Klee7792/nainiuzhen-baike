@@ -358,10 +358,18 @@ private fun MainPaneShell() {
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
     val appState = LocalAppSettings.current
-    val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberAppBlurBackdrop()
 
     val currentPage = pagerState.currentPage // 0 = 主页，1 = 设置
+
+    // ⚠️ 两页各持一个 ScrollBehavior（各自内含 TopAppBarState，内部用 rememberSaveable 记忆）：
+    // 顶栏是 Scaffold 上的**单个共享** topBar，但折叠态必须**按页各存**，否则切页会互相串味。
+    // 旧写法是单例 + 下面那个 LaunchedEffect 每次切页把 heightOffset / contentOffset 清零，后果：
+    // 「设置页滚到底（顶栏收起）→ 右滑到主页 → 左滑回设置」后顶栏被强行展开 ——
+    // 列表滚动位置由 LazyListState 自己的 Saver 保住了，唯独顶栏折叠态被那行清掉了。
+    val homeScrollBehavior = MiuixScrollBehavior()
+    val settingsScrollBehavior = MiuixScrollBehavior()
+    val scrollBehavior = if (currentPage == 0) homeScrollBehavior else settingsScrollBehavior
 
     // 安全区接入验证（每次会话记一次）：全屏绘制后 iOS 应读到真实的 状态栏 / 小白条 高度
     // （iPhone XR 预期 top≈47dp bottom≈34dp；读到 0 说明 insets 链路没通，顶/底延伸会失效）。
@@ -374,11 +382,9 @@ private fun MainPaneShell() {
         )
     }
 
-    // 切页时把顶栏的折叠 / 滚动偏移重置为 0，使新页面顶栏始终从展开态开始
+    // 切页只打 FPS 场景标记；**不再**重置顶栏折叠态（折叠态已改为按页各存，见上面两个 ScrollBehavior）。
     LaunchedEffect(currentPage) {
         FpsTracker.mark("tab $currentPage") // FPS 场景标记：主页 / 设置切换
-        scrollBehavior.state.heightOffset = 0f
-        scrollBehavior.state.contentOffset = 0f
     }
 
     Scaffold(
@@ -549,10 +555,10 @@ private fun MainPaneShell() {
                 ) { page ->
                     when (page) {
                         0 -> Box(Modifier.fillMaxSize()) {
-                            HomeContent(innerPadding, scrollBehavior)
+                            HomeContent(innerPadding, homeScrollBehavior)
                         }
                         else -> Box(Modifier.fillMaxSize()) {
-                            SettingsContent(innerPadding, scrollBehavior)
+                            SettingsContent(innerPadding, settingsScrollBehavior)
                         }
                     }
                 }
