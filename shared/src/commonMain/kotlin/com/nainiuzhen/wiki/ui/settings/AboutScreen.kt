@@ -4,7 +4,13 @@
 // - 标题 "Miuix for Compose" → "奶牛镇百科"
 // - 图标走 app 自有图标（assets/ic_launcher.png，经 LocalSpriteRepository 解码），非 demo 的 Res.drawable.ic_launcher
 // - 版本号走 LocalAppVersion（Android 端经 BuildConfig 注入），格式与 demo 一致："vX.Y.Z (N)"
-// - 4 个选项文字中文化：查看源码 / 加入群组 / 开源协议 / 第三方开源协议
+// - 4 个选项文字中文化：查看源码 / 问题反馈 / 开源协议 / 第三方开源协议
+// - 新增常驻「免责声明」卡片，位于第二张 Card（开源协议 / 第三方开源协议）之后；
+//   文案来源 utils/Notice.kt 的 NOTICE_CARD_TITLE / NOTICE_TEXT（全应用唯一文案来源，勿另写一份）
+// - 「加入群组」改为「问题反馈」：原实现只弹 toast「暂时没有群组」是死路一条，
+//   现指向仓库 Issues（utils/Notice.kt 的 PROJECT_ISSUES_URL），落定免责声明第 5 段的联系渠道
+// - 「查看源码」链接由 demo 遗留的 miuix 上游地址，改为本应用公开仓地址
+//   （取 utils/Notice.kt 的 PROJECT_REPO_URL，全文件不再出现仓库地址字面量）
 // 其余滚动联动、波浪背景、顶栏渐显、OS2/OS3 弹窗、滚动条等均对齐 demo。
 
 @file:OptIn(ExperimentalScrollBarApi::class)
@@ -63,9 +69,12 @@ import com.nainiuzhen.wiki.ui.settings.about.BgEffectBackground
 import com.nainiuzhen.wiki.ui.settings.about.ColorBlendToken
 import com.nainiuzhen.wiki.utils.LocalAppVersion
 import com.nainiuzhen.wiki.utils.LocalAppSettings
+import com.nainiuzhen.wiki.utils.NOTICE_CARD_TITLE
+import com.nainiuzhen.wiki.utils.NOTICE_TEXT
+import com.nainiuzhen.wiki.utils.PROJECT_ISSUES_URL
+import com.nainiuzhen.wiki.utils.PROJECT_REPO_URL
 import com.nainiuzhen.wiki.ui.nav.LocalSpriteRepository
 import com.nainiuzhen.wiki.utils.IoDispatcher
-import com.nainiuzhen.wiki.utils.showToast
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -415,18 +424,25 @@ private fun AboutContent(
                                             color = MiuixTheme.colorScheme.onSurfaceVariantActions,
                                         )
                                     },
-                                    onClick = { uriHandler.openUri("https://github.com/compose-miuix-ui/miuix") },
+                                    // 原先误留 miuix demo 的上游地址，会让用户以为「查看源码」= miuix。
+                                    // 这里指向本应用公开仓（地址收敛到 utils/Notice.kt 的 PROJECT_REPO_URL）；
+                                    // miuix 自身的署名由下方「第三方开源协议」覆盖。
+                                    onClick = { uriHandler.openUri(PROJECT_REPO_URL) },
                                 )
+                                // 「加入群组」原实现只弹 toast「暂时没有群组」，等于死路一条；
+                                // 改为「问题反馈」指向仓库 Issues：既是真实可用入口，也是免责声明
+                                // 第 5 段「请联系开发者」的落地渠道。地址取 utils/Notice.kt 的
+                                // PROJECT_ISSUES_URL（与声明文案强绑定，勿各写一份字面量）。
                                 ArrowPreference(
-                                    title = "加入群组",
+                                    title = "问题反馈",
                                     endActions = {
                                         Text(
-                                            text = "Telegram",
+                                            text = "GitHub Issues",
                                             fontSize = MiuixTheme.textStyles.body2.fontSize,
                                             color = MiuixTheme.colorScheme.onSurfaceVariantActions,
                                         )
                                     },
-                                    onClick = { showToast("暂时没有群组") },
+                                    onClick = { uriHandler.openUri(PROJECT_ISSUES_URL) },
                                 )
                             }
 
@@ -466,6 +482,58 @@ private fun AboutContent(
                                     title = "第三方开源协议",
                                     onClick = { navigator.push(Route.License) },
                                 )
+                            }
+
+                            // 免责声明卡片（常驻）：文案与首次启动弹窗共用 utils/Notice.kt，
+                            // 此处只读展示，逐段渲染、段间留 6dp。横向留白由外层 LazyColumn 的
+                            // 12dp contentPadding 提供（对齐设置页），卡片本身不再自带横向 margin。
+                            Card(
+                                modifier = Modifier
+                                    .padding(top = 12.dp)
+                                    .then(
+                                        if (backdrop != null) {
+                                            Modifier.textureBlur(
+                                                backdrop = backdrop,
+                                                shape = RoundedCornerShape(16.dp),
+                                                blurRadius = 60f,
+                                                noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                                colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                                colors = CardDefaults.defaultColors(
+                                    color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer,
+                                    contentColor = MiuixTheme.colorScheme.onSurface,
+                                ),
+                            ) {
+                                // miuix 的 Card 自身不给内部留白（ArrowPreference 自带），
+                                // 纯文本内容需显式给 padding，否则文字贴边。
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                ) {
+                                    Text(
+                                        text = NOTICE_CARD_TITLE,
+                                        fontSize = MiuixTheme.textStyles.body1.fontSize,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MiuixTheme.colorScheme.onSurface,
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    NOTICE_TEXT.forEachIndexed { i, para ->
+                                        Text(
+                                            text = para,
+                                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                            lineHeight = 20.sp,
+                                        )
+                                        if (i != NOTICE_TEXT.lastIndex) {
+                                            Spacer(Modifier.height(6.dp))
+                                        }
+                                    }
+                                }
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
