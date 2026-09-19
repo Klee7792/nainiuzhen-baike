@@ -24,7 +24,7 @@
 
 ## 目录结构
 
-- `.github/` — CI 工作流（Multi-Platform Build，手动触发）
+- `.github/` — CI 工作流（Multi-Platform Build，https://github.com/Klee7792/nainiuzhen-baike/actions手动触发）
 - `app/` — Android 入口模块（`MainActivity` + `AndroidManifest`，`applicationId = com.nainiuzhen.wiki`）
 - `shared/` — Kotlin Multiplatform 共享代码（图鉴逻辑 / 数据 / UI）
 - `iosApp/` — iOS 端 Xcode 工程
