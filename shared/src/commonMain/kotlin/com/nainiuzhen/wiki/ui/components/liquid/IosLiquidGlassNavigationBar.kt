@@ -210,17 +210,8 @@ fun IosLiquidGlassNavigationBar(
     modifier: Modifier = Modifier,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
 ) {
+    val isDark = isSystemInDarkTheme()
     val appState = LocalAppSettings.current
-    // ⚠️ 阴影 / 胶囊明暗必须跟随「应用主题」，而不是「系统主题」：
-    // miuix demo 用的是应用主题（ui.isInDarkTheme），移植时误换成了 isSystemInDarkTheme()。
-    // 当 App 被设为浅色（colorMode=2）而系统处于深色时，旧写法会走去 0.2f 的深阴影，
-    // 在浅色界面上糊成一团灰（真机截图实测：等效黑透明度 0.20，而浅色主题应为 0.10）。
-    // 口径与 MainScreen 里 miuix 悬浮底栏的 isBarDark 保持一致。
-    val isDark = when (appState.colorMode) {
-        0 -> isSystemInDarkTheme()
-        1 -> true
-        else -> false
-    }
     val pillShape = remember { CircleShape }
     val accentColor = MiuixTheme.colorScheme.primary
     val tabContentColor = MiuixTheme.colorScheme.onSurface
@@ -369,10 +360,7 @@ fun IosLiquidGlassNavigationBar(
 
     val navBarBottomPadding = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
     val bottomPaddingValue = when (platform()) {
-        // iOS 原为 20dp：真机实测底栏下缘到屏幕底达 ≈71dp（Android 同场景 ≈60dp），
-        // 再叠加 iOS 更胖的阴影，底部整体显得过重。收窄到 8dp 与 Android 观感对齐
-        //（仍留 ≈60dp 余量，不会碰到 home indicator）。
-        Platform.IOS -> 8.dp
+        Platform.IOS -> 20.dp
 
         else -> {
             if (navBarBottomPadding != 0.dp) 8.dp + navBarBottomPadding else 36.dp
@@ -458,10 +446,7 @@ fun IosLiquidGlassNavigationBar(
                         .dropShadow(
                             shape = pillShape,
                             shadow = Shadow(
-                                // iOS 端 dropShadow 的实际扩散明显大于 Android（同一 radius 下真机实测：
-                                // iOS 阴影自底栏下缘再向下延伸 ≈44dp、且前 20dp 维持满强度；Android ≈26dp
-                                // 且立即衰减），故 iOS 取更小 radius，收敛到与 Android 同量级的贴边浅影。
-                                radius = if (platform() == Platform.IOS) 6.dp else 8.dp,
+                                radius = 10.dp,
                                 color = Color.Black,
                                 // Lighter in light theme to avoid a visible gray fringe.
                                 alpha = if (isDark) 0.2f else 0.1f,
